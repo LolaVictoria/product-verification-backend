@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
 from utils.blockchain import register_product, verify_product
+from web3 import Web3
+from web3 import contract
 
 app = Flask(__name__)
 
