@@ -1,15 +1,13 @@
 from web3 import Web3
 import json
-import os
-from dotenv import load_dotenv
+from config import PROVIDER_URL, CONTRACT_ADDRESS
 
-load_dotenv()
+# Connect to Sepolia via Infura/Alchemy
+w3 = Web3(Web3.HTTPProvider(PROVIDER_URL))
 
-infura_url = os.getenv("PROVIDER_URL")
-web3 = Web3(Web3.HTTPProvider(infura_url))
+# Load contract ABI
+with open("ProductRegistry.json") as f:
+    contract_abi = json.load(f)
 
-with open("contract_abi.json") as f:
-    abi = json.load(f)
-
-contract_address = web3.to_checksum_address(os.getenv("CONTRACT_ADDRESS"))
-contract = web3.eth.contract(address=contract_address, abi=abi)
+# Create contract instance
+contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=contract_abi)
