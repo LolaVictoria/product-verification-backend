@@ -1,6 +1,6 @@
 import json
 import os
-from web3 import Web3
+from web3_connection import Web3
 from dotenv import load_dotenv
 
 load_dotenv()
