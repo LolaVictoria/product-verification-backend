@@ -5,7 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask import request, jsonify
 from functools import wraps
 from config import Config
-from models import find_user_by_id
+from models.models import find_user_by_id
 
 def hash_password(password: str) -> str:
     return generate_password_hash(password)

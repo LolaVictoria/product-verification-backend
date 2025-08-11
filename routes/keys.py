@@ -1,7 +1,7 @@
 # keys.py
 from flask import Blueprint, request, jsonify
-from utils import jwt_required, generate_api_key
-from models import find_user_by_id, create_api_key, list_apikeys_for_user, revoke_apikey, find_apikey_by_key
+from utils.utils import jwt_required, generate_api_key
+from models.models import find_user_by_id, create_api_key, list_apikeys_for_user, revoke_apikey, find_apikey_by_key
 from bson import ObjectId
 
 bp = Blueprint("keys", __name__, url_prefix="/keys")

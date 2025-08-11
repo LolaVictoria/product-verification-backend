@@ -2,7 +2,7 @@
 from flask import Blueprint, request, jsonify
 from extensions import mongo, limiter
 from config import Config
-from models import find_product_by_serial, find_apikey_by_key, log_api_usage
+from models.models import find_product_by_serial, find_apikey_by_key, log_api_usage
 from datetime import datetime
 
 bp = Blueprint("api", __name__, url_prefix="/api")

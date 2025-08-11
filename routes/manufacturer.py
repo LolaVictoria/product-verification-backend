@@ -1,8 +1,8 @@
 # manufacturer.py
 from flask import Blueprint, request, jsonify
-from utils import jwt_required
-from schemas import ProductRegisterSchema
-from models import find_user_by_id, find_product_by_serial, insert_product
+from utils.utils import jwt_required
+from models.schemas import ProductRegisterSchema
+from models.models import find_user_by_id, find_product_by_serial, insert_product
 from marshmallow import ValidationError
 
 bp = Blueprint("manufacturer", __name__, url_prefix="/manufacturer")
