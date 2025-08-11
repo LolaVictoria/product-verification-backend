@@ -1,27 +1,18 @@
 # web3_connection.py
-import os
-from dotenv import load_dotenv
+import json
 from web3 import Web3
+from config import Config
 
-# Load environment variables
-load_dotenv()
+w3 = None; contract = None; account = None
+if Config.PROVIDER_URL:
+    w3 = Web3(Web3.HTTPProvider(Config.PROVIDER_URL))
+    if not w3.is_connected():
+        raise RuntimeError("Cannot connect to provider")
 
-PRIVATE_KEY = os.getenv("PRIVATE_KEY")
-PROVIDER_URL = os.getenv("PROVIDER_URL")
-CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS")
+    if Config.CONTRACT_ABI_PATH and Config.CONTRACT_ADDRESS:
+        with open(Config.CONTRACT_ABI_PATH,"r") as f:
+            abi = json.load(f)
+        contract = w3.eth.contract(address=Web3.to_checksum_address(Config.CONTRACT_ADDRESS), abi=abi)
 
-# Connect to blockchain
-w3 = Web3(Web3.HTTPProvider(PROVIDER_URL))
-
-if not w3.is_connected():
-    raise ConnectionError("Failed to connect to the Ethereum network")
-
-# Load contract ABI from file
-with open("contract/contract_abi.json", "r") as abi_file:
-    contract_abi = abi_file.read()
-
-# Create contract instance
-contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=contract_abi)
-
-# Create account object from private key
-account = w3.eth.account.from_key(PRIVATE_KEY)
+    if Config.PRIVATE_KEY:
+        account = w3.eth.account.from_key(Config.PRIVATE_KEY)
