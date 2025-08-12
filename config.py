@@ -1,4 +1,4 @@
-# config.py
+# ig.py
 import os
 from dotenv import load_dotenv
 

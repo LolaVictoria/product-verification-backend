@@ -3,10 +3,19 @@ from flask import Flask, jsonify
 from config import Config
 from extensions import mongo, limiter
 from flask_cors import CORS
+from dotenv import load_dotenv
+import os
+# Load .env variables
+load_dotenv()
+
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    app.config["MONGO_URI"] = os.getenv("MONGO_URI")
+
+    if not app.config["MONGO_URI"]:
+        raise ValueError("❌ MONGO_URI not found in environment variables")
     # Allow all origins (OK for dev, restrict in prod)
     CORS(app, supports_credentials=True)
 
