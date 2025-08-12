@@ -7,8 +7,10 @@ from flask_cors import CORS
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    # Allow all origins (OK for dev, restrict in prod)
+    CORS(app, supports_credentials=True)
 
-    CORS(app)
+    
     mongo.init_app(app)
     limiter.init_app(app)
 
