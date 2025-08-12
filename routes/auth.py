@@ -2,7 +2,7 @@
 from flask import Blueprint, request, jsonify
 from models.schemas import SignupSchema, LoginSchema
 from models.models import create_user, find_user_by_email, create_api_key
-from utils.utils import hash_password, generate_jwt, generate_api_key
+from utils.utils import hash_password, generate_jwt, generate_api_key, verify_password
 from marshmallow import ValidationError
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -45,7 +45,7 @@ def login():
     if not user:
         return jsonify({"error": "invalid credentials"}), 401
 
-    from utils import verify_password
+    from utils.utils import verify_password
     if not verify_password(data["password"], user["password_hash"]):
         return jsonify({"error": "invalid credentials"}), 401
 
