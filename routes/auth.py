@@ -1,53 +1,95 @@
-# auth.py
 from flask import Blueprint, request, jsonify
-from models.schemas import SignupSchema, LoginSchema
-from models.models import create_user, find_user_by_email, create_api_key
-from utils.utils import hash_password, generate_jwt, generate_api_key, verify_password
-from marshmallow import ValidationError
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from services import AuthService, BlockchainService
+from utils.helpers import create_error_response, create_success_response
+import logging
 
-bp = Blueprint("auth", __name__, url_prefix="/auth")
+logger = logging.getLogger(__name__)
 
-@bp.route("/signup", methods=["POST", "OPTIONS"])
+auth_bp = Blueprint('auth', __name__)
+
+@auth_bp.route('/signup', methods=['POST'])
 def signup():
-    if request.method == "OPTIONS":
-        return jsonify({"status": "ok"}), 200
-
+    """User registration endpoint"""
     try:
-        data = SignupSchema().load(request.json)
-    except ValidationError as err:
-        return jsonify(err.messages), 400
+        data = request.get_json()
+        if not data:
+            return create_error_response('No data provided')
+        
+        email = data.get('email')
+        password = data.get('password')
+        role = data.get('role')
+        wallet_address = data.get('wallet_address')
+        
+        # Register user
+        result, status_code = AuthService.register_user(email, password, role, wallet_address)
+        
+        if status_code == 201 and role == 'manufacturer' and wallet_address:
+            # Try to authorize on blockchain
+            from app import blockchain_service
+            auth_result = blockchain_service.authorize_manufacturer(wallet_address)
+            
+            if not auth_result['success']:
+                logger.warning(f"Blockchain authorization failed for {wallet_address}: {auth_result.get('error')}")
+                result['warning'] = 'User created but blockchain authorization failed. Contact support.'
+        
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        logger.error(f"Signup error: {e}")
+        return create_error_response('Internal server error', 500)
 
-    if find_user_by_email(data["email"]):
-        return jsonify({"error":"email already registered"}), 400
-
-    user = create_user(
-        email=data["email"], 
-        password_hash=hash_password(data["password"]), 
-        role=data["role"]
-    )
-    key = generate_api_key()
-    create_api_key(str(user["_id"]), key, label="default")
-    token = generate_jwt(str(user["_id"]))
-    return jsonify({"token": token, "api_key": key}), 201
-
-
-@bp.route("/login", methods=["POST", "OPTIONS"])
+@auth_bp.route('/login', methods=['POST'])
 def login():
-    if request.method == "OPTIONS":
-        return jsonify({"status": "ok"}), 200
-
+    """User login endpoint"""
     try:
-        data = LoginSchema().load(request.json)
-    except ValidationError as err:
-        return jsonify(err.messages), 400
+        data = request.get_json()
+        if not data:
+            return create_error_response('No data provided')
+        
+        email = data.get('email')
+        password = data.get('password')
+        
+        result, status_code = AuthService.authenticate_user(email, password)
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        return create_error_response('Internal server error', 500)
 
-    user = find_user_by_email(data["email"])
-    if not user:
-        return jsonify({"error": "invalid credentials"}), 401
+@auth_bp.route('/profile', methods=['GET'])
+@jwt_required()
+def get_profile():
+    """Get user profile endpoint"""
+    try:
+        user_id = get_jwt_identity()
+        result, status_code = AuthService.get_user_profile(user_id)
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        logger.error(f"Profile error: {e}")
+        return create_error_response('Internal server error', 500)
 
-    from utils.utils import verify_password
-    if not verify_password(data["password"], user["password_hash"]):
-        return jsonify({"error": "invalid credentials"}), 401
-
-    token = generate_jwt(str(user["_id"]))
-    return jsonify({"token": token}), 200
+@auth_bp.route('/refresh', methods=['POST'])
+@jwt_required()
+def refresh_token():
+    """Refresh JWT token endpoint"""
+    try:
+        from flask_jwt_extended import create_access_token, get_jwt
+        
+        current_user = get_jwt_identity()
+        claims = get_jwt()
+        
+        new_token = create_access_token(
+            identity=current_user,
+            additional_claims={
+                'role': claims.get('role'),
+                'user_id': claims.get('user_id')
+            }
+        )
+        
+        return jsonify({'access_token': new_token}), 200
+        
+    except Exception as e:
+        logger.error(f"Token refresh error: {e}")
+        return create_error_response('Token refresh failed', 500)

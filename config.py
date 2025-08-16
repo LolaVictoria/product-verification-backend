@@ -1,17 +1,54 @@
-# ig.py
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
+from datetime import timedelta
 
 class Config:
-    FLASK_ENV = os.getenv("FLASK_ENV", "production")
-    SECRET_KEY = os.getenv("SECRET_KEY", "change_me")
-    JWT_SECRET = os.getenv("JWT_SECRET", "change_me_jwt")
-    MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/product_verification_db")
-    RATE_LIMIT = os.getenv("RATE_LIMIT", "100/hour")
-    # blockchain
-    CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS")
-    CONTRACT_ABI_PATH = os.getenv("CONTRACT_ABI_PATH")
-    PROVIDER_URL = os.getenv("PROVIDER_URL")
-    PRIVATE_KEY = os.getenv("PRIVATE_KEY")
+    """Base configuration class"""
+    # JWT Configuration
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET', 'fallback-jwt-secret-key')
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
+    
+    # Database Configuration
+    MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017/product_auth_db')
+    
+    # Blockchain Configuration
+    WEB3_PROVIDER = os.getenv('PROVIDER_URL', 'http://127.0.0.1:7545')
+    CONTRACT_ADDRESS = os.getenv('CONTRACT_ADDRESS', '0x...')
+    CONTRACT_ABI_PATH = os.getenv('CONTRACT_ABI_PATH', 'contract/contract_abi.json')
+    
+    # Account Configuration
+    ACCOUNT_ADDRESS = os.getenv('ACCOUNT_ADDRESS')
+    PRIVATE_KEY = os.getenv('PRIVATE_KEY')
+    
+    # API Keys
+    ETHERSCAN_API_KEY = os.getenv('ETHERSCAN_API_KEY')
+    
+    # Rate Limiting
+    RATE_LIMIT = os.getenv('RATE_LIMIT', '100/hour')
+    
+    # Flask Secret Key
+    SECRET_KEY = os.getenv('SECRET_KEY', 'fallback-secret-key')
+    
+class DevelopmentConfig(Config):
+    """Development configuration"""
+    DEBUG = True
+    TESTING = False
+
+class ProductionConfig(Config):
+    """Production configuration"""
+    DEBUG = False
+    TESTING = False
+    # Override with more secure settings for production
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)  # Shorter expiry in production
+
+class TestingConfig(Config):
+    """Testing configuration"""
+    DEBUG = True
+    TESTING = True
+    MONGO_URI = os.getenv('TEST_MONGO_URI', 'mongodb://localhost:27017/test_product_auth_db')
+
+config = {
+    'development': DevelopmentConfig,
+    'production': ProductionConfig,
+    'testing': TestingConfig,
+    'default': DevelopmentConfig
+}
