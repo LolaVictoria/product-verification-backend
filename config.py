@@ -8,7 +8,8 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
     
     # Database Configuration
-    MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017/product_auth_db')
+    MONGO_URI = os.getenv('MONGO_URI')
+    print(MONGO_URI)
     
     # Blockchain Configuration
     WEB3_PROVIDER = os.getenv('PROVIDER_URL', 'http://127.0.0.1:7545')

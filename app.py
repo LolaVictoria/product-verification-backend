@@ -1,5 +1,6 @@
+# app.py - Fixed initialization order
 import os
-import json
+# import json
 from flask import Flask, jsonify
 from config import config
 from extensions import mongo, jwt, cors, init_database, test_db_connection
@@ -7,6 +8,7 @@ from routes import register_blueprints
 from services import BlockchainService, DatabaseService
 from utils.helpers import JSONEncoder, setup_logging
 import logging
+import pymongo
 
 # Load environment variables from .env file if it exists
 try:
@@ -36,28 +38,52 @@ def create_app(config_name=None):
     # Setup logging
     setup_logging(app)
     
-    # Test database connection first
-    print("Testing database connection...")
-    if not test_db_connection():
-        print("Warning: Database connection test failed")
+    # Test database connection first (using direct connection)
+    print("=" * 50)
+    print("Testing direct MongoDB connection...")
+    if test_db_connection():
+        print("✓ Direct MongoDB connection test successful")
+    else:
+        print("✗ Direct MongoDB connection test failed")
+        # Don't return here - continue to try Flask-PyMongo
+    
+    print("=" * 50)
     
     # Initialize database with Flask app (this handles mongo.init_app and index creation)
+    print("Initializing Flask-PyMongo...")
     if init_database(app):
-        print("Database initialization successful")
+        print("✓ Database initialization successful")
+        
+        # Now test Flask-PyMongo connection within app context
+        with app.app_context():
+            try:
+                print("Testing Flask-PyMongo connection...")
+                if DatabaseService.test_flask_connection():
+                    print("✓ Flask-PyMongo connection test successful")
+                else:
+                    print("⚠ Flask-PyMongo connection test failed, but continuing...")
+            except Exception as e:
+                print(f"⚠ Flask-PyMongo test error: {e}")
     else:
-        print("Warning: Database initialization failed")
+        print("✗ Database initialization failed")
     
     # Initialize services
     global blockchain_service
     try:
+        print("Initializing blockchain service...")
         blockchain_service = BlockchainService(
             app.config['WEB3_PROVIDER'],
             app.config['CONTRACT_ADDRESS'],
             app.config['CONTRACT_ABI_PATH']
         )
+        if blockchain_service.is_connected():
+            print("✓ Blockchain service initialized successfully")
+        else:
+            print("⚠ Blockchain service initialized but not connected")
         app.logger.info("Blockchain service initialized successfully")
     except Exception as e:
         app.logger.error(f"Failed to initialize blockchain service: {e}")
+        print(f"✗ Failed to initialize blockchain service: {e}")
         blockchain_service = None
     
     # Register blueprints
@@ -68,14 +94,6 @@ def create_app(config_name=None):
     
     # Register JWT callbacks
     register_jwt_callbacks(app)
-    
-    # REMOVED: Old database index creation - now handled in init_database()
-    # with app.app_context():
-    #     try:
-    #         DatabaseService.create_indexes()
-    #         app.logger.info("Database indexes created/verified")
-    #     except Exception as e:
-    #         app.logger.error(f"Failed to create database indexes: {e}")
     
     return app
 
@@ -148,7 +166,7 @@ def register_jwt_callbacks(app):
 app = create_app()
 
 @app.before_request
-def before_request():
+def before_first_request():
     """Run before the first request"""
     app.logger.info("Product Authentication API started successfully")
     
@@ -163,6 +181,7 @@ def before_request():
         else:
             app.logger.warning("Blockchain connection: FAILED")
     
+    # Test database with direct connection (not Flask-PyMongo)
     if DatabaseService.test_connection():
         app.logger.info("Database connection: OK")
     else:
@@ -191,6 +210,7 @@ if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_ENV') == 'development'
     
+    print("Starting Flask application...")
     app.run(
         host='0.0.0.0',
         port=port,
