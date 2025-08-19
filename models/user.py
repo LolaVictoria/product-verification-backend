@@ -13,7 +13,7 @@ class User:
     def create_user(username, email, password, role, wallet_address=None):
         """Create a new user"""
         user_data = {
-            'username': username.lower(),  # Fixed: Added missing comma
+            'username': username.lower(),  
             'email': email.lower().strip(),
             'password_hash': generate_password_hash(password),
             'role': role.lower(),

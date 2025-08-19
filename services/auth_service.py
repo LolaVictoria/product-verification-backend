@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 class AuthService:
     @staticmethod
-    def register_user(email, password, role, wallet_address=None):
+    def register_user(username, email, password, role, wallet_address=None):
         """Register a new user"""
         # Validate input
         if not is_valid_email(email):
@@ -26,8 +26,13 @@ class AuthService:
         if User.email_exists(email):
             return {'error': 'Email already registered'}, 400
         
+        # Check if username already exists
+        if User.username_exists(username):
+            return {'error': 'Username already exists'}, 400
+        
+        
         try:
-            result = User.create_user(email, password, role, wallet_address)
+            result = User.create_user(username, email, password, role, wallet_address)
             return {
                 'message': 'User created successfully',
                 'user_id': str(result.inserted_id)
@@ -50,7 +55,8 @@ class AuthService:
             # Create JWT token with user info
             additional_claims = {
                 'role': user['role'],
-                'user_id': str(user['_id'])
+                'user_id': str(user['_id']),
+                'username': user['username']
             }
             access_token = create_access_token(
                 identity=str(user['_id']),
@@ -63,6 +69,7 @@ class AuthService:
                     'id': str(user['_id']),
                     'email': user['email'],
                     'role': user['role'],
+                    'username': user['username'],
                     'wallet_address': user.get('wallet_address', '')
                 }
             }, 200
@@ -82,6 +89,7 @@ class AuthService:
                 'user': {
                     'id': str(user['_id']),
                     'email': user['email'],
+                    'username': user['username'],
                     'role': user['role'],
                     'wallet_address': user.get('wallet_address', ''),
                     'created_at': user['created_at'].isoformat()
