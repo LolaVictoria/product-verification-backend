@@ -185,3 +185,106 @@ class BlockchainService:
         except Exception as e:
             logger.error(f"Failed to get latest block: {e}")
             return None
+
+    # new update
+    # Add these methods to your existing BlockchainService class
+
+def batch_authorize_manufacturers(self, wallet_addresses, owner_address=None):
+    """Authorize multiple manufacturers in a single transaction (saves gas)"""
+    if not self.contract:
+        return {'success': False, 'error': 'Contract not initialized'}
+        
+    try:
+        if not wallet_addresses:
+            return {'success': False, 'error': 'No wallet addresses provided'}
+        
+        # Use configured owner or first available account
+        if not owner_address:
+            owner_address = getattr(Config, 'OWNER_ADDRESS', None)
+            if not owner_address:
+                accounts = self.w3.eth.accounts
+                if not accounts:
+                    return {'success': False, 'error': 'No owner account available'}
+                owner_address = accounts[0]
+        
+        # Convert all addresses to checksum format
+        try:
+            owner_address = Web3.to_checksum_address(owner_address)
+            wallet_addresses = [Web3.to_checksum_address(addr) for addr in wallet_addresses]
+        except Exception as e:
+            return {'success': False, 'error': f'Invalid address format: {e}'}
+        
+        # Check if we can access the owner account
+        if owner_address not in self.w3.eth.accounts:
+            return {
+                'success': False,
+                'error': f'Cannot access owner account {owner_address}. Private key not available.'
+            }
+        
+        # Estimate gas for batch operation
+        gas_estimate = self.contract.functions.batchAuthorizeManufacturers(wallet_addresses).estimate_gas({
+            'from': owner_address
+        })
+        
+        # Execute batch authorization
+        tx_hash = self.contract.functions.batchAuthorizeManufacturers(wallet_addresses).transact({
+            'from': owner_address,
+            'gas': int(gas_estimate * 1.2)  # Add 20% buffer
+        })
+        
+        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+        
+        return {
+            'success': True,
+            'tx_hash': tx_hash.hex(),
+            'receipt': receipt,
+            'authorized_addresses': wallet_addresses,
+            'gas_used': receipt.gasUsed,
+            'gas_saved_vs_individual': f"~{len(wallet_addresses) * 21000 - receipt.gasUsed} gas"
+        }
+        
+    except Exception as e:
+        logger.error(f"Batch manufacturer authorization failed: {e}")
+        return {'success': False, 'error': str(e)}
+
+def verify_manufacturer_authorization(self, wallet_address):
+    """Check if a manufacturer is authorized on the blockchain"""
+    if not self.contract:
+        return {'authorized': False, 'error': 'Contract not initialized'}
+        
+    try:
+        wallet_address = Web3.to_checksum_address(wallet_address)
+        
+        # Call the smart contract to check authorization
+        is_authorized = self.contract.functions.isManufacturerAuthorized(wallet_address).call()
+        
+        return {
+            'authorized': is_authorized,
+            'wallet_address': wallet_address
+        }
+        
+    except Exception as e:
+        logger.error(f"Manufacturer authorization check failed: {e}")
+        return {'authorized': False, 'error': str(e)}
+
+def get_gas_price_estimate(self):
+    """Get current gas price for cost estimation"""
+    try:
+        gas_price = self.w3.eth.gas_price
+        return {
+            'gas_price_wei': gas_price,
+            'gas_price_gwei': self.w3.from_wei(gas_price, 'gwei'),
+            'estimated_cost_usd': self.estimate_transaction_cost_usd(gas_price)
+        }
+    except Exception as e:
+        logger.error(f"Gas price estimation failed: {e}")
+        return {'error': str(e)}
+
+def estimate_transaction_cost_usd(self, gas_price, gas_limit=50000, eth_price_usd=2000):
+    """Estimate transaction cost in USD (you can get real ETH price from an API)"""
+    try:
+        cost_eth = self.w3.from_wei(gas_price * gas_limit, 'ether')
+        cost_usd = float(cost_eth) * eth_price_usd
+        return round(cost_usd, 4)
+    except:
+        return 0

@@ -80,6 +80,8 @@ class AuthService:
             logger.error(f"Authentication error: {e}")
             return {'error': 'Authentication failed'}, 500
     
+    
+    
     @staticmethod
     def get_user_profile(user_id):
         """Get user profile information"""
@@ -122,3 +124,38 @@ class AuthService:
         )
         
         return key_doc
+    
+    # Add these methods to your AuthService class
+
+@staticmethod
+def get_pending_manufacturers():
+    """Get all manufacturers with pending blockchain verification"""
+    try:
+        # Query your database for users with role='manufacturer' and blockchain_status='pending_verification'
+        # This depends on your database implementation
+        # Example with SQLAlchemy:
+        # users = User.query.filter_by(role='manufacturer', blockchain_status='pending_verification').all()
+        # return [{'user_id': u.id, 'wallet_address': u.wallet_address} for u in users]
+        
+        # Placeholder - implement based on your database
+        pass
+    except Exception as e:
+        logger.error(f"Error getting pending manufacturers: {e}")
+        return []
+
+@staticmethod
+def update_manufacturers_blockchain_status(wallet_addresses, status):
+    """Update blockchain status for multiple manufacturers"""
+    try:
+        # Update your database to set blockchain_status='verified' for these addresses
+        # Example with SQLAlchemy:
+        # User.query.filter(User.wallet_address.in_(wallet_addresses)).update(
+        #     {'blockchain_status': status}, synchronize_session=False
+        # )
+        # db.session.commit()
+        
+        # Placeholder - implement based on your database
+        pass
+    except Exception as e:
+        logger.error(f"Error updating manufacturer status: {e}")
+

@@ -33,8 +33,7 @@ def mask_api_key(api_key, show_chars=8):
     """Mask API key for display purposes"""
     if not api_key or len(api_key) <= show_chars:
         return api_key
-    
-    return api_key[:show_chars] + '*' * (len(api_key) - show_chars)
+    return api_key[:show_chars] + '*' * (len(api_key) - show_chars)  
 
 def format_pagination_response(items, page, per_page, total):
     """Format paginated response"""

@@ -36,10 +36,12 @@ def create_api_key():
         return create_success_response(
             'API key created successfully',
             {
-                'api_key': api_key,
-                'key_id': str(key_id),
-                'label': label,
-                'warning': 'Save this API key securely. It will not be shown again.'
+                'createApiKey': {  # Match your frontend expectation
+                    'success': True,
+                    'apiKey': {
+                        'key': api_key  # This matches your frontend: response.data.data.api_key
+                    }
+                }
             },
             201
         )
@@ -54,21 +56,44 @@ def get_api_keys():
     """Get all API keys for the developer"""
     try:
         user_id = get_jwt_identity()
+        show_full_key = request.args.get('show_full_key', 'false').lower() == 'true'
+        
         api_keys = ApiKey.find_by_user(user_id)
         
-        # Add masked key for display
+        # Convert MongoDB objects to JSON-serializable format
+        serialized_keys = []
         for key_doc in api_keys:
-            key_doc['masked_key'] = f"pak_{mask_api_key(key_doc.get('label', ''), 4)}***"
+            serialized_key = {
+                '_id': str(key_doc['_id']),
+                'user_id': str(key_doc['user_id']),
+                'label': key_doc['label'],
+                'created_at': key_doc['created_at'].isoformat() if key_doc.get('created_at') else None,
+                'revoked': key_doc.get('revoked', False),
+                'last_used': key_doc['last_used'].isoformat() if key_doc.get('last_used') else None,
+                'usage_count': key_doc.get('usage_count', 0),
+            }
+            
+            # Add key field based on request
+            if show_full_key:
+                serialized_key['key'] = key_doc.get('key', '')  # Full key from DB
+                serialized_key['masked_key'] = f"pak_{mask_api_key(key_doc.get('label', ''), 4)}***"
+            else:
+                serialized_key['masked_key'] = f"pak_{mask_api_key(key_doc.get('label', ''), 4)}***"
+        
+        serialized_keys.append(serialized_key)
         
         return jsonify({
-            'api_keys': api_keys,
-            'total': len(api_keys)
+            'success': True,
+            'data': {
+                'api_keys': serialized_keys,
+                'total': len(serialized_keys)
+            }
         }), 200
         
     except Exception as e:
         logger.error(f"Get API keys error: {e}")
         return create_error_response('Internal server error', 500)
-
+    
 @developer_bp.route('/apikey/<key_id>', methods=['GET'])
 @require_role('developer')
 def get_api_key_details(key_id):
