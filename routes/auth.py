@@ -7,16 +7,16 @@ import logging
 logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)  # Fixed: __name__ was **name**
 
-@auth_bp.route('/test', methods=['POST'])
-def test_endpoint():
-    """Simple test endpoint"""
-    try:
-        data = request.get_json()
-        logger.info(f"Test endpoint received: {data}")
-        return jsonify({'message': 'Test successful', 'data': data}), 200
-    except Exception as e:
-        logger.error(f"Test error: {str(e)}", exc_info=True)
-        return jsonify({'error': str(e)}), 500
+# @auth_bp.route('/test', methods=['POST'])
+# def test_endpoint():
+#     """Simple test endpoint"""
+#     try:
+#         data = request.get_json()
+#         logger.info(f"Test endpoint received: {data}")
+#         return jsonify({'message': 'Test successful', 'data': data}), 200
+#     except Exception as e:
+#         logger.error(f"Test error: {str(e)}", exc_info=True)
+#         return jsonify({'error': str(e)}), 500
 
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
