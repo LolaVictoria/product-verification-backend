@@ -5,31 +5,14 @@ from utils.helpers import create_error_response, create_success_response
 import logging
 
 logger = logging.getLogger(__name__)
-auth_bp = Blueprint('auth', __name__)  # Fixed: __name__ was **name**
-
-# @auth_bp.route('/test', methods=['POST'])
-# def test_endpoint():
-#     """Simple test endpoint"""
-#     try:
-#         data = request.get_json()
-#         logger.info(f"Test endpoint received: {data}")
-#         return jsonify({'message': 'Test successful', 'data': data}), 200
-#     except Exception as e:
-#         logger.error(f"Test error: {str(e)}", exc_info=True)
-#         return jsonify({'error': str(e)}), 500
+auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
     """User registration endpoint"""
-    # logger.info("=== SIGNUP REQUEST STARTED ===")
     
     try:
-        # Log the raw request
-        # logger.info(f"Request method: {request.method}")
-        # logger.info(f"Request headers: {dict(request.headers)}")
-        
         data = request.get_json()
-        # logger.info(f"Raw request data: {data}")
         
         if not data:
             logger.error("No JSON data in request")
@@ -43,17 +26,17 @@ def signup():
         role = data.get('role')
         wallet_address = data.get('wallet_address')
         
-        # logger.info(f"Extracted fields - username: {username}, email: {email}, role: {role}, wallet_address: {wallet_address}")
-        
         # Validate required fields
         required_fields = {
             'username': username,
             'email': email,
             'password': password,
-            'role': role,
-            'wallet_address': wallet_address if role.lower() == 'manufacturer' else None
-            
+            'role': role
         }
+        
+        # Add wallet_address to required fields if role is manufacturer
+        if role and role.lower() == 'manufacturer':
+            required_fields['wallet_address'] = wallet_address
         
         for field_name, field_value in required_fields.items():
             if not field_value or not str(field_value).strip():
@@ -67,29 +50,53 @@ def signup():
             response, status_code = create_error_response('Invalid role. Must be "developer" or "manufacturer"', 400)
             return jsonify(response), status_code
         
-        logger.info("All validations passed, calling AuthService.register_user")
-        
-        # Register user
-        result, status_code = AuthService.register_user(username, email, password, role, wallet_address)
-        
-        # logger.info(f"AuthService.register_user returned: result={result}, status_code={status_code}")
-        
-        # Handle blockchain authorization for manufacturers
-        if status_code == 201 and role.lower() == 'manufacturer' and wallet_address:
+        # FOR MANUFACTURERS: Perform blockchain authorization BEFORE creating account
+        if role.lower() == 'manufacturer' and wallet_address:
             try:
-                logger.info("Attempting blockchain authorization")
+                logger.info(f"Attempting blockchain authorization for manufacturer: {wallet_address}")
                 from app import blockchain_service
+                
+                # Check if blockchain service is available
+                if not blockchain_service or not blockchain_service.is_connected():
+                    logger.error("Blockchain service is not available or not connected")
+                    response, status_code = create_error_response(
+                        'Blockchain service is currently unavailable. Please try again later.', 503
+                    )
+                    return jsonify(response), status_code
+                
+                # Attempt to authorize manufacturer on blockchain
                 auth_result = blockchain_service.authorize_manufacturer(wallet_address)
                 logger.info(f"Blockchain auth result: {auth_result}")
                 
-                if not auth_result['success']:
-                    logger.warning(f"Blockchain authorization failed for {wallet_address}: {auth_result.get('error')}")
-                    result['warning'] = 'User created but blockchain authorization failed. Contact support.'
+                if not auth_result.get('success', False):
+                    error_msg = auth_result.get('error', 'Unknown blockchain error')
+                    logger.error(f"Blockchain authorization failed for {wallet_address}: {error_msg}")
+                    response, status_code = create_error_response(
+                        f'Manufacturer authorization failed: {error_msg}', 400
+                    )
+                    return jsonify(response), status_code
+                
+                logger.info(f"Blockchain authorization successful for {wallet_address}")
+                
             except Exception as blockchain_error:
-                logger.error(f"Blockchain service error: {blockchain_error}", exc_info=True)
-                result['warning'] = 'User created but blockchain service unavailable.'
+                logger.error(f"Blockchain service error during authorization: {blockchain_error}", exc_info=True)
+                response, status_code = create_error_response(
+                    'Blockchain authorization failed due to service error. Please try again later.', 503
+                )
+                return jsonify(response), status_code
         
-        logger.info(f"Returning response: {result} with status: {status_code}")
+        logger.info("All validations passed (including blockchain for manufacturers), calling AuthService.register_user")
+        
+        # NOW register user (only after blockchain auth succeeds for manufacturers)
+        result, status_code = AuthService.register_user(username, email, password, role, wallet_address)
+        
+        logger.info(f"AuthService.register_user returned: result={result}, status_code={status_code}")
+        
+        # If manufacturer registration was successful, add blockchain confirmation to response
+        if status_code == 201 and role.lower() == 'manufacturer':
+            result['blockchain_authorized'] = True
+            result['message'] = 'Account created successfully with blockchain authorization'
+        
         return jsonify(result), status_code
         
     except Exception as e:
@@ -156,7 +163,7 @@ def get_profile():
         return jsonify(response), status_code
 
 @auth_bp.route('/refresh', methods=['POST'])
-@jwt_required(refresh=True)  # Added refresh=True for refresh tokens
+@jwt_required(refresh=True)
 def refresh_token():
     """Refresh JWT token endpoint"""
     try:
@@ -192,7 +199,6 @@ def refresh_token():
 def logout():
     """Logout endpoint (optional - for token blacklisting)"""
     try:
-        # If you implement token blacklisting, add logic here
         user_id = get_jwt_identity()
         logger.info(f"Logout for user: {user_id}")
         
