@@ -8,11 +8,21 @@ logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)  # Fixed: __name__ was **name**
 
 @auth_bp.route('/signup', methods=['POST'])
+@auth_bp.route('/signup', methods=['POST'])
 def signup():
     """User registration endpoint"""
+    logger.info("=== SIGNUP REQUEST STARTED ===")
+    
     try:
+        # Log the raw request
+        logger.info(f"Request method: {request.method}")
+        logger.info(f"Request headers: {dict(request.headers)}")
+        
         data = request.get_json()
+        logger.info(f"Raw request data: {data}")
+        
         if not data:
+            logger.error("No JSON data in request")
             response, status_code = create_error_response('No data provided', 400)
             return jsonify(response), status_code
         
@@ -22,6 +32,8 @@ def signup():
         password = data.get('password')
         role = data.get('role')
         wallet_address = data.get('wallet_address')
+        
+        logger.info(f"Extracted fields - username: {username}, email: {email}, role: {role}, wallet_address: {wallet_address}")
         
         # Validate required fields
         required_fields = {
@@ -33,39 +45,47 @@ def signup():
         
         for field_name, field_value in required_fields.items():
             if not field_value or not str(field_value).strip():
+                logger.error(f"Missing required field: {field_name}")
                 response, status_code = create_error_response(f'{field_name} is required', 400)
                 return jsonify(response), status_code
         
         # Validate role
         if role.lower() not in ['developer', 'manufacturer']:
+            logger.error(f"Invalid role: {role}")
             response, status_code = create_error_response('Invalid role. Must be "developer" or "manufacturer"', 400)
             return jsonify(response), status_code
         
-        # Log the signup attempt (without password)
-        logger.info(f"Signup attempt for username: {username}, email: {email}, role: {role}")
+        logger.info("All validations passed, calling AuthService.register_user")
         
         # Register user
         result, status_code = AuthService.register_user(username, email, password, role, wallet_address)
         
+        logger.info(f"AuthService.register_user returned: result={result}, status_code={status_code}")
+        
         # Handle blockchain authorization for manufacturers
         if status_code == 201 and role.lower() == 'manufacturer' and wallet_address:
             try:
+                logger.info("Attempting blockchain authorization")
                 from app import blockchain_service
                 auth_result = blockchain_service.authorize_manufacturer(wallet_address)
+                logger.info(f"Blockchain auth result: {auth_result}")
+                
                 if not auth_result['success']:
                     logger.warning(f"Blockchain authorization failed for {wallet_address}: {auth_result.get('error')}")
                     result['warning'] = 'User created but blockchain authorization failed. Contact support.'
             except Exception as blockchain_error:
-                logger.error(f"Blockchain service error: {blockchain_error}")
+                logger.error(f"Blockchain service error: {blockchain_error}", exc_info=True)
                 result['warning'] = 'User created but blockchain service unavailable.'
         
+        logger.info(f"Returning response: {result} with status: {status_code}")
         return jsonify(result), status_code
         
     except Exception as e:
-        logger.error(f"Signup error: {str(e)}", exc_info=True)  # Added exc_info for stack trace
+        logger.error(f"SIGNUP ERROR: {str(e)}", exc_info=True)
         response, status_code = create_error_response('Internal server error', 500)
         return jsonify(response), status_code
-
+    
+    
 @auth_bp.route('/login', methods=['POST'])
 def login():
     """User login endpoint"""
