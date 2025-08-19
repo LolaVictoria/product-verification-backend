@@ -1,4 +1,3 @@
-# app.py - Fixed initialization order
 import os
 # import json
 from flask import Flask, jsonify

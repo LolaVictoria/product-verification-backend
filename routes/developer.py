@@ -36,10 +36,10 @@ def create_api_key():
         return create_success_response(
             'API key created successfully',
             {
-                'createApiKey': {  # Match your frontend expectation
+                'createApiKey': {  
                     'success': True,
                     'apiKey': {
-                        'key': api_key  # This matches your frontend: response.data.data.api_key
+                        'key': api_key  
                     }
                 }
             },
@@ -75,7 +75,7 @@ def get_api_keys():
             
             # Add key field based on request
             if show_full_key:
-                serialized_key['key'] = key_doc.get('key', '')  # Full key from DB
+                serialized_key['key'] = key_doc.get('key')  
                 serialized_key['masked_key'] = f"pak_{mask_api_key(key_doc.get('label', ''), 4)}***"
             else:
                 serialized_key['masked_key'] = f"pak_{mask_api_key(key_doc.get('label', ''), 4)}***"

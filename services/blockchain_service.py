@@ -288,3 +288,305 @@ def estimate_transaction_cost_usd(self, gas_price, gas_limit=50000, eth_price_us
         return round(cost_usd, 4)
     except:
         return 0
+    
+# Add these methods to your existing BlockchainService class
+
+def revoke_manufacturer_authorization(self, wallet_address, owner_address=None):
+    """Revoke authorization for a manufacturer on the blockchain"""
+    if not self.contract:
+        return {'success': False, 'error': 'Contract not initialized'}
+        
+    try:
+        if not owner_address:
+            owner_address = getattr(Config, 'OWNER_ADDRESS', None)
+            if not owner_address:
+                accounts = self.w3.eth.accounts
+                if not accounts:
+                    return {'success': False, 'error': 'No owner account available'}
+                owner_address = accounts[0]
+        
+        # Validate addresses
+        try:
+            owner_address = Web3.to_checksum_address(owner_address)
+            wallet_address = Web3.to_checksum_address(wallet_address)
+        except Exception as e:
+            return {'success': False, 'error': f'Invalid address format: {e}'}
+        
+        # Check if we can access the owner account
+        if owner_address not in self.w3.eth.accounts:
+            return {
+                'success': False,
+                'error': f'Cannot access owner account {owner_address}. Private key not available.'
+            }
+        
+        # Check if manufacturer is currently authorized
+        try:
+            is_authorized = self.contract.functions.isManufacturerAuthorized(wallet_address).call()
+            if not is_authorized:
+                return {'success': False, 'error': 'Manufacturer is not currently authorized'}
+        except:
+            # If function doesn't exist, proceed anyway
+            pass
+        
+        # Estimate gas
+        gas_estimate = self.contract.functions.revokeManufacturer(wallet_address).estimate_gas({
+            'from': owner_address
+        })
+        
+        # Execute revocation
+        tx_hash = self.contract.functions.revokeManufacturer(wallet_address).transact({
+            'from': owner_address,
+            'gas': int(gas_estimate * 1.2)  # Add 20% buffer
+        })
+        
+        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+        
+        return {
+            'success': True,
+            'tx_hash': tx_hash.hex(),
+            'receipt': receipt,
+            'revoked_address': wallet_address,
+            'revoked_by': owner_address,
+            'gas_used': receipt.gasUsed
+        }
+        
+    except Exception as e:
+        logger.error(f"Manufacturer authorization revocation failed: {e}")
+        return {'success': False, 'error': str(e)}
+
+def get_manufacturer_authorization_history(self, wallet_address, from_block=0):
+    """Get the authorization history for a manufacturer from blockchain events"""
+    if not self.contract:
+        return {'success': False, 'error': 'Contract not initialized'}
+        
+    try:
+        wallet_address = Web3.to_checksum_address(wallet_address)
+        
+        # Get authorization events
+        auth_events = []
+        
+        try:
+            # Get ManufacturerAuthorized events
+            auth_filter = self.contract.events.ManufacturerAuthorized.create_filter(
+                fromBlock=from_block,
+                argument_filters={'manufacturer': wallet_address}
+            )
+            
+            for event in auth_filter.get_all_entries():
+                auth_events.append({
+                    'type': 'AUTHORIZED',
+                    'block_number': event.blockNumber,
+                    'tx_hash': event.transactionHash.hex(),
+                    'timestamp': self.w3.eth.get_block(event.blockNumber).timestamp,
+                    'args': dict(event.args)
+                })
+        except:
+            # Event might not exist in contract
+            pass
+        
+        try:
+            # Get ManufacturerRevoked events (if they exist)
+            revoke_filter = self.contract.events.ManufacturerRevoked.create_filter(
+                fromBlock=from_block,
+                argument_filters={'manufacturer': wallet_address}
+            )
+            
+            for event in revoke_filter.get_all_entries():
+                auth_events.append({
+                    'type': 'REVOKED',
+                    'block_number': event.blockNumber,
+                    'tx_hash': event.transactionHash.hex(),
+                    'timestamp': self.w3.eth.get_block(event.blockNumber).timestamp,
+                    'args': dict(event.args)
+                })
+        except:
+            # Event might not exist in contract
+            pass
+        
+        # Sort by block number
+        auth_events.sort(key=lambda x: x['block_number'])
+        
+        return {
+            'success': True,
+            'wallet_address': wallet_address,
+            'history': auth_events
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get manufacturer authorization history: {e}")
+        return {'success': False, 'error': str(e)}
+
+def get_all_authorized_manufacturers(self):
+    """Get all currently authorized manufacturers from the blockchain"""
+    if not self.contract:
+        return {'success': False, 'error': 'Contract not initialized'}
+        
+    try:
+        authorized_manufacturers = []
+        
+        try:
+            # If your contract has a function to get all authorized manufacturers
+            manufacturers = self.contract.functions.getAllAuthorizedManufacturers().call()
+            authorized_manufacturers = manufacturers
+        except:
+            # Fallback: Get from events (less efficient but works)
+            try:
+                auth_filter = self.contract.events.ManufacturerAuthorized.create_filter(
+                    fromBlock=0
+                )
+                
+                authorized_addresses = set()
+                
+                for event in auth_filter.get_all_entries():
+                    manufacturer_address = event.args.manufacturer
+                    
+                    # Check if still authorized (in case of revocations)
+                    try:
+                        if self.contract.functions.isManufacturerAuthorized(manufacturer_address).call():
+                            authorized_addresses.add(manufacturer_address)
+                    except:
+                        # If function doesn't exist, assume still authorized
+                        authorized_addresses.add(manufacturer_address)
+                
+                authorized_manufacturers = list(authorized_addresses)
+                
+            except Exception as e:
+                logger.error(f"Failed to get manufacturers from events: {e}")
+                return {'success': False, 'error': 'Unable to retrieve manufacturer list'}
+        
+        return {
+            'success': True,
+            'manufacturers': authorized_manufacturers,
+            'count': len(authorized_manufacturers)
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get all authorized manufacturers: {e}")
+        return {'success': False, 'error': str(e)}
+
+def get_contract_stats(self):
+    """Get general statistics about the smart contract"""
+    if not self.contract:
+        return {'success': False, 'error': 'Contract not initialized'}
+        
+    try:
+        stats = {
+            'contract_address': self.contract_address,
+            'is_connected': self.is_connected()
+        }
+        
+        try:
+            # Get contract owner
+            owner = self.contract.functions.owner().call()
+            stats['owner'] = owner
+        except:
+            stats['owner'] = 'Unknown'
+        
+        try:
+            # Get total authorized manufacturers count
+            auth_result = self.get_all_authorized_manufacturers()
+            if auth_result['success']:
+                stats['total_authorized_manufacturers'] = auth_result['count']
+            else:
+                stats['total_authorized_manufacturers'] = 0
+        except:
+            stats['total_authorized_manufacturers'] = 0
+        
+        try:
+            # Get total products registered (if you have this function)
+            total_products = self.contract.functions.getTotalProducts().call()
+            stats['total_products_registered'] = total_products
+        except:
+            stats['total_products_registered'] = 'Unknown'
+        
+        # Get latest block info
+        try:
+            latest_block = self.get_latest_block()
+            if latest_block:
+                stats['latest_block_number'] = latest_block.number
+                stats['latest_block_timestamp'] = latest_block.timestamp
+        except:
+            pass
+        
+        return {
+            'success': True,
+            'stats': stats
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get contract stats: {e}")
+        return {'success': False, 'error': str(e)}
+
+def batch_verify_manufacturers(self, wallet_addresses):
+    """Verify multiple manufacturer authorizations at once"""
+    if not self.contract:
+        return {'success': False, 'error': 'Contract not initialized'}
+        
+    try:
+        results = []
+        
+        for address in wallet_addresses:
+            try:
+                address = Web3.to_checksum_address(address)
+                is_authorized = self.contract.functions.isManufacturerAuthorized(address).call()
+                
+                results.append({
+                    'address': address,
+                    'authorized': is_authorized
+                })
+                
+            except Exception as e:
+                logger.error(f"Error verifying {address}: {e}")
+                results.append({
+                    'address': address,
+                    'authorized': False,
+                    'error': str(e)
+                })
+        
+        return {
+            'success': True,
+            'results': results,
+            'total_checked': len(wallet_addresses),
+            'authorized_count': sum(1 for r in results if r.get('authorized', False))
+        }
+        
+    except Exception as e:
+        logger.error(f"Batch verification failed: {e}")
+        return {'success': False, 'error': str(e)}
+
+def estimate_batch_authorization_cost(self, wallet_addresses_count):
+    """Estimate the cost of batch authorizing manufacturers"""
+    if not self.contract:
+        return {'success': False, 'error': 'Contract not initialized'}
+        
+    try:
+        # Get current gas price
+        gas_price = self.w3.eth.gas_price
+        
+        # Estimate gas for batch operation (approximate)
+        # Base cost + (cost per address * count)
+        base_gas = 50000  # Base transaction cost
+        gas_per_address = 30000  # Approximate cost per manufacturer
+        
+        estimated_gas = base_gas + (gas_per_address * wallet_addresses_count)
+        
+        # Calculate costs
+        cost_wei = gas_price * estimated_gas
+        cost_eth = self.w3.from_wei(cost_wei, 'ether')
+        
+        # Estimate USD cost (you might want to get real-time ETH price)
+        eth_price_usd = 2000  # Approximate - replace with real price API
+        cost_usd = float(cost_eth) * eth_price_usd
+        
+        return {
+            'success': True,
+            'estimated_gas': estimated_gas,
+            'gas_price_gwei': self.w3.from_wei(gas_price, 'gwei'),
+            'cost_eth': float(cost_eth),
+            'cost_usd': round(cost_usd, 4),
+            'manufacturers_count': wallet_addresses_count
+        }
+        
+    except Exception as e:
+        logger.error(f"Cost estimation failed: {e}")
+        return {'success': False, 'error': str(e)}
