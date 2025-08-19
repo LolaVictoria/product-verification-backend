@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 class AuthService:
     @staticmethod
-    def register_user(username, email, password, role, wallet_address=None):
+    def register_user(username, email, password, role, wallet_address):
         """Register a new user"""
         # Validate input
         if not is_valid_email(email):
@@ -19,9 +19,12 @@ class AuthService:
         if role not in ['manufacturer', 'developer']:
             return {'error': 'Invalid role. Must be manufacturer or developer'}, 400
         
-        if role == 'manufacturer' and not wallet_address:
-            return {'error': 'Wallet address required for manufacturers'}, 400
-        
+        if role == 'manufacturer':
+            # Check if wallet_address is None, empty string, or whitespace only
+            if not wallet_address or not wallet_address.strip():
+                logger.error(f"Manufacturer role requires wallet address. Received: '{wallet_address}'")
+                return {'error': 'Wallet address required for manufacturers'}, 400
+    
         # Check if user already exists
         if User.email_exists(email):
             return {'error': 'Email already registered'}, 400

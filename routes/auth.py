@@ -21,15 +21,15 @@ auth_bp = Blueprint('auth', __name__)  # Fixed: __name__ was **name**
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
     """User registration endpoint"""
-    logger.info("=== SIGNUP REQUEST STARTED ===")
+    # logger.info("=== SIGNUP REQUEST STARTED ===")
     
     try:
         # Log the raw request
-        logger.info(f"Request method: {request.method}")
-        logger.info(f"Request headers: {dict(request.headers)}")
+        # logger.info(f"Request method: {request.method}")
+        # logger.info(f"Request headers: {dict(request.headers)}")
         
         data = request.get_json()
-        logger.info(f"Raw request data: {data}")
+        # logger.info(f"Raw request data: {data}")
         
         if not data:
             logger.error("No JSON data in request")
@@ -43,14 +43,15 @@ def signup():
         role = data.get('role')
         wallet_address = data.get('wallet_address')
         
-        logger.info(f"Extracted fields - username: {username}, email: {email}, role: {role}, wallet_address: {wallet_address}")
+        # logger.info(f"Extracted fields - username: {username}, email: {email}, role: {role}, wallet_address: {wallet_address}")
         
         # Validate required fields
         required_fields = {
             'username': username,
             'email': email,
             'password': password,
-            'role': role
+            'role': role,
+            'wallet_address': wallet_address if role.lower() == 'manufacturer' else None
             
         }
         
@@ -71,7 +72,7 @@ def signup():
         # Register user
         result, status_code = AuthService.register_user(username, email, password, role, wallet_address)
         
-        logger.info(f"AuthService.register_user returned: result={result}, status_code={status_code}")
+        # logger.info(f"AuthService.register_user returned: result={result}, status_code={status_code}")
         
         # Handle blockchain authorization for manufacturers
         if status_code == 201 and role.lower() == 'manufacturer' and wallet_address:
