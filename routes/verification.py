@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 verification_bp = Blueprint('verification', __name__)
 
-@verification_bp.route('/verify/<serial_number>', methods=['GET'])
+@verification_bp.route('/verify-one/<serial_number>', methods=['GET'])
 @require_api_key
 def verify_product(serial_number):
     """Verify a single product by serial number"""

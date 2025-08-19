@@ -15,14 +15,14 @@ def signup():
         data = request.get_json()
         if not data:
             return create_error_response('No data provided')
-        
+        user_name = data.get('user_name')
         email = data.get('email')
         password = data.get('password')
         role = data.get('role')
         wallet_address = data.get('wallet_address')
         
         # Register user
-        result, status_code = AuthService.register_user(email, password, role, wallet_address)
+        result, status_code = AuthService.register_user(user_name, email, password, role, wallet_address)
         
         if status_code == 201 and role == 'manufacturer' and wallet_address:
             # Try to authorize on blockchain
