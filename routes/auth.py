@@ -1,237 +1,115 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from services import AuthService, BlockchainService
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+from services.auth_service import AuthService
 from utils.helpers import create_error_response, create_success_response
-from utils.email_service import EmailService
 import logging
-import secrets
 
 logger = logging.getLogger(__name__)
-auth_bp = Blueprint('auth', __name__)
+auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
-    """User registration endpoint - optimized for real-world use"""
-    
+    """User registration endpoint"""
     try:
         data = request.get_json()
         
-        if not data:
-            logger.error("No JSON data in request")
-            response, status_code = create_error_response('No data provided', 400)
-            return jsonify(response), status_code
+        # Validate required fields
+        required_fields = ['username', 'email', 'password', 'role']
+        missing_fields = [field for field in required_fields if not data.get(field)]
         
-        # Get and validate required fields
-        username = data.get('username')
-        email = data.get('email')
+        if missing_fields:
+            return jsonify(create_error_response(f"Missing required fields: {', '.join(missing_fields)}", 400)), 400
+        
+        # Extract data
+        username = data.get('username').strip()
+        email = data.get('email').strip()
         password = data.get('password')
-        role = data.get('role')
-        wallet_address = data.get('wallet_address') or data.get('walletAddress')
+        role = data.get('role').strip().lower()
+        wallet_address = data.get('wallet_address', '').strip() if data.get('wallet_address') else None
         
-        # Validate basic required fields
-        required_fields = {
-            'username': username,
-            'email': email,
-            'password': password,
-            'role': role
-        }
+        # Additional validation
+        if len(username) < 3:
+            return jsonify(create_error_response('Username must be at least 3 characters long', 400)), 400
         
-        # Add wallet_address to required fields if role is manufacturer
-        if role and role.lower() == 'manufacturer':
-            required_fields['wallet_address'] = wallet_address
+        if len(username) > 50:
+            return jsonify(create_error_response('Username must be less than 50 characters', 400)), 400
         
-        for field_name, field_value in required_fields.items():
-            if not field_value or not str(field_value).strip():
-                logger.error(f"Missing required field: {field_name}")
-                response, status_code = create_error_response(f'{field_name} is required', 400)
-                return jsonify(response), status_code
-        
-        # Validate role
-        if role.lower() not in ['developer', 'manufacturer']:
-            logger.error(f"Invalid role: {role}")
-            response, status_code = create_error_response('Invalid role. Must be "developer" or "manufacturer"', 400)
-            return jsonify(response), status_code
-        
-        # Validate wallet address format for manufacturers
-        if role.lower() == 'manufacturer' and wallet_address:
-            try:
-                from web3 import Web3
-                Web3.to_checksum_address(wallet_address)  # This validates the format
-            except Exception as e:
-                logger.error(f"Invalid wallet address format: {wallet_address}")
-                response, status_code = create_error_response('Invalid wallet address format', 400)
-                return jsonify(response), status_code
-        
-        logger.info("All validations passed, creating user account")
-        
-        # Generate verification token
-        verification_token = secrets.token_urlsafe(32)
-        
-        # Create user account with verification token
+        # Call auth service
         result, status_code = AuthService.register_user(
-            username, email, password, role, wallet_address, verification_token
+            username=username,
+            email=email,
+            password=password,
+            role=role,
+            wallet_address=wallet_address
         )
         
-        if status_code == 201:
-            try:
-                # Send verification email
-                EmailService.send_verification_email(email, username, verification_token)
-                
-                result['message'] = 'Account created successfully. Please check your email to verify your account.'
-                result['email_sent'] = True
-                
-                if role.lower() == 'manufacturer':
-                    result['blockchain_status'] = 'pending_verification'
-                    result['note'] = 'Complete email verification to enable all features.'
-                
-                logger.info(f"User registration and email sent successfully: {username}, role: {role}")
-                
-            except Exception as email_error:
-                logger.error(f"Failed to send verification email: {str(email_error)}")
-                result['message'] = 'Account created successfully, but verification email failed to send. Please contact support.'
-                result['email_sent'] = False
-        
+        logger.info(f"Signup attempt for {email} - Status: {status_code}")
         return jsonify(result), status_code
         
     except Exception as e:
-        logger.error(f"SIGNUP ERROR: {str(e)}", exc_info=True)
-        response, status_code = create_error_response('Internal server error', 500)
-        return jsonify(response), status_code
-
-
-@auth_bp.route('/verify-email/<token>', methods=['GET'])
-def verify_email(token):
-    """Email verification endpoint"""
-    try:
-        result, status_code = AuthService.verify_email_token(token)
-        
-        if status_code == 200:
-            logger.info(f"Email verification successful for token: {token[:10]}...")
-            # Return an HTML page or redirect to frontend
-            return f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Email Verified</title>
-                <style>
-                    body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
-                    .success {{ color: green; }}
-                    .container {{ max-width: 500px; margin: 0 auto; }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1 class="success">✓ Email Verified Successfully!</h1>
-                    <p>Your account has been verified. You can now log in to your account.</p>
-                    <p><a href="{request.host_url}">Return to Login</a></p>
-                </div>
-            </body>
-            </html>
-            """, 200
-        else:
-            logger.warning(f"Email verification failed for token: {token[:10]}...")
-            return f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Verification Failed</title>
-                <style>
-                    body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
-                    .error {{ color: red; }}
-                    .container {{ max-width: 500px; margin: 0 auto; }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1 class="error">✗ Verification Failed</h1>
-                    <p>{result.get('error', 'Invalid or expired verification link.')}</p>
-                    <p><a href="{request.host_url}">Return to Login</a></p>
-                </div>
-            </body>
-            </html>
-            """, status_code
-            
-    except Exception as e:
-        logger.error(f"Email verification error: {str(e)}", exc_info=True)
-        return f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Verification Error</title>
-            <style>
-                body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
-                .error {{ color: red; }}
-                .container {{ max-width: 500px; margin: 0 auto; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1 class="error">✗ Verification Error</h1>
-                <p>An error occurred during verification. Please try again or contact support.</p>
-                <p><a href="{request.host_url}">Return to Login</a></p>
-            </div>
-        </body>
-        </html>
-        """, 500
-
-
-@auth_bp.route('/resend-verification', methods=['POST'])
-def resend_verification():
-    """Resend verification email"""
-    try:
-        data = request.get_json()
-        
-        if not data or not data.get('email'):
-            response, status_code = create_error_response('Email is required', 400)
-            return jsonify(response), status_code
-        
-        email = data.get('email')
-        
-        result, status_code = AuthService.resend_verification_email(email)
-        return jsonify(result), status_code
-        
-    except Exception as e:
-        logger.error(f"Resend verification error: {str(e)}", exc_info=True)
-        response, status_code = create_error_response('Internal server error', 500)
-        return jsonify(response), status_code
-
+        logger.error(f"Signup error: {str(e)}")
+        return jsonify(create_error_response('Registration failed', 500)), 500
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
     """User login endpoint"""
     try:
         data = request.get_json()
-        if not data:
-            response, status_code = create_error_response('No data provided', 400)
-            return jsonify(response), status_code
-        
-        email = data.get('email')
-        password = data.get('password')
         
         # Validate required fields
-        if not email or not email.strip():
-            response, status_code = create_error_response('Email is required', 400)
-            return jsonify(response), status_code
-        if not password:
-            response, status_code = create_error_response('Password is required', 400)
-            return jsonify(response), status_code
+        if not data.get('email') or not data.get('password'):
+            return jsonify(create_error_response('Email and password are required', 400)), 400
         
-        logger.info(f"Login attempt for email: {email}")
+        email = data.get('email').strip()
+        password = data.get('password')
         
+        # Call auth service
         result, status_code = AuthService.authenticate_user(email, password)
         
+        # Log the attempt (don't log sensitive data in production)
         if status_code == 200:
-            logger.info(f"Successful login for email: {email}")
+            logger.info(f"Successful login for {email}")
         else:
-            logger.warning(f"Failed login attempt for email: {email}")
+            logger.warning(f"Failed login attempt for {email}")
         
         return jsonify(result), status_code
         
     except Exception as e:
-        logger.error(f"Login error: {str(e)}", exc_info=True)
-        response, status_code = create_error_response('Internal server error', 500)
-        return jsonify(response), status_code
+        logger.error(f"Login error: {str(e)}")
+        return jsonify(create_error_response('Login failed', 500)), 500
 
+@auth_bp.route('/verify-email/<token>', methods=['GET', 'POST'])
+def verify_email(token):
+    """Email verification endpoint"""
+    try:
+        result, status_code = AuthService.verify_email_token(token)
+        
+        logger.info(f"Email verification attempt with token: {token[:8]}... - Status: {status_code}")
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        logger.error(f"Email verification error: {str(e)}")
+        return jsonify(create_error_response('Email verification failed', 500)), 500
+
+@auth_bp.route('/resend-verification', methods=['POST'])
+def resend_verification():
+    """Resend verification email endpoint"""
+    try:
+        data = request.get_json()
+        
+        if not data.get('email'):
+            return jsonify(create_error_response('Email is required', 400)), 400
+        
+        email = data.get('email').strip()
+        
+        result, status_code = AuthService.resend_verification_email(email)
+        
+        logger.info(f"Resend verification request for {email} - Status: {status_code}")
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        logger.error(f"Resend verification error: {str(e)}")
+        return jsonify(create_error_response('Failed to resend verification email', 500)), 500
 
 @auth_bp.route('/profile', methods=['GET'])
 @jwt_required()
@@ -240,20 +118,53 @@ def get_profile():
     try:
         user_id = get_jwt_identity()
         
-        if not user_id:
-            response, status_code = create_error_response('Invalid token', 401)
-            return jsonify(response), status_code
-        
-        logger.info(f"Profile request for user_id: {user_id}")
-        
         result, status_code = AuthService.get_user_profile(user_id)
+        
         return jsonify(result), status_code
         
     except Exception as e:
-        logger.error(f"Profile error: {str(e)}", exc_info=True)
-        response, status_code = create_error_response('Internal server error', 500)
-        return jsonify(response), status_code
+        logger.error(f"Get profile error: {str(e)}")
+        return jsonify(create_error_response('Failed to get profile', 500)), 500
 
+@auth_bp.route('/update-profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    """Update user profile endpoint"""
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        if not data:
+            return jsonify(create_error_response('No data provided', 400)), 400
+        
+        result, status_code = AuthService.update_user_profile(user_id, data)
+        
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        logger.error(f"Update profile error: {str(e)}")
+        return jsonify(create_error_response('Failed to update profile', 500)), 500
+
+@auth_bp.route('/check-token', methods=['GET'])
+@jwt_required()
+def check_token():
+    """Check if JWT token is valid"""
+    try:
+        user_id = get_jwt_identity()
+        claims = get_jwt()
+        
+        return jsonify(create_success_response({
+            'valid': True,
+            'user_id': user_id,
+            'role': claims.get('role'),
+            'username': claims.get('username'),
+            'is_verified': claims.get('is_verified', False),
+            'verification_status': claims.get('verification_status', 'pending')
+        }, 200)), 200
+        
+    except Exception as e:
+        logger.error(f"Token check error: {str(e)}")
+        return jsonify(create_error_response('Invalid token', 401)), 401
 
 @auth_bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
@@ -287,6 +198,25 @@ def refresh_token():
         response, status_code = create_error_response('Token refresh failed', 500)
         return jsonify(response), status_code
 
+@auth_bp.route('/logout', methods=['POST'])
+@jwt_required()
+def logout():
+    """Logout endpoint (client-side token removal)"""
+    try:
+        user_id = get_jwt_identity()
+        
+        # In a production app, you might want to blacklist the token
+        # For now, we'll just log the logout
+        logger.info(f"User {user_id} logged out")
+        
+        return jsonify(create_success_response({
+            'message': 'Logged out successfully',
+            'logged_out': True
+        }, 200)), 200
+        
+    except Exception as e:
+        logger.error(f"Logout error: {str(e)}")
+        return jsonify(create_error_response('Logout failed', 500)), 500
 
 #admin can search for user by their id
 @auth_bp.route('/users/<string:user_id>', methods=['GET'])
@@ -315,45 +245,19 @@ def get_user_by_id(user_id):
         return jsonify(response), status_code
 
 
-@auth_bp.route('/logout', methods=['POST'])
-@jwt_required()
-def logout():
-    """Logout endpoint"""
-    try:
-        user_id = get_jwt_identity()
-        logger.info(f"Logout for user: {user_id}")
-        
-        return jsonify({'message': 'Successfully logged out'}), 200
-        
-    except Exception as e:
-        logger.error(f"Logout error: {str(e)}", exc_info=True)
-        response, status_code = create_error_response('Logout failed', 500)
-        return jsonify(response), status_code
-
-
-# Error handlers for the blueprint
+# Error handlers
 @auth_bp.errorhandler(400)
 def bad_request(error):
-    response, status_code = create_error_response('Bad request', 400)
-    return jsonify(response), status_code
+    return jsonify(create_error_response('Bad request', 400)), 400
 
 @auth_bp.errorhandler(401)
 def unauthorized(error):
-    response, status_code = create_error_response('Unauthorized', 401)
-    return jsonify(response), status_code
-
-@auth_bp.errorhandler(403)
-def forbidden(error):
-    response, status_code = create_error_response('Forbidden', 403)
-    return jsonify(response), status_code
+    return jsonify(create_error_response('Unauthorized', 401)), 401
 
 @auth_bp.errorhandler(404)
 def not_found(error):
-    response, status_code = create_error_response('Endpoint not found', 404)
-    return jsonify(response), status_code
+    return jsonify(create_error_response('Not found', 404)), 404
 
 @auth_bp.errorhandler(500)
 def internal_error(error):
-    logger.error(f"Internal server error: {str(error)}")
-    response, status_code = create_error_response('Internal server error', 500)
-    return jsonify(response), status_code
+    return jsonify(create_error_response('Internal server error', 500)), 500
