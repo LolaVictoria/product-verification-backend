@@ -178,8 +178,8 @@ def register_jwt_callbacks(app):
 # Create application instance
 app = create_app()
 
-@app.before_first_request
-def before_first_request():
+@app.before_request
+def before_request():
     """Run before the first request"""
     app.logger.info("Product Authentication API started successfully")
     
