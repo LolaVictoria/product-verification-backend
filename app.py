@@ -2,7 +2,7 @@ import os
 from flask import Flask, jsonify
 from flask_cors import CORS
 from config import config
-from extensions import mongo, jwt, init_database, test_db_connection  # REMOVED cors import
+from extensions import mongo, jwt, init_database, test_db_connection
 from routes import register_blueprints
 from services import BlockchainService, DatabaseService
 from utils.helpers import JSONEncoder, setup_logging
@@ -24,13 +24,15 @@ def create_app(config_name=None):
     if config_name is None:
         config_name = os.getenv('FLASK_ENV', 'default')
     
+    # CREATE THE APP INSIDE THE FUNCTION
     app = Flask(__name__)
     app.config.from_object(config[config_name])
     
+    # Configure CORS
     CORS(app, 
          resources={
              r"/*": {
-                 "origins": ["http://localhost:5173", "http://localhost:3000", "*"],  # Add your frontend URLs
+                 "origins": ["http://localhost:5173", "http://localhost:3000", "*"],
                  "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
                  "allow_headers": [
                      "Content-Type", 
@@ -46,11 +48,11 @@ def create_app(config_name=None):
              }
          })
     
+    # Set custom JSON encoder
     app.json_encoder = JSONEncoder
     
-    # Initialize extensions (REMOVED cors.init_app)
+    # Initialize extensions
     jwt.init_app(app)
-    # cors.init_app(app)  # REMOVE THIS LINE
     
     # Setup logging
     setup_logging(app)
@@ -102,8 +104,13 @@ def create_app(config_name=None):
         print(f"✗ Failed to initialize blockchain service: {e}")
         blockchain_service = None
     
-    # Register blueprints
+    # Register blueprints - THIS IS KEY!
+    print("Registering blueprints...")
     register_blueprints(app)
+    print("✓ Blueprints registered")
+    
+    # Debug route registration
+    debug_app_registration(app)
     
     # Register error handlers
     register_error_handlers(app)
@@ -111,14 +118,76 @@ def create_app(config_name=None):
     # Register JWT callbacks
     register_jwt_callbacks(app)
     
-    # ADD DEBUG ROUTE LISTING
-    print("=" * 50)
-    print("Registered routes:")
-    for rule in app.url_map.iter_rules():
-        print(f"  {rule.rule} -> {rule.methods}")
-    print("=" * 50)
+    # Add root route
+    @app.route('/')
+    def index():
+        """API root endpoint"""
+        return jsonify({
+            'message': 'Product Authentication API',
+            'version': '1.0.0',
+            'status': 'active',
+            'endpoints': {
+                'authentication': '/auth/',
+                'manufacturers': '/manufacturer/',
+                'developers': '/developer/',
+                'verification': '/verify/',
+                'health_check': '/health',
+                'statistics': '/stats',
+                'documentation': 'https://docs.productauth.example.com'
+            }
+        })
+    
+    @app.before_request
+    def before_request():
+        """Run before the first request"""
+        app.logger.info("Product Authentication API started successfully")
+        
+        # Log configuration (non-sensitive info only)
+        app.logger.info(f"Environment: {os.getenv('FLASK_ENV', 'production')}")
+        app.logger.info(f"Debug mode: {app.debug}")
+        
+        # Test services
+        if blockchain_service:
+            if blockchain_service.is_connected():
+                app.logger.info("Blockchain connection: OK")
+            else:
+                app.logger.warning("Blockchain connection: FAILED")
+        
+        # Test database with direct connection (not Flask-PyMongo)
+        if DatabaseService.test_connection():
+            app.logger.info("Database connection: OK")
+        else:
+            app.logger.warning("Database connection: FAILED")
     
     return app
+
+def debug_app_registration(app):
+    """Debug function to check blueprint and route registration"""
+    print("=" * 60)
+    print("DEBUGGING FLASK APP REGISTRATION")
+    print("=" * 60)
+    
+    # Check registered blueprints
+    print(f"Registered blueprints: {list(app.blueprints.keys())}")
+    print()
+    
+    # Check all routes
+    print("ALL REGISTERED ROUTES:")
+    route_count = 0
+    auth_routes = []
+    
+    for rule in app.url_map.iter_rules():
+        route_count += 1
+        methods = ', '.join(sorted(rule.methods - {'HEAD', 'OPTIONS'}))
+        print(f"  {rule.rule:<40} [{methods:<20}] -> {rule.endpoint}")
+        
+        # Collect auth routes specifically
+        if '/auth/' in rule.rule:
+            auth_routes.append(rule.rule)
+    
+    print(f"\nTotal routes registered: {route_count}")
+    print(f"Auth routes found: {auth_routes}")
+    print("=" * 60)
 
 def register_error_handlers(app):
     """Register application error handlers"""
@@ -185,48 +254,8 @@ def register_jwt_callbacks(app):
             'message': 'Please login again'
         }), 401
 
-# Create application instance
+# Create application instance PROPERLY
 app = create_app()
-
-@app.before_request
-def before_request():
-    """Run before the first request"""
-    app.logger.info("Product Authentication API started successfully")
-    
-    # Log configuration (non-sensitive info only)
-    app.logger.info(f"Environment: {os.getenv('FLASK_ENV', 'production')}")
-    app.logger.info(f"Debug mode: {app.debug}")
-    
-    # Test services
-    if blockchain_service:
-        if blockchain_service.is_connected():
-            app.logger.info("Blockchain connection: OK")
-        else:
-            app.logger.warning("Blockchain connection: FAILED")
-    
-    # Test database with direct connection (not Flask-PyMongo)
-    if DatabaseService.test_connection():
-        app.logger.info("Database connection: OK")
-    else:
-        app.logger.warning("Database connection: FAILED")
-
-@app.route('/')
-def index():
-    """API root endpoint"""
-    return jsonify({
-        'message': 'Product Authentication API',
-        'version': '1.0.0',
-        'status': 'active',
-        'endpoints': {
-            'authentication': '/auth/',
-            'manufacturers': '/manufacturer/',
-            'developers': '/developer/',
-            'verification': '/verify/',
-            'health_check': '/health',
-            'statistics': '/stats',
-            'documentation': 'https://docs.productauth.example.com'
-        }
-    })
 
 if __name__ == '__main__':
     # Only for development - use a proper WSGI server in production
