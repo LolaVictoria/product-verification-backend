@@ -5,49 +5,107 @@ from utils.helpers import create_error_response, create_success_response
 import logging
 
 logger = logging.getLogger(__name__)
-auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
-@auth_bp.route('/signup', methods=['POST'])
+
+auth_bp.route('/signup', methods=['POST'])
 def signup():
     """User registration endpoint"""
     try:
+        # Add detailed logging
+        logger.info("Registration endpoint called")
+        
         data = request.get_json()
+        logger.info(f"Received data keys: {list(data.keys()) if data else 'No data'}")
+        
+        # Check if data is None
+        if data is None:
+            logger.error("No JSON data received")
+            return jsonify(create_error_response("No data received", 400)), 400
         
         # Validate required fields
         required_fields = ['username', 'email', 'password', 'role']
         missing_fields = [field for field in required_fields if not data.get(field)]
-        
         if missing_fields:
+            logger.error(f"Missing fields: {missing_fields}")
             return jsonify(create_error_response(f"Missing required fields: {', '.join(missing_fields)}", 400)), 400
         
-        # Extract data
-        username = data.get('username').strip()
-        email = data.get('email').strip()
+        # Extract data with additional null checks
+        username = data.get('username')
+        email = data.get('email')
         password = data.get('password')
-        role = data.get('role').strip().lower()
+        role = data.get('role')
+        
+        # Check for None values before calling strip()
+        if not username or not email or not password or not role:
+            logger.error(f"Null values detected - username: {username}, email: {email}, password: {'***' if password else None}, role: {role}")
+            return jsonify(create_error_response("Invalid data format", 400)), 400
+        
+        # Now safely strip
+        username = username.strip()
+        email = email.strip()
+        role = role.strip().lower()
         wallet_address = data.get('wallet_address', '').strip() if data.get('wallet_address') else None
+        
+        logger.info(f"Processing registration for username: {username}, email: {email}, role: {role}")
         
         # Additional validation
         if len(username) < 3:
             return jsonify(create_error_response('Username must be at least 3 characters long', 400)), 400
-        
         if len(username) > 50:
             return jsonify(create_error_response('Username must be less than 50 characters', 400)), 400
         
-        # Call auth service
-        result, status_code = AuthService.register_user(
-            username=username,
-            email=email,
-            password=password,
-            role=role,
-            wallet_address=wallet_address
-        )
+        # Add email validation
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            return jsonify(create_error_response('Invalid email format', 400)), 400
+        
+        # Add password validation
+        if len(password) < 6:
+            return jsonify(create_error_response('Password must be at least 6 characters long', 400)), 400
+        
+        # Validate role
+        valid_roles = ['manufacturer', 'consumer', 'admin']  # Add your valid roles
+        if role not in valid_roles:
+            return jsonify(create_error_response(f'Invalid role. Must be one of: {", ".join(valid_roles)}', 400)), 400
+        
+        logger.info("About to call AuthService.register_user")
+        
+        # Call auth service with additional error handling
+        try:
+            result, status_code = AuthService.register_user(
+                username=username,
+                email=email,
+                password=password,
+                role=role,
+                wallet_address=wallet_address
+            )
+            logger.info(f"AuthService.register_user returned - Status: {status_code}")
+            logger.info(f"Result type: {type(result)}, Result: {result}")
+            
+        except Exception as auth_error:
+            logger.error(f"AuthService.register_user error: {str(auth_error)}")
+            logger.error(f"AuthService error type: {type(auth_error)}")
+            import traceback
+            logger.error(f"AuthService traceback: {traceback.format_exc()}")
+            return jsonify(create_error_response('Authentication service error', 500)), 500
         
         logger.info(f"Signup attempt for {email} - Status: {status_code}")
         return jsonify(result), status_code
         
+    except AttributeError as e:
+        logger.error(f"AttributeError in signup: {str(e)}")
+        logger.error(f"This usually indicates calling strip() on None or accessing missing attributes")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        return jsonify(create_error_response('Invalid data format', 400)), 400
+        
     except Exception as e:
         logger.error(f"Signup error: {str(e)}")
+        logger.error(f"Error type: {type(e)}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
         return jsonify(create_error_response('Registration failed', 500)), 500
 
 @auth_bp.route('/login', methods=['POST'])
