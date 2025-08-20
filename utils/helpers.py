@@ -56,11 +56,17 @@ def create_error_response(message, status_code=400, details=None):
         response['details'] = details
     return response, status_code
 
-def create_success_response(message, data=None, status_code=200):
-    """Create standardized success response"""
-    response = {'message': message}
-    if data:
-        response.update(data)
+def create_success_response(message_or_data, status_code=200, data=None):
+    """Create standardized success response with flexible signature"""
+    if isinstance(message_or_data, str):
+        # Old signature: message, status_code, data
+        response = {'message': message_or_data}
+        if data:
+            response.update(data)
+    else:
+        # New signature: data_dict, status_code
+        response = message_or_data
+    
     return response, status_code
 
 def convert_objectids_to_strings(data):

@@ -108,7 +108,7 @@ def create_app(config_name=None):
     print("Registering blueprints...")
     register_blueprints(app)
     print("✓ Blueprints registered")
-    
+
     # Debug route registration
     debug_app_registration(app)
     
@@ -161,33 +161,7 @@ def create_app(config_name=None):
     
     return app
 
-def debug_app_registration(app):
-    """Debug function to check blueprint and route registration"""
-    print("=" * 60)
-    print("DEBUGGING FLASK APP REGISTRATION")
-    print("=" * 60)
-    
-    # Check registered blueprints
-    print(f"Registered blueprints: {list(app.blueprints.keys())}")
-    print()
-    
-    # Check all routes
-    print("ALL REGISTERED ROUTES:")
-    route_count = 0
-    auth_routes = []
-    
-    for rule in app.url_map.iter_rules():
-        route_count += 1
-        methods = ', '.join(sorted(rule.methods - {'HEAD', 'OPTIONS'}))
-        print(f"  {rule.rule:<40} [{methods:<20}] -> {rule.endpoint}")
-        
-        # Collect auth routes specifically
-        if '/auth/' in rule.rule:
-            auth_routes.append(rule.rule)
-    
-    print(f"\nTotal routes registered: {route_count}")
-    print(f"Auth routes found: {auth_routes}")
-    print("=" * 60)
+
 
 def register_error_handlers(app):
     """Register application error handlers"""
