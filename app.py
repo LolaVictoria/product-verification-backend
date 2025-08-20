@@ -27,15 +27,25 @@ def create_app(config_name=None):
     app = Flask(__name__)
     app.config.from_object(config[config_name])
     
-    # SINGLE CORS configuration - remove the duplicate
-    # CORS(app, 
-    #      origins="*",  # Allow all origins (for public API)
-    #      methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    #      allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
-    #      supports_credentials=False,
-    #      max_age=3600) 
-    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True, max_age=3600)    
-    # Set custom JSON encoder
+    CORS(app, 
+         resources={
+             r"/*": {
+                 "origins": ["http://localhost:5173", "http://localhost:3000", "*"],  # Add your frontend URLs
+                 "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+                 "allow_headers": [
+                     "Content-Type", 
+                     "Authorization", 
+                     "X-Requested-With", 
+                     "Accept", 
+                     "Origin",
+                     "Access-Control-Request-Method",
+                     "Access-Control-Request-Headers"
+                 ],
+                 "supports_credentials": True,
+                 "max_age": 3600
+             }
+         })
+    
     app.json_encoder = JSONEncoder
     
     # Initialize extensions (REMOVED cors.init_app)
