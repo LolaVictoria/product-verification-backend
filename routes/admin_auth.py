@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify
 from middleware.auth import authenticate_admin
 from services.auth_service import AuthService
 
-admin_auth_bp = Blueprint('admin', __name__)
+admin_auth_bp = Blueprint('admin-auth', __name__)
 
 @admin_auth_bp.route('/login', methods=['POST'])
 def admin_login():
