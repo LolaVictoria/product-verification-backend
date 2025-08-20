@@ -1,51 +1,65 @@
-# requirements.txt
-# Flask and web framework dependencies
+aiohappyeyeballs==2.6.1
+aiohttp==3.12.15
+aiosignal==1.4.0
+annotated-types==0.7.0
+attrs==25.3.0
+bcrypt==4.3.0
+bitarray==2.9.3
+blinker==1.9.0
+certifi==2025.8.3
+charset-normalizer==3.4.3
+ckzg==2.1.1
+click==8.2.1
+cytoolz==1.0.1
+dnspython==2.7.0
+eth-account==0.13.7
+eth-hash==0.7.1
+eth-keyfile==0.8.1
+eth-keys==0.7.0
+eth-rlp==2.2.0
+eth-typing==5.2.1
+eth-utils==5.3.0
+eth_abi==5.0.1
 Flask==2.3.2
-Flask-CORS==4.0.0
-
-# Database dependencies
-pymongo==4.4.1
-
-# Authentication and security
+Flask-Cors==4.0.0
+Flask-JWT-Extended==4.7.1
+Flask-PyMongo==3.0.1
+frozenlist==1.7.0
+gunicorn==23.0.0
+hexbytes==1.3.1
+idna==3.10
+itsdangerous==2.2.0
+Jinja2==3.1.6
+jsonschema==4.25.1
+jsonschema-specifications==2025.4.1
+lru-dict==1.3.0
+MarkupSafe==3.0.2
+multidict==6.6.4
+packaging==25.0
+parsimonious==0.9.0
+propcache==0.3.2
+protobuf==6.32.0
+pycryptodome==3.23.0
+pydantic==2.11.7
+pydantic_core==2.33.2
 PyJWT==2.8.0
-Werkzeug==2.3.6
-
-# Blockchain dependencies (simplified to avoid build issues)
-web3==6.5.1
-eth-account==0.8.0
-
-# Environment and configuration
-python-dotenv==1.0.0
-
-# Utilities
-requests==2.31.0
-
-# Development dependencies (optional)
-pytest==7.4.0
-pytest-flask==1.2.0
-
-
-Flask==2.3.2
-Flask-CORS==4.0.0
-
-# Database dependencies
 pymongo==4.4.1
-
-# Authentication and security
-PyJWT==2.8.0
-Werkzeug==2.3.6
-
-# Blockchain dependencies
-web3==6.9.0
-eth-account==0.9.0
-
-# Environment and configuration
 python-dotenv==1.0.0
-
-# Utilities
+pyunormalize==16.0.0
+referencing==0.36.2
+regex==2025.7.34
 requests==2.31.0
-bson==0.5.10
-
-# Development dependencies (optional)
-pytest==7.4.0
-pytest-flask==1.2.0
+rlp==4.1.0
+rpds-py==0.27.0
+secure-smtplib==0.1.1
+setuptools==80.9.0
+toolz==1.0.0
+types-requests==2.32.4.20250809
+typing-inspection==0.4.1
+typing_extensions==4.14.1
+urllib3==2.5.0
+web3==7.13.0
+websockets==15.0.1
+Werkzeug==2.3.6
+wheel==0.45.1
+yarl==1.20.1
