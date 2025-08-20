@@ -2,7 +2,7 @@ import os
 from flask import Flask, jsonify
 from flask_cors import CORS
 from config import config
-from extensions import mongo, jwt, cors, init_database, test_db_connection
+from extensions import mongo, jwt, init_database, test_db_connection  # REMOVED cors import
 from routes import register_blueprints
 from services import BlockchainService, DatabaseService
 from utils.helpers import JSONEncoder, setup_logging
@@ -26,19 +26,21 @@ def create_app(config_name=None):
     
     app = Flask(__name__)
     app.config.from_object(config[config_name])
+    
+    # SINGLE CORS configuration - remove the duplicate
     CORS(app, 
-     origins="*",  # Allow all origins (for public API)
-     methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
-     supports_credentials=False,  # Set to True only if you need cookies/auth
-     max_age=3600) 
+         origins="*",  # Allow all origins (for public API)
+         methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+         supports_credentials=False,
+         max_age=3600) 
     
     # Set custom JSON encoder
     app.json_encoder = JSONEncoder
     
-    # Initialize extensions (REMOVED mongo.init_app - now handled in init_database)
+    # Initialize extensions (REMOVED cors.init_app)
     jwt.init_app(app)
-    cors.init_app(app)
+    # cors.init_app(app)  # REMOVE THIS LINE
     
     # Setup logging
     setup_logging(app)
@@ -50,11 +52,10 @@ def create_app(config_name=None):
         print("✓ Direct MongoDB connection test successful")
     else:
         print("✗ Direct MongoDB connection test failed")
-        # Don't return here - continue to try Flask-PyMongo
     
     print("=" * 50)
     
-    # Initialize database with Flask app (this handles mongo.init_app and index creation)
+    # Initialize database with Flask app
     print("Initializing Flask-PyMongo...")
     if init_database(app):
         print("✓ Database initialization successful")
@@ -99,6 +100,13 @@ def create_app(config_name=None):
     
     # Register JWT callbacks
     register_jwt_callbacks(app)
+    
+    # ADD DEBUG ROUTE LISTING
+    print("=" * 50)
+    print("Registered routes:")
+    for rule in app.url_map.iter_rules():
+        print(f"  {rule.rule} -> {rule.methods}")
+    print("=" * 50)
     
     return app
 
@@ -170,7 +178,7 @@ def register_jwt_callbacks(app):
 # Create application instance
 app = create_app()
 
-@app.before_request
+@app.before_first_request
 def before_first_request():
     """Run before the first request"""
     app.logger.info("Product Authentication API started successfully")

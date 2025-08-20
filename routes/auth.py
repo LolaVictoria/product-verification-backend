@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
-auth_bp.route('/signup', methods=['POST'])
+auth_bp.route('/signup', methods=['POST', 'OPTIONS'])
 def signup():
     """User registration endpoint"""
     try:
