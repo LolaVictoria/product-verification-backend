@@ -28,13 +28,13 @@ def create_app(config_name=None):
     app.config.from_object(config[config_name])
     
     # SINGLE CORS configuration - remove the duplicate
-    CORS(app, 
-         origins="*",  # Allow all origins (for public API)
-         methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
-         supports_credentials=False,
-         max_age=3600) 
-    
+    # CORS(app, 
+    #      origins="*",  # Allow all origins (for public API)
+    #      methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    #      allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+    #      supports_credentials=False,
+    #      max_age=3600) 
+    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True, max_age=3600)    
     # Set custom JSON encoder
     app.json_encoder = JSONEncoder
     
