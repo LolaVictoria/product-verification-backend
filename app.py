@@ -26,7 +26,13 @@ def create_app(config_name=None):
     
     app = Flask(__name__)
     app.config.from_object(config[config_name])
-    CORS(app)
+    CORS(app, 
+     origins="*",  # Allow all origins (for public API)
+     methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+     supports_credentials=False,  # Set to True only if you need cookies/auth
+     max_age=3600) 
+    
     # Set custom JSON encoder
     app.json_encoder = JSONEncoder
     
