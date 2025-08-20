@@ -40,6 +40,7 @@ pydantic==2.11.7
 pydantic_core==2.33.2
 PyJWT==2.10.1
 pymongo==4.14.1
+python-dotenv==1.1.1
 pyunormalize==16.0.0
 regex==2025.7.34
 requests==2.32.5

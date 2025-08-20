@@ -1,6 +1,6 @@
 import os
-# import json
 from flask import Flask, jsonify
+from flask_cors import CORS
 from config import config
 from extensions import mongo, jwt, cors, init_database, test_db_connection
 from routes import register_blueprints
@@ -26,7 +26,7 @@ def create_app(config_name=None):
     
     app = Flask(__name__)
     app.config.from_object(config[config_name])
-    
+    CORS(app)
     # Set custom JSON encoder
     app.json_encoder = JSONEncoder
     
