@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
-from services import AuthService, BlockchainService
+from services import AuthService
 from utils.helpers import create_error_response, create_success_response
 import logging
 from datetime import datetime
@@ -287,6 +287,55 @@ def revoke_manufacturer_authorization(manufacturer_id):
     except Exception as e:
         logger.error(f"Authorization revocation error: {str(e)}", exc_info=True)
         response, status_code = create_error_response('Authorization revocation failed', 500)
+        return jsonify(response), status_code
+
+# MANUFACTURER ENDPOINT - Check their authorization status
+@admin_bp.route('/manufacturer/status', methods=['GET'])
+@jwt_required()
+def get_manufacturer_status():
+
+    """Get manufacturer's blockchain authorization status"""
+    try:
+        user_id = get_jwt_identity()
+        
+        # Get user profile
+        profile_result, profile_status = AuthService.get_user_profile(user_id)
+        if profile_status != 200:
+            return jsonify(create_error_response('Unable to get user profile', 400)[0]), 400
+        
+        user = profile_result.get('user', {})
+        if user.get('role', '').lower() != 'manufacturer':
+            return jsonify(create_error_response('Only manufacturers can check authorization status', 403)[0]), 403
+        
+        wallet_address = user.get('wallet_address')
+        if not wallet_address:
+            return jsonify(create_error_response('No wallet address found', 400)[0]), 400
+        
+        # Check blockchain authorization status
+        from app import blockchain_service
+        try:
+            verification_result = blockchain_service.verify_manufacturer_authorization(wallet_address)
+            
+            return jsonify({
+                'wallet_address': wallet_address,
+                'blockchain_authorized': verification_result.get('authorized', False),
+                'database_status': user.get('blockchain_status', 'pending'),
+                'can_register_products': verification_result.get('authorized', False)
+            }), 200
+            
+        except Exception as blockchain_error:
+            logger.error(f"Status check error: {blockchain_error}")
+            return jsonify({
+                'wallet_address': wallet_address,
+                'blockchain_authorized': False,
+                'database_status': user.get('blockchain_status', 'pending'),
+                'can_register_products': False,
+                'error': 'Unable to check blockchain status'
+            }), 200
+            
+    except Exception as e:
+        logger.error(f"Status check error: {str(e)}", exc_info=True)
+        response, status_code = create_error_response('Internal server error', 500)
         return jsonify(response), status_code
 
 @admin_bp.route('/audit-logs', methods=['GET'])

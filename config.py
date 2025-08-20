@@ -9,7 +9,6 @@ class Config:
     
     # Database Configuration
     MONGO_URI = os.getenv('MONGO_URI')
-    print(MONGO_URI)
     
     # Blockchain Configuration
     WEB3_PROVIDER = os.getenv('PROVIDER_URL', 'http://127.0.0.1:7545')
@@ -28,6 +27,21 @@ class Config:
     
     # Flask Secret Key
     SECRET_KEY = os.getenv('SECRET_KEY', 'fallback-secret-key')
+     
+     #Admin credentials
+    ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'admin@company.com')
+    ADMIN_PASSWORD_HASH = os.getenv('ADMIN_PASSWORD_HASH')
+    # Admin Credentials
+    ADMIN_EMAIL='vickydamy@gmail.com'
+    # Generate this hash using: python generate_password_hash.py
+    ADMIN_PASSWORD_HASH='pbkdf2:sha256:150000$abc123$def4567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+    # JWT settings
+    JWT_EXPIRATION_HOURS = int(os.getenv('JWT_EXPIRATION_HOURS', 8))
+    
+    # Blockchain settings (for future use)
+    BLOCKCHAIN_RPC_URL = os.getenv('BLOCKCHAIN_RPC_URL')
+    CONTRACT_ADDRESS = os.getenv('CONTRACT_ADDRESS')
+    ADMIN_PRIVATE_KEY = os.getenv('ADMIN_PRIVATE_KEY')
     
 class DevelopmentConfig(Config):
     """Development configuration"""

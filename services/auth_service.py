@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 class AuthService:
     @staticmethod
-    def register_user(username, email, password, role, wallet_address):
+    def register_user(username, email, password, role, wallet_address, verification_status):
         """Register a new user"""
         # Validate input
         if not is_valid_email(email):
@@ -24,6 +24,9 @@ class AuthService:
             if not wallet_address or not wallet_address.strip():
                 logger.error(f"Manufacturer role requires wallet address. Received: '{wallet_address}'")
                 return {'error': 'Wallet address required for manufacturers'}, 400
+            verification_status = 'pending'
+        else:
+            wallet_address = None
     
         # Check if user already exists
         if User.email_exists(email):
@@ -35,7 +38,7 @@ class AuthService:
         
         
         try:
-            result = User.create_user(username, email, password, role, wallet_address)
+            result = User.create_user(username, email, password, role, wallet_address, verification_status)
             return {
                 'message': 'User created successfully',
                 'user_id': str(result.inserted_id)
@@ -73,7 +76,8 @@ class AuthService:
                     'email': user['email'],
                     'role': user['role'],
                     'username': user['username'],
-                    'wallet_address': user.get('wallet_address', '')
+                    'wallet_address': user.get('wallet_address', ''),
+                    'verification_status': user.get('verification_status', 'pending')
                 }
             }, 200
         except Exception as e:
@@ -97,6 +101,7 @@ class AuthService:
                     'username': user['username'],
                     'role': user['role'],
                     'wallet_address': user.get('wallet_address', ''),
+                    'verification_status': user.get('verification_status', 'pending'),
                     'created_at': user['created_at'].isoformat()
                 }
             }, 200
@@ -125,37 +130,4 @@ class AuthService:
         
         return key_doc
     
-    # Add these methods to your AuthService class
-
-@staticmethod
-def get_pending_manufacturers():
-    """Get all manufacturers with pending blockchain verification"""
-    try:
-        # Query your database for users with role='manufacturer' and blockchain_status='pending_verification'
-        # This depends on your database implementation
-        # Example with SQLAlchemy:
-        # users = User.query.filter_by(role='manufacturer', blockchain_status='pending_verification').all()
-        # return [{'user_id': u.id, 'wallet_address': u.wallet_address} for u in users]
-        
-        # Placeholder - implement based on your database
-        pass
-    except Exception as e:
-        logger.error(f"Error getting pending manufacturers: {e}")
-        return []
-
-@staticmethod
-def update_manufacturers_blockchain_status(wallet_addresses, status):
-    """Update blockchain status for multiple manufacturers"""
-    try:
-        # Update your database to set blockchain_status='verified' for these addresses
-        # Example with SQLAlchemy:
-        # User.query.filter(User.wallet_address.in_(wallet_addresses)).update(
-        #     {'blockchain_status': status}, synchronize_session=False
-        # )
-        # db.session.commit()
-        
-        # Placeholder - implement based on your database
-        pass
-    except Exception as e:
-        logger.error(f"Error updating manufacturer status: {e}")
-
+    

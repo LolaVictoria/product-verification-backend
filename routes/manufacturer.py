@@ -77,6 +77,7 @@ def register_product():
         logger.error(f"Product registration error: {e}")
         return create_error_response('Internal server error', 500)
 
+
 @manufacturer_bp.route('/my-products', methods=['GET'])
 @require_role('manufacturer')
 def get_manufacturer_products():
@@ -99,6 +100,7 @@ def get_manufacturer_products():
     except Exception as e:
         logger.error(f"Get products error: {e}")
         return create_error_response('Internal server error', 500)
+
 
 @manufacturer_bp.route('/product/<serial_number>', methods=['GET'])
 @require_role('manufacturer')
@@ -124,6 +126,7 @@ def get_product_details(serial_number):
     except Exception as e:
         logger.error(f"Get product details error: {e}")
         return create_error_response('Internal server error', 500)
+
 
 @manufacturer_bp.route('/product/<product_id>', methods=['PUT'])
 @require_role('manufacturer')
@@ -171,3 +174,4 @@ def update_product(product_id):
     except Exception as e:
         logger.error(f"Update product error: {e}")
         return create_error_response('Internal server error', 500)
+    

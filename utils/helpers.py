@@ -62,3 +62,20 @@ def create_success_response(message, data=None, status_code=200):
     if data:
         response.update(data)
     return response, status_code
+
+def convert_objectids_to_strings(data):
+    """Convert ObjectIds in data to strings for JSON serialization"""
+    if isinstance(data, list):
+        for item in data:
+            if '_id' in item:
+                item['_id'] = str(item['_id'])
+    elif isinstance(data, dict) and '_id' in data:
+        data['_id'] = str(data['_id'])
+    return data
+
+def validate_object_ids(id_list):
+    """Validate and convert string IDs to ObjectIds"""
+    try:
+        return [ObjectId(id_str) for id_str in id_list]
+    except Exception:
+        raise ValueError("Invalid ObjectId format")

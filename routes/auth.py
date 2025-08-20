@@ -2,7 +2,9 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from services import AuthService, BlockchainService
 from utils.helpers import create_error_response, create_success_response
+from utils.email_service import EmailService
 import logging
+import secrets
 
 logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)
@@ -62,18 +64,33 @@ def signup():
         
         logger.info("All validations passed, creating user account")
         
-        # Create user account (no blockchain interaction yet)
-        result, status_code = AuthService.register_user(username, email, password, role, wallet_address)
+        # Generate verification token
+        verification_token = secrets.token_urlsafe(32)
+        
+        # Create user account with verification token
+        result, status_code = AuthService.register_user(
+            username, email, password, role, wallet_address, verification_token
+        )
         
         if status_code == 201:
-            if role.lower() == 'manufacturer':
-                result['blockchain_status'] = 'pending_verification'
-                result['message'] = 'Account created successfully. Blockchain verification will be completed within 24 hours.'
-                result['note'] = 'You can start using the platform immediately. Product registration will be enabled after blockchain verification.'
-            else:
-                result['message'] = 'Developer account created successfully.'
+            try:
+                # Send verification email
+                EmailService.send_verification_email(email, username, verification_token)
+                
+                result['message'] = 'Account created successfully. Please check your email to verify your account.'
+                result['email_sent'] = True
+                
+                if role.lower() == 'manufacturer':
+                    result['blockchain_status'] = 'pending_verification'
+                    result['note'] = 'Complete email verification to enable all features.'
+                
+                logger.info(f"User registration and email sent successfully: {username}, role: {role}")
+                
+            except Exception as email_error:
+                logger.error(f"Failed to send verification email: {str(email_error)}")
+                result['message'] = 'Account created successfully, but verification email failed to send. Please contact support.'
+                result['email_sent'] = False
         
-        logger.info(f"User registration successful: {username}, role: {role}")
         return jsonify(result), status_code
         
     except Exception as e:
@@ -81,107 +98,103 @@ def signup():
         response, status_code = create_error_response('Internal server error', 500)
         return jsonify(response), status_code
 
-# ADMIN ENDPOINT - For batch authorization (you run this periodically)
-@auth_bp.route('/admin/batch-authorize-manufacturers', methods=['POST'])
-@jwt_required()
-def batch_authorize_manufacturers():
-    """Admin endpoint to authorize multiple manufacturers at once (saves gas)"""
+
+@auth_bp.route('/verify-email/<token>', methods=['GET'])
+def verify_email(token):
+    """Email verification endpoint"""
     try:
-        user_id = get_jwt_identity()
+        result, status_code = AuthService.verify_email_token(token)
         
-        # Check if user is admin (implement this check in your AuthService)
-        user_profile, _ = AuthService.get_user_profile(user_id)
-        if not user_profile.get('user', {}).get('is_admin', False):
-            response, status_code = create_error_response('Admin access required', 403)
-            return jsonify(response), status_code
-        
-        # Get all pending manufacturers from database
-        pending_manufacturers = AuthService.get_pending_manufacturers()  # You need to implement this
-        
-        if not pending_manufacturers:
-            return jsonify({'message': 'No pending manufacturers to authorize'}), 200
-        
-        # Batch authorize on blockchain
-        from app import blockchain_service
-        wallet_addresses = [m['wallet_address'] for m in pending_manufacturers]
-        
-        try:
-            # Use batch authorization (you'll need to implement this in your smart contract)
-            auth_result = blockchain_service.batch_authorize_manufacturers(wallet_addresses)
-            
-            if auth_result.get('success'):
-                # Update database status for all authorized manufacturers
-                AuthService.update_manufacturers_blockchain_status(wallet_addresses, 'verified')
-                
-                return jsonify({
-                    'success': True,
-                    'message': f'Successfully authorized {len(wallet_addresses)} manufacturers',
-                    'tx_hash': auth_result.get('tx_hash'),
-                    'authorized_addresses': wallet_addresses
-                }), 200
-            else:
-                return jsonify(create_error_response(
-                    f"Batch authorization failed: {auth_result.get('error')}", 400
-                )[0]), 400
-                
-        except Exception as blockchain_error:
-            logger.error(f"Batch authorization error: {blockchain_error}")
-            return jsonify(create_error_response(
-                'Blockchain authorization service error', 500
-            )[0]), 500
+        if status_code == 200:
+            logger.info(f"Email verification successful for token: {token[:10]}...")
+            # Return an HTML page or redirect to frontend
+            return f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Email Verified</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                    .success {{ color: green; }}
+                    .container {{ max-width: 500px; margin: 0 auto; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1 class="success">✓ Email Verified Successfully!</h1>
+                    <p>Your account has been verified. You can now log in to your account.</p>
+                    <p><a href="{request.host_url}">Return to Login</a></p>
+                </div>
+            </body>
+            </html>
+            """, 200
+        else:
+            logger.warning(f"Email verification failed for token: {token[:10]}...")
+            return f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Verification Failed</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                    .error {{ color: red; }}
+                    .container {{ max-width: 500px; margin: 0 auto; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1 class="error">✗ Verification Failed</h1>
+                    <p>{result.get('error', 'Invalid or expired verification link.')}</p>
+                    <p><a href="{request.host_url}">Return to Login</a></p>
+                </div>
+            </body>
+            </html>
+            """, status_code
             
     except Exception as e:
-        logger.error(f"Batch authorization error: {str(e)}", exc_info=True)
+        logger.error(f"Email verification error: {str(e)}", exc_info=True)
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Verification Error</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                .error {{ color: red; }}
+                .container {{ max-width: 500px; margin: 0 auto; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1 class="error">✗ Verification Error</h1>
+                <p>An error occurred during verification. Please try again or contact support.</p>
+                <p><a href="{request.host_url}">Return to Login</a></p>
+            </div>
+        </body>
+        </html>
+        """, 500
+
+
+@auth_bp.route('/resend-verification', methods=['POST'])
+def resend_verification():
+    """Resend verification email"""
+    try:
+        data = request.get_json()
+        
+        if not data or not data.get('email'):
+            response, status_code = create_error_response('Email is required', 400)
+            return jsonify(response), status_code
+        
+        email = data.get('email')
+        
+        result, status_code = AuthService.resend_verification_email(email)
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        logger.error(f"Resend verification error: {str(e)}", exc_info=True)
         response, status_code = create_error_response('Internal server error', 500)
         return jsonify(response), status_code
 
-# MANUFACTURER ENDPOINT - Check their authorization status
-@auth_bp.route('/manufacturer/status', methods=['GET'])
-@jwt_required()
-def get_manufacturer_status():
-    """Get manufacturer's blockchain authorization status"""
-    try:
-        user_id = get_jwt_identity()
-        
-        # Get user profile
-        profile_result, profile_status = AuthService.get_user_profile(user_id)
-        if profile_status != 200:
-            return jsonify(create_error_response('Unable to get user profile', 400)[0]), 400
-        
-        user = profile_result.get('user', {})
-        if user.get('role', '').lower() != 'manufacturer':
-            return jsonify(create_error_response('Only manufacturers can check authorization status', 403)[0]), 403
-        
-        wallet_address = user.get('wallet_address')
-        if not wallet_address:
-            return jsonify(create_error_response('No wallet address found', 400)[0]), 400
-        
-        # Check blockchain authorization status
-        from app import blockchain_service
-        try:
-            verification_result = blockchain_service.verify_manufacturer_authorization(wallet_address)
-            
-            return jsonify({
-                'wallet_address': wallet_address,
-                'blockchain_authorized': verification_result.get('authorized', False),
-                'database_status': user.get('blockchain_status', 'pending'),
-                'can_register_products': verification_result.get('authorized', False)
-            }), 200
-            
-        except Exception as blockchain_error:
-            logger.error(f"Status check error: {blockchain_error}")
-            return jsonify({
-                'wallet_address': wallet_address,
-                'blockchain_authorized': False,
-                'database_status': user.get('blockchain_status', 'pending'),
-                'can_register_products': False,
-                'error': 'Unable to check blockchain status'
-            }), 200
-            
-    except Exception as e:
-        logger.error(f"Status check error: {str(e)}", exc_info=True)
-        response, status_code = create_error_response('Internal server error', 500)
-        return jsonify(response), status_code
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
@@ -219,6 +232,7 @@ def login():
         response, status_code = create_error_response('Internal server error', 500)
         return jsonify(response), status_code
 
+
 @auth_bp.route('/profile', methods=['GET'])
 @jwt_required()
 def get_profile():
@@ -239,6 +253,7 @@ def get_profile():
         logger.error(f"Profile error: {str(e)}", exc_info=True)
         response, status_code = create_error_response('Internal server error', 500)
         return jsonify(response), status_code
+
 
 @auth_bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
@@ -272,6 +287,34 @@ def refresh_token():
         response, status_code = create_error_response('Token refresh failed', 500)
         return jsonify(response), status_code
 
+
+#admin can search for user by their id
+@auth_bp.route('/users/<string:user_id>', methods=['GET'])
+@jwt_required()
+def get_user_by_id(user_id):
+    """Fetch user by ID (admin only)"""
+    try:
+        current_user_id = get_jwt_identity()
+        
+        # Get current user profile
+        current_user, status = AuthService.get_user_profile(current_user_id)
+        if status != 200:
+            return jsonify(create_error_response('Unable to get current user profile', 400)[0]), 400
+        
+        # Check if requester is admin
+        if not current_user.get('user', {}).get('is_admin', False):
+            return jsonify(create_error_response('Admin access required', 403)[0]), 403
+        
+        # Fetch the target user by ID
+        target_user, status = AuthService.get_user_profile(user_id)
+        return jsonify(target_user), status
+        
+    except Exception as e:
+        logger.error(f"Get user by ID error: {str(e)}", exc_info=True)
+        response, status_code = create_error_response('Internal server error', 500)
+        return jsonify(response), status_code
+
+
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
@@ -286,6 +329,7 @@ def logout():
         logger.error(f"Logout error: {str(e)}", exc_info=True)
         response, status_code = create_error_response('Logout failed', 500)
         return jsonify(response), status_code
+
 
 # Error handlers for the blueprint
 @auth_bp.errorhandler(400)
