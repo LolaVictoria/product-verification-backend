@@ -14,10 +14,13 @@ class Config:
     WEB3_PROVIDER = os.getenv('PROVIDER_URL', 'http://127.0.0.1:7545')
     CONTRACT_ADDRESS = os.getenv('CONTRACT_ADDRESS', '0x...')
     CONTRACT_ABI_PATH = os.getenv('CONTRACT_ABI_PATH', 'contract/contract_abi.json')
-    
+    NFURA_PROJECT_ID = os.getenv('SEPOLIA_PROJECT_ID')
+    SEPOLIA_RPC_URL = f'https://sepolia.infura.io/v3/{os.getenv('SEPOLIA_PROJECT_ID')}' 
+    CONTRACT_ABI_PATH = os.getenv('CONTRACT_ABI_PATH')
     # Account Configuration
     ACCOUNT_ADDRESS = os.getenv('ACCOUNT_ADDRESS')
     PRIVATE_KEY = os.getenv('PRIVATE_KEY')
+    CHAIN_ID = int(os.getenv('CHAIN_ID'))
     
     # API Keys
     ETHERSCAN_API_KEY = os.getenv('ETHERSCAN_API_KEY')

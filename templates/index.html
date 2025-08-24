@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlockVerify - Product Authentication System</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <h2>🔗 BlockVerify</h2>
+            </div>
+            <div class="nav-menu" id="nav-menu">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/verify" class="nav-link">Verify Product</a>
+                <a href="/login" class="nav-link">Login</a>
+                <a href="/signup" class="nav-link">Sign Up</a>
+            </div>
+            <div class="hamburger" id="hamburger">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Blockchain Product Verification</h1>
+            <p>Verify authentic products with our blockchain-powered system. Say goodbye to counterfeit products.</p>
+            <div class="hero-buttons">
+                <a href="/verify" class="btn btn-primary">Verify Product</a>
+                <a href="/signup" class="btn btn-secondary">Get Started</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2>Why Choose BlockVerify?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔐</div>
+                    <h3>Blockchain Security</h3>
+                    <p>Immutable records on the blockchain ensure product authenticity cannot be tampered with.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Instant Verification</h3>
+                    <p>Get real-time verification results in seconds, not minutes.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3>Easy to Use</h3>
+                    <p>Simple interface for both manufacturers and customers to verify products.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🏭</div>
+                    <h3>Manufacturer Dashboard</h3>
+                    <p>Complete product management system for manufacturers to register and track products.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Showcase -->
+    <section class="products-showcase">
+        <div class="container">
+            <h2>Verified Products</h2>
+            <p>Explore our collection of blockchain-verified authentic products</p>
+            <div id="products-container" class="products-grid">
+                <div class="loading">Loading products...</div>
+            </div>
+            <div class="showcase-actions">
+                <a href="/verify" class="btn btn-primary">Verify Your Product</a>
+                <a href="/login" class="btn btn-outline">View All Products</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>BlockVerify</h3>
+                    <p>Securing products with blockchain technology</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="/">Home</a></li>
+                        <li><a href="/verify">Verify</a></li>
+                        <li><a href="/login">Login</a></li>
+                        <li><a href="/signup">Sign Up</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>For Manufacturers</h4>
+                    <ul>
+                        <li><a href="/signup">Register</a></li>
+                        <li><a href="/dashboard">Dashboard</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 BlockVerify. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
