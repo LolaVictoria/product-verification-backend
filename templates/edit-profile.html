@@ -664,16 +664,6 @@
             }
         }
 
-        // Logout function
-        function logout() {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('user');
-            if (typeof cacheManager !== 'undefined') {
-                cacheManager.clearAllCaches();
-            }
-            window.location.href = '/login';
-        }
-
         // Close modals when clicking outside
         window.onclick = function(event) {
             if (event.target.classList.contains('modal')) {

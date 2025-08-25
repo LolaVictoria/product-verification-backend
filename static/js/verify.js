@@ -7,7 +7,7 @@ class Dashboard {
 
     async init() {
         try {
-            await this.loadStats();
+            // await this.loadStats();
             this.initCharts();
             this.startAutoRefresh();
         } catch (error) {
@@ -225,7 +225,7 @@ class Dashboard {
     startAutoRefresh() {
         // Refresh dashboard every 5 minutes
         setInterval(() => {
-            this.loadStats();
+            // this.loadStats();
         }, 5 * 60 * 1000);
     }
 

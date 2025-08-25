@@ -17,7 +17,745 @@ import requests
 import hashlib
 from datetime import datetime, timezone
 from datetime import datetime, timedelta
+from web3 import Web3
+import os
+from dotenv import load_dotenv
 
+
+
+contract_abi_json = '''[
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "serialNumber",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "manufacturer",
+        "type": "address"
+      }
+    ],
+    "name": "DeviceRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "serialNumber",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isAuthentic",
+        "type": "bool"
+      }
+    ],
+    "name": "DeviceVerified",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "manufacturer",
+        "type": "address"
+      }
+    ],
+    "name": "ManufacturerAuthorized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "manufacturer",
+        "type": "address"
+      }
+    ],
+    "name": "ManufacturerRevoked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "manufacturer",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "companyName",
+        "type": "string"
+      }
+    ],
+    "name": "ManufacturerVerified",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "serialNumber",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "admin",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "_manufacturers",
+        "type": "address[]"
+      }
+    ],
+    "name": "batchAuthorizeManufacturers",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "devices",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "serialNumber",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "brand",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "model",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "deviceType",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "storageData",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "color",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "manufacturer",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "currentOwner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "manufacturingDate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "batchNumber",
+        "type": "string"
+      },
+      {
+        "internalType": "bool",
+        "name": "isAuthentic",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "registrationTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "specificationHash",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAllAuthorizedManufacturers",
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_serialNumber",
+        "type": "string"
+      }
+    ],
+    "name": "getDeviceDetails",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "brand",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "model",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "deviceType",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "storageData",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "color",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "manufacturerName",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "currentOwner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "manufacturingDate",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_owner",
+        "type": "address"
+      }
+    ],
+    "name": "getOwnerDevices",
+    "outputs": [
+      {
+        "internalType": "string[]",
+        "name": "",
+        "type": "string[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_serialNumber",
+        "type": "string"
+      }
+    ],
+    "name": "getOwnershipHistory",
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "previousOwners",
+        "type": "address[]"
+      },
+      {
+        "internalType": "address[]",
+        "name": "newOwners",
+        "type": "address[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "transferDates",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "transferReasons",
+        "type": "string[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "salePrices",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_manufacturer",
+        "type": "address"
+      }
+    ],
+    "name": "isManufacturerAuthorized",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "manufacturerList",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "manufacturers",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "companyName",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "walletAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "isVerified",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "registrationTime",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "ownerDevices",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "ownershipHistory",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "transferDate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "transferReason",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "salePrice",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_serialNumber",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_brand",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_model",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_deviceType",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_storage",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_color",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_batchNumber",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_specHash",
+        "type": "string"
+      }
+    ],
+    "name": "registerDevice",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_serialNumber",
+        "type": "string"
+      }
+    ],
+    "name": "revokeDeviceAuthenticity",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_manufacturer",
+        "type": "address"
+      }
+    ],
+    "name": "revokeManufacturer",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_serialNumber",
+        "type": "string"
+      }
+    ],
+    "name": "serialExists",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_serialNumber",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "_newOwner",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "_transferReason",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_salePrice",
+        "type": "uint256"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "verifiedManufacturers",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_serialNumber",
+        "type": "string"
+      }
+    ],
+    "name": "verifyDevice",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "exists",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "isAuthentic",
+        "type": "bool"
+      },
+      {
+        "internalType": "string",
+        "name": "brand",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "model",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "deviceType",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "manufacturerName",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "currentOwner",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string[]",
+        "name": "_serialNumbers",
+        "type": "string[]"
+      }
+    ],
+    "name": "verifyMultipleDevices",
+    "outputs": [
+      {
+        "internalType": "bool[]",
+        "name": "exists",
+        "type": "bool[]"
+      },
+      {
+        "internalType": "bool[]",
+        "name": "isAuthentic",
+        "type": "bool[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "brands",
+        "type": "string[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "models",
+        "type": "string[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]'''
+
+# Load environment variables
+load_dotenv()
+contract_abi = json.loads(contract_abi_json)       
+contract_address =  os.getenv('CONTRACT_ADDRESS')
+RPC_URL = os.getenv('BLOCKCHAIN_RPC_URL')
+    
+# Initialize Web3 in helper_functions
+try:
+    w3 = Web3(Web3.HTTPProvider(os.getenv('BLOCKCHAIN_RPC_URL')))
+    if w3.is_connected():
+        print("Web3 connected successfully in helper_functions")
+    else:
+        print("Web3 connection failed in helper_functions")
+        w3 = None
+except Exception as e:
+    print(f"Web3 initialization error in helper_functions: {e}")
+    w3 = None
+    
 # Custom Exceptions
 class ValidationError(Exception):
     pass
@@ -976,78 +1714,78 @@ class ElectronicsAuthenticator:
         
         return results
     
-    def get_ownership_history(self, serial_number):
-        """Get ownership transfer history for a device"""
-        device = self.db.electronics.find_one({"serialNumber": serial_number})
-        if not device:
-            return None
+    # def get_ownership_history(self, serial_number):
+    #     """Get ownership transfer history for a device"""
+    #     device = self.db.electronics.find_one({"serialNumber": serial_number})
+    #     if not device:
+    #         return None
         
-        history = list(self.db.ownershipHistory.find({"serialNumber": serial_number}).sort("transferDate", 1))
+    #     history = list(self.db.ownershipHistory.find({"serialNumber": serial_number}).sort("transferDate", 1))
         
-        # Format history for display
-        formatted_history = []
-        for record in history:
-            formatted_record = {
-                "from": record.get("previousOwner", {}).get("name", "Unknown"),
-                "to": record.get("newOwner", {}).get("name", "Unknown"),
-                "date": record.get("transferDate"),
-                "reason": record.get("transferReason", "Transfer"),
-                "price": record.get("salePrice", 0),
-                "invoice": record.get("invoiceNumber", "N/A")
-            }
-            formatted_history.append(formatted_record)
+    #     # Format history for display
+    #     formatted_history = []
+    #     for record in history:
+    #         formatted_record = {
+    #             "from": record.get("previousOwner", {}).get("name", "Unknown"),
+    #             "to": record.get("newOwner", {}).get("name", "Unknown"),
+    #             "date": record.get("transferDate"),
+    #             "reason": record.get("transferReason", "Transfer"),
+    #             "price": record.get("salePrice", 0),
+    #             "invoice": record.get("invoiceNumber", "N/A")
+    #         }
+    #         formatted_history.append(formatted_record)
         
-        return formatted_history
+    #     return formatted_history
 
 
 class DatabaseManager:
     def __init__(self, db):
         self.db = db
     
-    def get_device_details(self, serial_number):
-        """Get detailed device information"""
-        device = self.db.electronics.find_one({"serialNumber": serial_number})
+    # def get_device_details(self, serial_number):
+    #     """Get detailed device information"""
+    #     device = self.db.electronics.find_one({"serialNumber": serial_number})
         
-        if not device:
-            return None
+    #     if not device:
+    #         return None
         
-        # Get manufacturer details
-        manufacturer = self.db.manufacturers.find_one({"_id": device.get("manufacturerId")})
+    #     # Get manufacturer details
+    #     manufacturer = self.db.manufacturers.find_one({"_id": device.get("manufacturerId")})
         
-        # Get current owner details
-        current_owner = self.db.users.find_one({"_id": device.get("currentOwnerId")})
+    #     # Get current owner details
+    #     current_owner = self.db.users.find_one({"_id": device.get("currentOwnerId")})
         
-        result = {
-            "serialNumber": device.get("serialNumber"),
-            "brand": device.get("brand"),
-            "model": device.get("model"),
-            "deviceType": device.get("deviceType"),
-            "storage": device.get("storage"),
-            "color": device.get("color"),
-            "processor": device.get("processor"),
-            "screenSize": device.get("screenSize"),
-            "camera": device.get("camera"),
-            "operatingSystem": device.get("operatingSystem"),
-            "retailPrice": device.get("retailPrice"),
-            "manufacturingDate": device.get("manufacturingDate"),
-            "registrationDate": device.get("registrationDate"),
-            "batchNumber": device.get("batchNumber"),
-            "warrantyPeriod": device.get("warrantyPeriod"),
-            "manufacturer": {
-                "name": manufacturer.get("companyName") if manufacturer else "Unknown",
-                "country": manufacturer.get("country") if manufacturer else "Unknown",
-                "established": manufacturer.get("establishedYear") if manufacturer else None
-            },
-            "currentOwner": {
-                "name": current_owner.get("name") if current_owner else "Unknown",
-                "type": current_owner.get("userType") if current_owner else "Unknown"
-            },
-            "isOnBlockchain": device.get("isOnBlockchain", False),
-            "isAuthentic": device.get("isAuthentic", False),
-            "blockchainTxHash": device.get("blockchainTxHash")
-        }
+    #     result = {
+    #         "serialNumber": device.get("serialNumber"),
+    #         "brand": device.get("brand"),
+    #         "model": device.get("model"),
+    #         "deviceType": device.get("deviceType"),
+    #         "storage": device.get("storage"),
+    #         "color": device.get("color"),
+    #         "processor": device.get("processor"),
+    #         "screenSize": device.get("screenSize"),
+    #         "camera": device.get("camera"),
+    #         "operatingSystem": device.get("operatingSystem"),
+    #         "retailPrice": device.get("retailPrice"),
+    #         "manufacturingDate": device.get("manufacturingDate"),
+    #         "registrationDate": device.get("registrationDate"),
+    #         "batchNumber": device.get("batchNumber"),
+    #         "warrantyPeriod": device.get("warrantyPeriod"),
+    #         "manufacturer": {
+    #             "name": manufacturer.get("companyName") if manufacturer else "Unknown",
+    #             "country": manufacturer.get("country") if manufacturer else "Unknown",
+    #             "established": manufacturer.get("establishedYear") if manufacturer else None
+    #         },
+    #         "currentOwner": {
+    #             "name": current_owner.get("name") if current_owner else "Unknown",
+    #             "type": current_owner.get("userType") if current_owner else "Unknown"
+    #         },
+    #         "isOnBlockchain": device.get("isOnBlockchain", False),
+    #         "isAuthentic": device.get("isAuthentic", False),
+    #         "blockchainTxHash": device.get("blockchainTxHash")
+    #     }
         
-        return result
+    #     return result
     
     def get_system_stats(self):
         """Get system statistics for research analysis"""
@@ -1102,186 +1840,186 @@ class DatabaseManager:
         
         return stats
     
-    def seed_sample_data(self):
-        """Seed database with sample data for demonstration"""
-        # Sample manufacturers (if not exists)
-        manufacturers_data = [
-            {
-                "walletAddress": "0x742d35Cc622C4532c0532255c87A59B852b74f8d",
-                "companyName": "Apple Inc",
-                "email": "verify@apple.com",
-                "country": "United States",
-                "establishedYear": 1976,
-                "headquarters": "Cupertino, California",
-                "isVerified": True,
-                "verificationDate": datetime.now(),
-                "annualProduction": 230000000,
-                "createdAt": datetime.now()
-            },
-            {
-                "walletAddress": "0x8ba1f109551bD432803012645Hac136c461c11B6",
-                "companyName": "Samsung Electronics",
-                "email": "auth@samsung.com",
-                "country": "South Korea",
-                "establishedYear": 1969,
-                "headquarters": "Seoul, South Korea",
-                "isVerified": True,
-                "verificationDate": datetime.now(),
-                "annualProduction": 300000000,
-                "createdAt": datetime.now()
-            }
-        ]
+    # def seed_sample_data(self):
+    #     """Seed database with sample data for demonstration"""
+    #     # Sample manufacturers (if not exists)
+    #     manufacturers_data = [
+    #         {
+    #             "walletAddress": "0x742d35Cc622C4532c0532255c87A59B852b74f8d",
+    #             "companyName": "Apple Inc",
+    #             "email": "verify@apple.com",
+    #             "country": "United States",
+    #             "establishedYear": 1976,
+    #             "headquarters": "Cupertino, California",
+    #             "isVerified": True,
+    #             "verificationDate": datetime.now(),
+    #             "annualProduction": 230000000,
+    #             "createdAt": datetime.now()
+    #         },
+    #         {
+    #             "walletAddress": "0x8ba1f109551bD432803012645Hac136c461c11B6",
+    #             "companyName": "Samsung Electronics",
+    #             "email": "auth@samsung.com",
+    #             "country": "South Korea",
+    #             "establishedYear": 1969,
+    #             "headquarters": "Seoul, South Korea",
+    #             "isVerified": True,
+    #             "verificationDate": datetime.now(),
+    #             "annualProduction": 300000000,
+    #             "createdAt": datetime.now()
+    #         }
+    #     ]
         
-        inserted_manufacturers = 0
-        for manufacturer in manufacturers_data:
-            if not self.db.manufacturers.find_one({"companyName": manufacturer["companyName"]}):
-                result = self.db.manufacturers.insert_one(manufacturer)
-                manufacturer["_id"] = result.inserted_id
-                inserted_manufacturers += 1
+    #     inserted_manufacturers = 0
+    #     for manufacturer in manufacturers_data:
+    #         if not self.db.manufacturers.find_one({"companyName": manufacturer["companyName"]}):
+    #             result = self.db.manufacturers.insert_one(manufacturer)
+    #             manufacturer["_id"] = result.inserted_id
+    #             inserted_manufacturers += 1
         
-        # Get manufacturer IDs
-        apple_manufacturer = self.db.manufacturers.find_one({"companyName": "Apple Inc"})
-        samsung_manufacturer = self.db.manufacturers.find_one({"companyName": "Samsung Electronics"})
+    #     # Get manufacturer IDs
+    #     apple_manufacturer = self.db.manufacturers.find_one({"companyName": "Apple Inc"})
+    #     samsung_manufacturer = self.db.manufacturers.find_one({"companyName": "Samsung Electronics"})
         
-        if not apple_manufacturer or not samsung_manufacturer:
-            return {"error": "Failed to create manufacturers"}
+    #     if not apple_manufacturer or not samsung_manufacturer:
+    #         return {"error": "Failed to create manufacturers"}
         
-        apple_id = apple_manufacturer["_id"]
-        samsung_id = samsung_manufacturer["_id"]
+    #     apple_id = apple_manufacturer["_id"]
+    #     samsung_id = samsung_manufacturer["_id"]
         
-        # Sample devices
-        sample_devices = [
-            {
-                "serialNumber": "AAPL-IPH15-PRO-128-2024-C02XY1234",
-                "brand": "Apple",
-                "model": "iPhone 15 Pro",
-                "deviceType": "Smartphone",
-                "storage": "128GB",
-                "color": "Titanium Blue",
-                "processor": "A17 Pro",
-                "screenSize": "6.1 inches",
-                "camera": "48MP Triple Camera",
-                "operatingSystem": "iOS 17",
-                "retailPrice": 999,
-                "manufacturerId": apple_id,
-                "currentOwnerId": apple_id,
-                "isOnBlockchain": True,
-                "manufacturingDate": datetime.now() - timedelta(days=30),
-                "registrationDate": datetime.now() - timedelta(days=29),
-                "batchNumber": "APL-2024-001",
-                "warrantyPeriod": "1 year",
-                "isAuthentic": True,
-                "blockchainTxHash": "0x1234567890abcdef1234567890abcdef12345678",
-                "createdAt": datetime.now()
-            },
-            {
-                "serialNumber": "SAMS-GAL-S24-256-2024-SM789012",
-                "brand": "Samsung",
-                "model": "Galaxy S24 Ultra",
-                "deviceType": "Smartphone", 
-                "storage": "256GB",
-                "color": "Phantom Black",
-                "processor": "Snapdragon 8 Gen 3",
-                "screenSize": "6.8 inches",
-                "camera": "200MP Quad Camera",
-                "operatingSystem": "Android 14",
-                "retailPrice": 1299,
-                "manufacturerId": samsung_id,
-                "currentOwnerId": samsung_id,
-                "isOnBlockchain": False,
-                "manufacturingDate": datetime.now() - timedelta(days=20),
-                "registrationDate": datetime.now() - timedelta(days=19),
-                "batchNumber": "SAM-2024-002",
-                "warrantyPeriod": "1 year",
-                "isAuthentic": True,
-                "createdAt": datetime.now()
-            },
-            # Add some blockchain verified devices
-            {
-                "serialNumber": "APPLE001",
-                "brand": "Apple",
-                "model": "iPhone 14",
-                "deviceType": "Smartphone",
-                "storage": "256GB",
-                "color": "Space Black",
-                "processor": "A16 Bionic",
-                "manufacturerId": apple_id,
-                "currentOwnerId": apple_id,
-                "isOnBlockchain": True,
-                "isAuthentic": True,
-                "createdAt": datetime.now()
-            },
-            {
-                "serialNumber": "NIKE001",
-                "brand": "Nike",
-                "model": "Air Jordan 1",
-                "deviceType": "Footwear",
-                "storage": "N/A",
-                "color": "Bred",
-                "manufacturerId": apple_id,  # Using apple_id as placeholder
-                "currentOwnerId": apple_id,
-                "isOnBlockchain": True,
-                "isAuthentic": True,
-                "createdAt": datetime.now()
-            },
-            {
-                "serialNumber": "GUCCI001",
-                "brand": "Gucci",
-                "model": "GG Marmont",
-                "deviceType": "Handbag",
-                "storage": "N/A",
-                "color": "Black",
-                "manufacturerId": apple_id,  # Using apple_id as placeholder
-                "currentOwnerId": apple_id,
-                "isOnBlockchain": True,
-                "isAuthentic": True,
-                "createdAt": datetime.now()
-            }
-        ]
+    #     # Sample devices
+    #     sample_devices = [
+    #         {
+    #             "serialNumber": "AAPL-IPH15-PRO-128-2024-C02XY1234",
+    #             "brand": "Apple",
+    #             "model": "iPhone 15 Pro",
+    #             "deviceType": "Smartphone",
+    #             "storage": "128GB",
+    #             "color": "Titanium Blue",
+    #             "processor": "A17 Pro",
+    #             "screenSize": "6.1 inches",
+    #             "camera": "48MP Triple Camera",
+    #             "operatingSystem": "iOS 17",
+    #             "retailPrice": 999,
+    #             "manufacturerId": apple_id,
+    #             "currentOwnerId": apple_id,
+    #             "isOnBlockchain": True,
+    #             "manufacturingDate": datetime.now() - timedelta(days=30),
+    #             "registrationDate": datetime.now() - timedelta(days=29),
+    #             "batchNumber": "APL-2024-001",
+    #             "warrantyPeriod": "1 year",
+    #             "isAuthentic": True,
+    #             "blockchainTxHash": "0x1234567890abcdef1234567890abcdef12345678",
+    #             "createdAt": datetime.now()
+    #         },
+    #         {
+    #             "serialNumber": "SAMS-GAL-S24-256-2024-SM789012",
+    #             "brand": "Samsung",
+    #             "model": "Galaxy S24 Ultra",
+    #             "deviceType": "Smartphone", 
+    #             "storage": "256GB",
+    #             "color": "Phantom Black",
+    #             "processor": "Snapdragon 8 Gen 3",
+    #             "screenSize": "6.8 inches",
+    #             "camera": "200MP Quad Camera",
+    #             "operatingSystem": "Android 14",
+    #             "retailPrice": 1299,
+    #             "manufacturerId": samsung_id,
+    #             "currentOwnerId": samsung_id,
+    #             "isOnBlockchain": False,
+    #             "manufacturingDate": datetime.now() - timedelta(days=20),
+    #             "registrationDate": datetime.now() - timedelta(days=19),
+    #             "batchNumber": "SAM-2024-002",
+    #             "warrantyPeriod": "1 year",
+    #             "isAuthentic": True,
+    #             "createdAt": datetime.now()
+    #         },
+    #         # Add some blockchain verified devices
+    #         {
+    #             "serialNumber": "APPLE001",
+    #             "brand": "Apple",
+    #             "model": "iPhone 14",
+    #             "deviceType": "Smartphone",
+    #             "storage": "256GB",
+    #             "color": "Space Black",
+    #             "processor": "A16 Bionic",
+    #             "manufacturerId": apple_id,
+    #             "currentOwnerId": apple_id,
+    #             "isOnBlockchain": True,
+    #             "isAuthentic": True,
+    #             "createdAt": datetime.now()
+    #         },
+    #         {
+    #             "serialNumber": "NIKE001",
+    #             "brand": "Nike",
+    #             "model": "Air Jordan 1",
+    #             "deviceType": "Footwear",
+    #             "storage": "N/A",
+    #             "color": "Bred",
+    #             "manufacturerId": apple_id,  # Using apple_id as placeholder
+    #             "currentOwnerId": apple_id,
+    #             "isOnBlockchain": True,
+    #             "isAuthentic": True,
+    #             "createdAt": datetime.now()
+    #         },
+    #         {
+    #             "serialNumber": "GUCCI001",
+    #             "brand": "Gucci",
+    #             "model": "GG Marmont",
+    #             "deviceType": "Handbag",
+    #             "storage": "N/A",
+    #             "color": "Black",
+    #             "manufacturerId": apple_id,  # Using apple_id as placeholder
+    #             "currentOwnerId": apple_id,
+    #             "isOnBlockchain": True,
+    #             "isAuthentic": True,
+    #             "createdAt": datetime.now()
+    #         }
+    #     ]
         
-        # Insert devices if not exists
-        inserted_count = 0
-        for device in sample_devices:
-            if not self.db.electronics.find_one({"serialNumber": device["serialNumber"]}):
-                self.db.electronics.insert_one(device)
-                inserted_count += 1
+    #     # Insert devices if not exists
+    #     inserted_count = 0
+    #     for device in sample_devices:
+    #         if not self.db.electronics.find_one({"serialNumber": device["serialNumber"]}):
+    #             self.db.electronics.insert_one(device)
+    #             inserted_count += 1
         
-        # Add some sample ownership history
-        sample_ownership = [
-            {
-                "serialNumber": "AAPL-IPH15-PRO-128-2024-C02XY1234",
-                "previousOwner": {
-                    "id": apple_id,
-                    "name": "Apple Inc",
-                    "type": "manufacturer"
-                },
-                "newOwner": {
-                    "id": apple_id,
-                    "name": "Apple Store",
-                    "type": "retailer"
-                },
-                "transferDate": datetime.now() - timedelta(days=15),
-                "transferReason": "Initial Sale",
-                "salePrice": 999,
-                "transferMethod": "retail_sale",
-                "invoiceNumber": "APL-2024-INV-001",
-                "createdAt": datetime.now()
-            }
-        ]
+    #     # Add some sample ownership history
+    #     sample_ownership = [
+    #         {
+    #             "serialNumber": "AAPL-IPH15-PRO-128-2024-C02XY1234",
+    #             "previousOwner": {
+    #                 "id": apple_id,
+    #                 "name": "Apple Inc",
+    #                 "type": "manufacturer"
+    #             },
+    #             "newOwner": {
+    #                 "id": apple_id,
+    #                 "name": "Apple Store",
+    #                 "type": "retailer"
+    #             },
+    #             "transferDate": datetime.now() - timedelta(days=15),
+    #             "transferReason": "Initial Sale",
+    #             "salePrice": 999,
+    #             "transferMethod": "retail_sale",
+    #             "invoiceNumber": "APL-2024-INV-001",
+    #             "createdAt": datetime.now()
+    #         }
+    #     ]
         
-        ownership_inserted = 0
-        for ownership in sample_ownership:
-            if not self.db.ownershipHistory.find_one({"serialNumber": ownership["serialNumber"]}):
-                self.db.ownershipHistory.insert_one(ownership)
-                ownership_inserted += 1
+    #     ownership_inserted = 0
+    #     for ownership in sample_ownership:
+    #         if not self.db.ownershipHistory.find_one({"serialNumber": ownership["serialNumber"]}):
+    #             self.db.ownershipHistory.insert_one(ownership)
+    #             ownership_inserted += 1
         
-        return {
-            "message": f"Sample data seeded successfully",
-            "manufacturers_inserted": inserted_manufacturers,
-            "devices_inserted": inserted_count,
-            "ownership_records_inserted": ownership_inserted,
-            "manufacturers_ready": True
-        }
+    #     return {
+    #         "message": f"Sample data seeded successfully",
+    #         "manufacturers_inserted": inserted_manufacturers,
+    #         "devices_inserted": inserted_count,
+    #         "ownership_records_inserted": ownership_inserted,
+    #         "manufacturers_ready": True
+    #     }
     
 #actual blockchain verification
 def generate_specification_hash(product_data):
@@ -1488,5 +2226,433 @@ def validate_ownership_transfer(data):
     sale_price = data.get("salePrice", 0)
     if sale_price and float(sale_price) < 0:
         raise ValidationError("Sale price cannot be negative")
-    
 
+def log_verification_attempt(db, log_data):
+    """Log a verification attempt"""
+    try:
+        # Ensure the collection exists
+        if 'verification_logs' not in db.list_collection_names():
+            db.create_collection('verification_logs')
+        
+        db.verification_logs.insert_one(log_data)
+        print(f"Verification attempt logged for {log_data.get('serial_number')}")
+    except Exception as e:
+        print(f"Verification logging failed: {e}")
+
+def get_registration_transaction(serial_number):
+    """
+    Get the registration transaction hash for a device
+    This should be stored when devices are registered on the blockchain
+    """
+    try:
+        db = get_db_connection()
+        if db is None:
+            return None
+            
+        # Look for the transaction hash in your products collection
+        product = db.products.find_one({"serial_number": serial_number})
+        
+        if product:
+            # Try different possible field names where tx hash might be stored
+            tx_hash = (product.get("transaction_hash") or 
+                      product.get("registration_tx_hash") or 
+                      product.get("blockchain_tx") or
+                      product.get("tx_hash"))
+            
+            if tx_hash:
+                return tx_hash
+            
+        # If not found in products collection, check if you have a separate transactions collection
+        if 'blockchain_transactions' in db.list_collection_names():
+            tx_record = db.blockchain_transactions.find_one({"serial_number": serial_number})
+            if tx_record:
+                return tx_record.get("transaction_hash")
+        
+        # If no real transaction hash found, you could return None or a placeholder
+        return None
+        
+    except Exception as e:
+        print(f"Error getting registration transaction: {e}")
+        return None
+
+
+# Alternative: Mock version for testing if you don't have real transaction hashes yet
+def get_registration_transaction_mock(serial_number):
+    """
+    Mock version that returns fake transaction hashes for testing
+    Replace this with get_registration_transaction when you have real data
+    """
+    # Generate a consistent fake hash based on serial number for testing
+    import hashlib
+    hash_input = f"tx_{serial_number}_sepolia".encode()
+    fake_hash = "0x" + hashlib.sha256(hash_input).hexdigest()
+    
+    # Only return fake hashes for known test serials
+    test_serials = ["ABCV-25-0607", "TEST-SERIAL-001"]
+    if serial_number in test_serials:
+        return fake_hash
+    return None
+
+
+# Update your database schema to store transaction hashes
+def store_registration_transaction(serial_number, tx_hash):
+    """
+    Store the registration transaction hash when a device is registered
+    Call this function when you register a device on the blockchain
+    """
+    try:
+        db = get_db_connection()
+        if db is None:
+            return False
+            
+        # Update the product record with the transaction hash
+        result = db.products.update_one(
+            {"serial_number": serial_number},
+            {
+                "$set": {
+                    "transaction_hash": tx_hash,
+                    "blockchain_verified": True,
+                    "blockchain_registered_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        # Optionally, also store in a separate transactions collection
+        db.blockchain_transactions.insert_one({
+            "serial_number": serial_number,
+            "transaction_hash": tx_hash,
+            "network": "sepolia",
+            "timestamp": datetime.now(timezone.utc),
+            "status": "confirmed"
+        })
+        
+        return result.modified_count > 0
+        
+    except Exception as e:
+        print(f"Error storing transaction hash: {e}")
+        return False
+    
+def verify_product_on_blockchain(serial_number):
+    """Verify product exists on blockchain"""
+    try:
+        # Get environment variables
+        contract_address = os.getenv('CONTRACT_ADDRESS')
+        rpc_url = os.getenv('BLOCKCHAIN_RPC_URL')
+        
+        if not contract_address:
+            print("CONTRACT_ADDRESS not configured")
+            return {"verified": False, "error": "Contract address not configured"}
+            
+        if not rpc_url:
+            print("BLOCKCHAIN_RPC_URL not configured")
+            return {"verified": False, "error": "Blockchain RPC URL not configured"}
+        
+        print(f"Connecting to blockchain at {rpc_url}")
+        print(f"Using contract address: {contract_address}")
+        
+        # Connect to blockchain
+        w3 = Web3(Web3.HTTPProvider(rpc_url))
+        
+        # Check connection
+        if not w3.is_connected():
+            print("Blockchain connection failed")
+            return {"verified": False, "error": "Unable to connect to blockchain"}
+        
+        print("Blockchain connection successful")
+        
+        # Create contract instance
+        try:
+            checksum_address = Web3.to_checksum_address(contract_address)
+            contract = w3.eth.contract(
+                address=checksum_address,
+                abi=contract_abi
+            )
+            print(f"Contract instance created for {checksum_address}")
+        except Exception as contract_error:
+            print(f"Contract creation failed: {contract_error}")
+            return {"verified": False, "error": f"Invalid contract address: {str(contract_error)}"}
+        
+        # Call contract function
+        try:
+            print(f"Calling verifyDevice for serial: {serial_number}")
+            product_data = contract.functions.verifyDevice(serial_number).call()
+            print(f"Contract response: {product_data}")
+            
+            # Unpack the response tuple
+            # Format: (exists, isAuthentic, brand, model, deviceType, manufacturerName, currentOwner)
+            if len(product_data) >= 7:
+                exists, is_authentic, brand, model, device_type, manufacturer_name, current_owner = product_data[:7]
+                
+                if exists and is_authentic:
+                    # Try to get the registration transaction hash from your database
+                    # You should store this when devices are registered
+                    registration_tx = get_registration_transaction(serial_number)  # Implement this function
+                    
+                    return {
+                        "verified": True,
+                        "transaction_hash": registration_tx,  # Add this field for the main response
+                        "blockchain_data": {
+                            "exists": exists,
+                            "isAuthentic": is_authentic,
+                            "brand": brand,
+                            "model": model,
+                            "deviceType": device_type,
+                            "manufacturerName": manufacturer_name,
+                            "currentOwner": current_owner
+                        },
+                        "contract_address": contract_address,
+                        "network": "sepolia",
+                        "proof": {
+                            "transaction_hash": registration_tx,
+                            "contract_address": contract_address,
+                            "network": "sepolia",
+                            "explorer_links": {
+                                "contract": f"https://sepolia.etherscan.io/address/{contract_address}",
+                                "transaction": f"https://sepolia.etherscan.io/tx/{registration_tx}" if registration_tx else None
+                            }
+                        }
+                    }
+                else:
+                    return {
+                        "verified": False,
+                        "error": f"Product not found or not authentic on blockchain. Exists: {exists}, Authentic: {is_authentic}"
+                    }
+            else:
+                return {
+                    "verified": False,
+                    "error": f"Unexpected contract response format: {product_data}"
+                }
+                
+        except Exception as contract_error:
+            print(f"Contract call failed: {contract_error}")
+            return {"verified": False, "error": f"Contract call failed: {str(contract_error)}"}
+            
+    except Exception as e:
+        print(f"Blockchain verification error: {e}")
+        return {"verified": False, "error": f"Blockchain verification failed: {str(e)}"}
+
+
+
+def get_device_details(serial_number):
+    """Get detailed device information from blockchain"""
+    try:
+        w3 = Web3(Web3.HTTPProvider(RPC_URL))
+        contract = w3.eth.contract(
+            address=Web3.to_checksum_address(contract_address), 
+            abi=contract_abi
+        )
+        
+        # Call getDeviceDetails function
+        result = contract.functions.getDeviceDetails(serial_number).call()
+        
+        # result returns: (brand, model, deviceType, storageData, color, manufacturerName, currentOwner, manufacturingDate)
+        brand, model, device_type, storage_data, color, manufacturer_name, current_owner, manufacturing_date = result
+        
+        return {
+            "success": True,
+             "data": {
+                "brand": brand,
+                "model": model,
+                "deviceType": device_type,
+                "storageData": storage_data,
+                "color": color,
+                "manufacturerName": manufacturer_name,
+                "currentOwner": current_owner,
+                "manufacturingDate": manufacturing_date
+            }
+        }
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    
+def get_ownership_history(serial_number):
+    """Get ownership history from blockchain"""
+    try:
+        w3 = Web3(Web3.HTTPProvider(RPC_URL))
+        contract = w3.eth.contract(
+            address=Web3.to_checksum_address(contract_address), 
+            abi=contract_abi
+        )
+        
+        # Call getOwnershipHistory function
+        result = contract.functions.getOwnershipHistory(serial_number).call()
+        
+        # result returns: (previousOwners, newOwners, transferDates, transferReasons, salePrices)
+        previous_owners, new_owners, transfer_dates, transfer_reasons, sale_prices = result
+        
+        history = []
+        for i in range(len(previous_owners)):
+             history.append({
+                "previousOwner": previous_owners[i],
+                "newOwner": new_owners[i],
+                "transferDate": transfer_dates[i],
+                "transferReason": transfer_reasons[i],
+                "salePrice": sale_prices[i]
+            })
+        
+        return {"success": True, "history": history}
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+# Helper functions for profile data
+
+def get_primary_email(user):
+    """Get user's primary email"""
+    emails = user.get('emails', [])
+    if not emails:
+        return user.get('email')  # fallback to single email field
+    
+    # Find primary email
+    for email in emails:
+        if isinstance(email, dict) and email.get('is_primary'):
+            return email.get('email')
+    
+    # Return first email if no primary found
+    if isinstance(emails[0], dict):
+        return emails[0].get('email')
+    return emails[0]
+
+
+def get_primary_wallet(user):
+    """Get user's primary wallet address"""
+    return user.get('primary_wallet') or user.get('wallet_address')
+
+
+def get_verified_wallets(user):
+    """Get list of verified wallet addresses"""
+    wallet_addresses = user.get('wallet_addresses', [])
+    verified_wallets = []
+    
+    for wallet in wallet_addresses:
+        if isinstance(wallet, dict) and wallet.get('is_verified'):
+            verified_wallets.append(wallet.get('address'))
+    
+    return verified_wallets
+
+
+def get_current_company_name(user):
+    """Get user's current company name"""
+    return user.get('current_company_name') or user.get('company_name')
+
+
+def get_manufacturer_product_count(user_id):
+    """Get total number of products registered by manufacturer"""
+    try:
+        db = get_db_connection()
+        return db.products.count_documents({"manufacturer_id": user_id})
+    except:
+        return 0
+
+
+def get_manufacturer_sales_count(user_id):
+    """Get total number of sales/transfers by manufacturer"""
+    try:
+        db = get_db_connection()
+        return db.transactions.count_documents({
+            "from_user_id": user_id,
+            "transaction_type": "sale"
+        })
+    except:
+        return 0
+    
+def get_customer_purchase_count(user_id):
+    """Get total number of purchases by customer"""
+    try:
+        db = get_db_connection()
+        return db.transactions.count_documents({
+            "to_user_id": user_id,
+            "transaction_type": "sale"
+        })
+    except:
+        return 0
+
+
+def get_customer_owned_products_count(user_id):
+    """Get total number of products owned by customer"""
+    try:
+        db = get_db_connection()
+        return db.products.count_documents({"current_owner_id": user_id})
+    except:
+        return 0
+
+
+def get_customer_last_purchase_date(user_id):
+    """Get customer's last purchase date"""
+    try:
+        db = get_db_connection()
+        last_purchase = db.transactions.find_one(
+            {"to_user_id": user_id, "transaction_type": "sale"},
+            sort=[("created_at", -1)]
+        )
+        return last_purchase.get('created_at') if last_purchase else None
+    except:
+        return None
+
+
+def blacklist_token(token):
+    """Add token to blacklist (implement based on your token strategy)"""
+    try:
+        db = get_db_connection()
+        db.blacklisted_tokens.insert_one({
+            "token": token,
+            "blacklisted_at": datetime.now(timezone.utc)
+        })
+        print(f"Token blacklisted: {token[:20]}...")
+    except Exception as e:
+        print(f"Failed to blacklist token: {e}")
+
+def register_device_blockchain(serial_number, device_data):
+    """
+    Actually register a device on the blockchain
+    Returns transaction hash if successful
+    """
+    try:
+        contract_address = os.getenv('CONTRACT_ADDRESS')
+        rpc_url = os.getenv('BLOCKCHAIN_RPC_URL')
+        private_key = os.getenv('PRIVATE_KEY')  # For signing transactions
+        
+        w3 = Web3(Web3.HTTPProvider(rpc_url))
+        
+        if not w3.is_connected():
+            return {"success": False, "error": "Blockchain connection failed"}
+        
+        # Create contract instance
+        contract = w3.eth.contract(
+            address=Web3.to_checksum_address(contract_address),
+            abi=contract_abi
+        )
+        
+        # Get account from private key
+        account = w3.eth.account.from_key(private_key)
+        
+        # Build transaction
+        transaction = contract.functions.registerDevice(
+            serial_number,
+            device_data.get('brand', ''),
+            device_data.get('model', ''),
+            device_data.get('device_type', ''),
+            device_data.get('manufacturer_name', '')
+        ).build_transaction({
+            'from': account.address,
+            'nonce': w3.eth.get_transaction_count(account.address),
+            'gas': 300000,
+            'gasPrice': w3.to_wei('20', 'gwei')
+        })
+        
+        # Sign and send transaction
+        signed_txn = w3.eth.account.sign_transaction(transaction, private_key)
+        tx_hash = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+        
+        # Wait for confirmation (optional)
+        receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
+        
+        return {
+            "success": True,
+            "transaction_hash": receipt.transactionHash.hex(),
+            "block_number": receipt.blockNumber,
+            "gas_used": receipt.gasUsed
+        }
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}

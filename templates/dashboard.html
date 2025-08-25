@@ -27,13 +27,13 @@
                 </div>
                 <div class="dropdown-toggle" id="profile-dropdown">
                     <div class="user-info">
-                        <p id="user-email" class="user-email"></p>
-                        <p id="company-name" class="company-name"></p>
-                        <span id="wallet-address" class="wallet-address"></span>
-                        <p id="verification-status" class="verification-status"></p>
+                        <p id="user-email" class="user-email">Loading...</p>
+                        <p id="company-name" class="company-name">Loading...</p>
+                        <span id="wallet-address" class="wallet-address">Loading...</span>
+                        <p id="verification-status" class="verification-status">Loading...</p>
                     </div>
                     <hr class="dropdown-divider">
-                    <a class="nav-link" onclick="viewProfile()">View Profile</a>
+                    <!-- <a class="nav-link" onclick="viewProfile()">View Profile</a> -->
                     <a href="/edit-profile" class="nav-link" onclick="editProfile()">Edit Profile</a>
                     <a href="#" class="nav-link" onclick="logout()">Logout</a>
                 </div>
@@ -53,19 +53,19 @@
             <!-- Dashboard Stats -->
             <div id="dashboard-stats" class="dashboard-stats">
                 <div class="stat-card">
-                    <div class="stat-number" id="total-products">0</div>
+                    <div class="stat-number" id="total-products">Loading...</div>
                     <div class="stat-label">Total Products</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" id="blockchain-products">0</div>
+                    <div class="stat-number" id="blockchain-products">Loading...</div>
                     <div class="stat-label">On Blockchain</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" id="pending-products">0</div>
+                    <div class="stat-number" id="pending-products">Loading...</div>
                     <div class="stat-label">Pending Registration</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" id="total-verifications">0</div>
+                    <div class="stat-number" id="total-verifications">Loading...</div>
                     <div class="stat-label">Verifications</div>
                 </div>
             </div>
@@ -817,48 +817,12 @@ async function checkWalletConnection() {
     }
 }
 
-function toggleDropdown() {
-    const dropdown = document.getElementById('profile-dropdown');
-    if (dropdown) dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-}
-
-// Load user profile from localStorage
-function loadUserProfile() {
-    const userString = localStorage.getItem('user');
-    let user;
-    try {
-        user = JSON.parse(userString);
-    } catch (error) {
-        console.error('Error parsing user data:', error);
-        window.location.href = '/login';
-        return;
-    }
-
-    const userEmail = document.getElementById('user-email');
-    const profileLetter = document.querySelector('.profile-letter');
-    const verificationStatus = document.getElementById('verification-status');
-    const walletAddress = document.getElementById('wallet-address');
-    const companyName = document.getElementById('company-name');
-
-    if (userEmail) userEmail.textContent = user.primary_email;
-    if (profileLetter) profileLetter.textContent = user.primary_email.charAt(0).toUpperCase();
-    if (companyName) companyName.textContent = user.current_company_name || '';
-    if (walletAddress) walletAddress.textContent = user.primary_wallet;
-    if (verificationStatus) {
-        verificationStatus.textContent = user.verification_status === 'verified' ? 'Verified' : 'Pending';
-        verificationStatus.style.color = user.verification_status === 'verified' ? '#10b981' : '#f59e0b';
-        verificationStatus.style.backgroundColor = user.verification_status === 'verified' ? '#f0fdf4' : '#fefcbf';
-        verificationStatus.style.padding = '0.25rem 0.5rem'; 
-        verificationStatus.style.borderRadius = '0.25rem'; 
-        verificationStatus.style.fontSize = '0.875rem'; 
-    }
-}
 // View profile modal
-function viewProfile() {
-    const user = JSON.parse(localStorage.getItem('user'));
-    if (user) showProfileModal(user);
-    toggleDropdown();
-}
+// function viewProfile() {
+//     const user = JSON.parse(localStorage.getItem('user'));
+//     if (user) showProfileModal(user);
+//     toggleDropdown();
+// }
 
 function editProfile() {
     window.location.href = '/edit-profile';
@@ -893,13 +857,6 @@ function closeProfileModal() {
     if (modal) modal.remove();
 }
 
-// Logout function
-function logout() {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
-    toggleDropdown();
-}
 
 // Generate random serial number
 function generateSerialNumber() {
@@ -971,6 +928,7 @@ async function handleProductSubmit(event) {
 
   // Load manufacturer's products
         async function loadManufacturerProducts() {
+            loading.style.display = "block";
             try {
                 const response = await axios.get(`/manufacturer/products?_t=${Date.now()}`, {
                 headers: {
@@ -979,10 +937,13 @@ async function handleProductSubmit(event) {
             });
                 if (response && response.data && response.data.products) {
                     displayProducts(response.data.products);
+
                 } else {
                     document.getElementById('manufacturer-products').innerHTML = 
                         '<div class="error">No Products Available</div>';
                 }
+                loading.style.display = "none";
+
                 
             } catch (error) {
                 console.error('Error loading products:', error);
@@ -1010,7 +971,7 @@ function connectWallet() {
 }
 
         
-function refreshDashboard() {
+async function refreshDashboard() {
     showAlert('Refreshing dashboard data...', 'info');
     const token = localStorage.getItem('authToken');
     if (token) {
@@ -1023,7 +984,7 @@ function refreshDashboard() {
             document.getElementById('blockchain-products').textContent = blockchain_products || 0;
             document.getElementById('pending-products').textContent = pending_products || 0;
             document.getElementById('total-verifications').textContent = total_verifications || 0;
-            loadProducts(); // Load all products
+            loadUserProducts()
         })
         .catch(error => {
             console.error('Error refreshing dashboard:', error);
@@ -1036,10 +997,27 @@ function refreshDashboard() {
 document.addEventListener('DOMContentLoaded', function() {
     checkWalletConnection();
     const token = localStorage.getItem('authToken');
-    if (token) {
-        loadUserProfile();
-        refreshDashboard();
-        loadManufacturerProducts();
+    const userString = localStorage.getItem('user');
+    
+    if (token && userString) {
+        try {
+            const user = JSON.parse(userString);
+
+            if (user.role) {
+                loadUserProfile(user.role);
+                refreshDashboard();
+                loadManufacturerProducts();
+            } else {
+                console.error('User role not found');
+                // Handle missing role - maybe redirect to profile completion
+            }
+        } catch (error) {
+            console.error('Error parsing user data:', error);
+            // Handle invalid user data - maybe clear storage and redirect
+            localStorage.removeItem('user');
+            localStorage.removeItem('authToken');
+            window.location.href = '/login';
+        }
     } else {
         window.location.href = '/login';
     }
@@ -1248,12 +1226,22 @@ async function registerProductOnBlockchain(productData) {
         updateTransactionStatus('Blockchain confirmed! Updating database...');
         
         // STEP 4: Update backend with blockchain confirmation
+        const ownershipData = {
+            owner_address: manufacturerWallet,
+            owner_type: 'manufacturer',
+            owner_name: user.current_company_name || user.company_names?.[0] || 'Unknown',
+            transfer_date: new Date().toISOString(),
+            transfer_type: 'initial_registration',
+            transaction_hash: result.transactionHash,
+            notes: 'Initial product registration on blockchain'
+        };
         await axios.put(`/products/${productId}/blockchain-confirm`, {
             transactionHash: result.transactionHash,
             blockNumber: result.blockNumber,
             gasUsed: result.gasUsed,
             gasPrice: gasPrice,
-            registrationType: 'blockchain_confirmed'
+            registrationType: 'blockchain_confirmed',
+            ownershipData: ownershipData
         }, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -1283,7 +1271,7 @@ async function registerProductOnBlockchain(productData) {
             closeTransactionModal();
             hideProductForm();
             refreshDashboard();
-        }, 3000);
+        }, 15000);
         
     } catch (error) {
         console.error('Registration error:', error);
@@ -1409,6 +1397,8 @@ async function generateSpecHash(productData) {
 
 
 async function loadUserProducts() {
+    // loadingState = document.querySelector('.loading')
+    // loadingState.style.display = "block"
     try {
         const response = await axios.get('/manufacturer/products', {
             headers: {
@@ -1464,7 +1454,6 @@ async function filterProducts() {
 
 // Transfer ownership functions
 function showTransferForm() {
-    filterManufacturerProducts(); 
     const form = document.getElementById('transfer-form');
     form.style.display = 'block';
     form.scrollIntoView({ behavior: 'smooth' });
@@ -1564,11 +1553,11 @@ async function transferProductOwnership(transferData) {
         showAlert(`Ownership of ${transferData.serialNumber} successfully transferred!`, 'success');
         
         document.getElementById('ownership-transfer-form').reset();
+        refreshDashboard();
         setTimeout(() => {
             closeTransactionModal();
             hideTransferForm();
-            refreshDashboard();
-        }, 3000);
+        }, 15000);
         
     } catch (error) {
         console.error('Transfer error:', error);
@@ -1623,9 +1612,9 @@ async function transferProductOwnership(transferData) {
             
             const productsHTML = products.map(product => `
                 <div class="product-card">
-                    <div class="product-image">
-                      <div class="placeholder-image">📦</div>
-                    </div>
+                    // <div class="product-image">
+                    // </div>
+                    <div class="placeholder-image">📦</div>
                     <div class="product-info">
                         <h4>${product.name}</h4>
                         <p class="product-serial">SN: ${product.serial_number}</p>

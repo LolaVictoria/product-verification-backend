@@ -20,6 +20,23 @@
                 <a href="/login" class="nav-link">Login</a>
                 <a href="/signup" class="nav-link">Sign Up</a>
             </div>
+            <div class="nav-user">
+                <div class="profile-icon" onclick="toggleDropdown()">
+                    <span id="profile-letter" class="profile-letter"></span>
+                </div>
+                <div class="dropdown-toggle" id="profile-dropdown">
+                    <div class="user-info">
+                        <p id="user-email" class="user-email">Loading...</p>
+                        <p id="company-name" class="company-name">Loading...</p>
+                        <span id="wallet-address" class="wallet-address">Loading...</span>
+                        <p id="verification-status" class="verification-status">Loading...</p>
+                    </div>
+                    <hr class="dropdown-divider">
+                    <a class="nav-link" onclick="viewProfile()">View Profile</a>
+                    <a class="nav-link" onclick="editProfile()">Edit Profile</a>
+                    <a href="#" class="nav-link" onclick="logout()">Logout</a>
+                </div>
+            </div>
             <div class="hamburger" id="hamburger">
                 <span class="bar"></span>
                 <span class="bar"></span>
@@ -114,6 +131,8 @@
             </div>
         </div>
     </footer>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
     <script src="/static/js/main.js"></script>
 </body>
 </html>

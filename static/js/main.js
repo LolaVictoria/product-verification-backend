@@ -72,8 +72,8 @@ class CacheManager {
         if (!lastUpdateTimes) {
             try {
                 const response = await axios.get('/manufacturer/last-update-times?types=' + dataType, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                    s: { 'Authorization': `Bearer ${token}` }
+                });header
                 lastUpdateTimes = response.data.last_updates;
                 localStorage.setItem('lastUpdateTimes', JSON.stringify({
                     data: lastUpdateTimes,
@@ -220,14 +220,15 @@ const cacheManager = new CacheManager();
 
 
 function logout() {
+    window.location.href = '/';
     localStorage.removeItem('authToken');
     AppState.isAuthenticated = false;
     AppState.user = null;
-    window.location.href = '/';
     localStorage.removeItem('user');
     cacheManager.clearAllCaches();;
 }
 
+        
 // Set axios default authorization header
 function setAuthHeader() {
     const token = localStorage.getItem('authToken');
@@ -249,7 +250,222 @@ function initializeNavigation() {
     }
 }
 
+document.addEventListener('DOMContentLoaded', function() {
+            initializeProfile();
+        });
 
+         async function initializeProfile() {
+            const token = localStorage.getItem('authToken');
+            const userRole = localStorage.getItem('user_role');
+            
+            
+            try {
+                await loadUserProfile(userRole);
+            } catch (error) {
+                console.error('Failed to load profile:', error);
+                handleProfileError();
+            }
+}
+
+async function loadUserProfile(role) {
+    try {
+        // First, try to get user data from localStorage
+        const storedUser = localStorage.getItem('user');
+        
+        if (storedUser) {
+            try {
+                const user = JSON.parse(storedUser);
+                currentUserProfile = user;
+                await updateProfileUI(user);
+                return; // Exit early if localStorage data is available
+            } catch (parseError) {
+                console.warn('Failed to parse stored user data, falling back to API:', parseError);
+                // Continue to API call if parsing fails
+            }
+        }
+        
+        // Fallback: Make API call if no localStorage data or parsing failed
+        console.log('No valid localStorage data, fetching from API...');
+        const endpoint = role === 'manufacturer' ? '/manufacturer/profile' : '/customer/profile';
+        const token = localStorage.getItem('authToken');
+        
+        const response = await axios.get(endpoint, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        // Fixed: Use response.data for Axios
+        if (response.data.status === 'success') {
+            currentUserProfile = response.data.user;
+            
+            // Store the fresh data in localStorage for future use
+            localStorage.setItem('user', JSON.stringify(response.data.user));
+            
+            await updateProfileUI(response.data.user);
+        } else {
+            throw new Error(response.data.error || 'Failed to load profile');
+        }
+        
+    } catch (error) {
+        console.error('Profile loading error:', error);
+        handleProfileError();
+    }
+}
+
+async function updateProfileUI(user) {
+    // Update profile letter
+    if (!user) {
+        const navUser = document.querySelector('.nav-user');
+        if (navUser) navUser.style.display = "none";
+        return;
+    }
+    
+    const profileLetter = document.getElementById('profile-letter');
+    if (profileLetter) {
+        const name = user.name || user.primary_email;
+        profileLetter.textContent = name.charAt(0).toUpperCase();
+    }
+    
+    const userEmail = document.getElementById('user-email');
+    if (userEmail) userEmail.textContent = user.primary_email || 'No email';
+    
+    // Handle role-specific data
+    if (user.role === 'manufacturer') {
+        const companyName = document.getElementById('company-name');
+        if (companyName) companyName.textContent = user.current_company_name || 'No company';
+        
+        const walletAddress = document.getElementById('wallet-address');
+        if (walletAddress) walletAddress.textContent = 
+            user.primary_wallet ? formatWalletAddress(user.primary_wallet) : 'No wallet';
+        
+        // Update verification status
+        const statusElement = document.getElementById('verification-status');
+        if (statusElement) {
+            const verificationStatus = user.verification_status || 'pending';
+            statusElement.textContent = verificationStatus.charAt(0).toUpperCase() + verificationStatus.slice(1);
+            statusElement.className = `verification-status ${verificationStatus}`;
+            statusElement.textContent = user.verification_status === 'verified' ? 'Verified' : 'Pending';
+            statusElement.style.color = user.verification_status === 'verified' ? '#10b981' : '#f59e0b';
+            statusElement.style.backgroundColor = user.verification_status === 'verified' ? '#f0fdf4' : '#fefcbf';
+            statusElement.style.padding = '0.25rem 0.5rem'; 
+            statusElement.style.borderRadius = '0.25rem'; 
+            statusElement.style.fontSize = '0.875rem'; 
+           
+        }
+    } else if (user.role === 'customer') {
+        const companyName = document.getElementById('company-name');
+        if (companyName) companyName.textContent = user.full_name || user.name || 'Customer';
+        
+        const walletAddress = document.getElementById('wallet-address');
+        if (walletAddress) walletAddress.textContent = 
+            user.wallet_address ? formatWalletAddress(user.wallet_address) : 'No wallet';
+        
+        // Update customer status
+        const statusElement = document.getElementById('verification-status');
+        if (statusElement) {
+            statusElement.textContent = 'Customer';
+            statusElement.className = 'verification-status verified';
+        }
+    }
+}
+
+         function formatWalletAddress(address) {
+            if (!address) return 'No wallet';
+            if (address.length > 20) {
+                return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+            }
+            return address;
+        }
+
+        // Toggle dropdown
+        function toggleDropdown() {
+            const dropdown = document.getElementById('profile-dropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const profileIcon = document.querySelector('.profile-icon');
+            const dropdown = document.getElementById('profile-dropdown');
+            
+            if (!profileIcon.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+// Enhanced logout function with complete local storage clearing
+        async function logout() {
+            try {
+                // Optional: Call logout API endpoint
+                const token = localStorage.getItem('auth_token');
+                if (token) {
+                    try {
+                        await fetch('/api/auth/logout', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                    } catch (error) {
+                        console.warn('Logout API call failed:', error);
+                    }
+                }
+
+                // Clear ALL localStorage items
+                localStorage.clear();
+                
+                // Alternatively, remove specific items if you want to preserve some data:
+                /*
+                const itemsToRemove = [
+                    'auth_token',
+                    'refresh_token', 
+                    'user_role',
+                    'user_id',
+                    'user_email',
+                    'company_name',
+                    'wallet_address',
+                    'profile_data',
+                    'session_data'
+                ];
+                itemsToRemove.forEach(item => localStorage.removeItem(item));
+                */
+
+                // Clear session storage as well
+                sessionStorage.clear();
+
+                // Reset current profile
+                currentUserProfile = null;
+
+                // Show logout success message
+                alert('Successfully logged out!');
+
+                // Redirect to login page
+                window.location.href = '/login';
+
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('Logout failed. Please try again.');
+            }
+        }
+
+        
+
+        // Handle profile loading errors
+        function handleProfileError() {
+            document.getElementById('user-email').textContent = 'Error loading profile';
+            document.getElementById('company-name').textContent = 'Please refresh';
+            document.getElementById('wallet-address').textContent = '';
+            document.getElementById('verification-status').textContent = '';
+        }
+// Handle unauthenticated users
+        function handleUnauthenticatedUser() {
+            document.getElementById('user-email').textContent = 'Not logged in';
+            document.getElementById('company-name').textContent = 'Please log in';
+            document.getElementById('wallet-address').textContent = '';
+            document.getElementById('verification-status').textContent = '';
+        }
+// function clearProfile() {
+//     handleUnauthenticatedUser();
+// }
 
 function initializeApp() {
     // Check if user is logged in
@@ -289,175 +505,6 @@ function createProductCard(product) {
             </div>
         </div>
     `;
-}
-
-// Enhanced verification system
-function initiateVerification(serialNumber) {
-    if (!AppState.isAuthenticated) {
-        showAlert('Please log in to verify products', 'warning');
-        setTimeout(() => {
-            window.location.href = '/login';
-        }, 2000);
-        return;
-    }
-    
-    verifyProductWithOverlay(serialNumber);
-}
-
-async function verifyProductWithOverlay(serialNumber) {
-    const overlay = createVerificationOverlay();
-    document.body.appendChild(overlay);
-    overlay.style.display = 'flex';
-    
-    const modal = overlay.querySelector('.verification-modal');
-    
-    // Show loading state
-    modal.innerHTML = `
-        <button class="modal-close" onclick="closeVerificationOverlay()">&times;</button>
-        <div class="verification-status">
-            <div class="status-icon status-loading">⏳</div>
-            <h3>Verifying Product...</h3>
-            <p>Checking authenticity on blockchain and database</p>
-        </div>
-    `;
-    
-    try {
-        const token = localStorage.getItem('authToken');
-        const response = await axios.get(`/verify/${serialNumber}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        const result = response.data;
-        displayVerificationResult(modal, result, serialNumber);
-        
-    } catch (error) {
-        console.error('Verification error:', error);
-        
-        let errorMessage = 'Verification failed';
-        let errorDetails = 'An unexpected error occurred';
-        
-        if (error.response) {
-            errorMessage = error.response.data.message || 'Verification failed';
-            errorDetails = error.response.data.error || 'Please try again later';
-        }
-        
-        modal.innerHTML = `
-            <button class="modal-close" onclick="closeVerificationOverlay()">&times;</button>
-            <div class="verification-status">
-                <div class="status-icon status-failed">❌</div>
-                <h3>${errorMessage}</h3>
-                <p>${errorDetails}</p>
-            </div>
-        `;
-    }
-}
-
-function displayVerificationResult(modal, result, serialNumber) {
-    const product = result.product;
-    const isVerified = result.verified && result.status !== 'blockchain_not_found';
-    
-    let statusIcon, statusTitle, statusMessage;
-    
-    switch (result.status) {
-        case 'blockchain_verified':
-            statusIcon = '<div class="status-icon status-verified">✅</div>';
-            statusTitle = 'Blockchain Verified';
-            statusMessage = 'This product is authentic and verified on the blockchain';
-            break;
-        case 'database_verified':
-            statusIcon = '<div class="status-icon status-verified">✅</div>';
-            statusTitle = 'Database Verified';
-            statusMessage = 'This product is verified in our database';
-            break;
-        case 'blockchain_not_found':
-            statusIcon = '<div class="status-icon status-failed">⚠️</div>';
-            statusTitle = 'Blockchain Verification Failed';
-            statusMessage = 'Product found in database but not on blockchain';
-            break;
-        case 'not_found':
-            statusIcon = '<div class="status-icon status-failed">❌</div>';
-            statusTitle = 'Product Not Found';
-            statusMessage = 'This product is not in our verification system';
-            break;
-        default:
-            statusIcon = '<div class="status-icon status-failed">❌</div>';
-            statusTitle = 'Verification Failed';
-            statusMessage = result.message || 'Unable to verify product authenticity';
-    }
-    
-    let modalContent = `
-        <button class="modal-close" onclick="closeVerificationOverlay()">&times;</button>
-        <div class="verification-status">
-            ${statusIcon}
-            <h3>${statusTitle}</h3>
-            <p>${statusMessage}</p>
-        </div>
-    `;
-    
-    if (product) {
-        modalContent += `
-            <div class="verification-details">
-                <h4>Product Details</h4>
-                <div class="detail-row">
-                    <span class="detail-label">Name:</span>
-                    <span class="detail-value">${product.name}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Serial Number:</span>
-                    <span class="detail-value">${product.serial_number}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Category:</span>
-                    <span class="detail-value">${product.category}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Manufacturer:</span>
-                    <span class="detail-value">${product.manufacturer}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Price:</span>
-                    <span class="detail-value">$${product.price.toFixed(2)}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Registered:</span>
-                    <span class="detail-value">${new Date(product.registered_at).toLocaleDateString()}</span>
-                </div>
-            </div>
-        `;
-        
-        // Add blockchain details if available
-        if (result.blockchain_details) {
-            modalContent += `
-                <div class="blockchain-info">
-                    <h4>🔗 Blockchain Information</h4>
-                    <div class="blockchain-details">
-                        <p><strong>Status:</strong> ${result.blockchain_status}</p>
-                        <p><strong>Block Number:</strong> ${result.blockchain_details.block_number || 'N/A'}</p>
-                        <p><strong>Transaction:</strong> ${result.blockchain_details.transaction_hash ? result.blockchain_details.transaction_hash.substring(0, 20) + '...' : 'N/A'}</p>
-                        <p><strong>Blockchain Timestamp:</strong> ${result.blockchain_details.timestamp ? new Date(result.blockchain_details.timestamp * 1000).toLocaleString() : 'N/A'}</p>
-                    </div>
-                </div>
-            `;
-        }
-    }
-    
-    modal.innerHTML = modalContent;
-}
-
-function createVerificationOverlay() {
-    const overlay = document.createElement('div');
-    overlay.className = 'verification-overlay';
-    overlay.innerHTML = '<div class="verification-modal"></div>';
-    return overlay;
-}
-
-function closeVerificationOverlay() {
-    const overlay = document.querySelector('.verification-overlay');
-    if (overlay) {
-        overlay.remove();
-    }
 }
 
 // Page-specific functionality
@@ -508,7 +555,6 @@ function initializeSignupForm() {
         });
     }
 }
-
 
 // Verify page functionality
 function initializeVerifyPage() {
@@ -844,7 +890,7 @@ async function handleManualVerification(event) {
         return;
     }
     
-    verifyProductWithOverlay(serialNumber);
+    // verifyProductWithOverlay(serialNumber);
 }
 
 // Utility functions

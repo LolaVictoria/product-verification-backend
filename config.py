@@ -21,7 +21,7 @@ class Config:
     ACCOUNT_ADDRESS = os.getenv('ACCOUNT_ADDRESS')
     PRIVATE_KEY = os.getenv('PRIVATE_KEY')
     CHAIN_ID = int(os.getenv('CHAIN_ID'))
-    
+    BASE_URL = os.getenv('BASE_URL')
     # API Keys
     ETHERSCAN_API_KEY = os.getenv('ETHERSCAN_API_KEY')
     
