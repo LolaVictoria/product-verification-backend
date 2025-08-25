@@ -60,14 +60,14 @@
                     <div class="stat-number" id="blockchain-products">Loading...</div>
                     <div class="stat-label">On Blockchain</div>
                 </div>
-                <div class="stat-card">
+                <!-- <div class="stat-card">
                     <div class="stat-number" id="pending-products">Loading...</div>
                     <div class="stat-label">Pending Registration</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number" id="total-verifications">Loading...</div>
                     <div class="stat-label">Verifications</div>
-                </div>
+                </div> -->
             </div>
 
             <!-- Blockchain Connection Status -->
@@ -97,9 +97,9 @@
                 <label for="serial_number">Serial Number *</label>
                 <input type="text" id="serial_number" name="serial_number" required 
                        placeholder="Enter unique serial number">
-                <button type="button" class="btn btn-small" onclick="generateSerialNumber()" style="margin-top: 0.5rem;">
+                <!-- <button type="button" class="btn btn-small" onclick="generateSerialNumber()" style="margin-top: 0.5rem;">
                     Generate Random Serial
-                </button>
+                </button> -->
             </div>
             
             <div class="form-group">
@@ -238,7 +238,7 @@
                     </select>
                 </div>
                 <div id="manufacturer-products" class="products-grid">
-                    <div class="loading">Loading your products...</div>
+                    <div class="loading"></div>
                 </div>
             </div>
         </div>
@@ -860,8 +860,15 @@ function closeProfileModal() {
 
 // Generate random serial number
 function generateSerialNumber() {
-    const serialNumber = 'SERIAL-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+    const prefix = 'TEST';
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const serialNumber = `${prefix}${timestamp}${random}`;
+    
     document.getElementById('serial_number').value = serialNumber;
+    
+    // Optional: Show confirmation
+    alert(`Generated serial: ${serialNumber}`);
 }
 
 // Show/hide product form
@@ -870,6 +877,213 @@ function showProductForm() {
     if (form) form.style.display = form.style.display === 'block' ? 'none' : 'block';
 }
 
+async function registerProductOnBlockchain(productData) {
+    const registerBtn = document.getElementById('register-btn');
+    const btnText = registerBtn.querySelector('.btn-text');
+    const btnSpinner = registerBtn.querySelector('.btn-spinner');
+    
+    let productId = null; 
+    try {
+        // Show loading state
+        registerBtn.disabled = true;
+        btnText.style.display = 'none';
+        btnSpinner.style.display = 'inline';
+        
+        // Get user data
+        const user = JSON.parse(localStorage.getItem('user'));
+        const manufacturerWallet = user.primary_wallet;
+        
+        // Generate specification hash
+        const specificationHash = await generateSpecHash(productData);
+        
+        showTransactionModal('Checking for duplicates...');
+        
+        // STEP 1: Check if product already exists on blockchain
+        try {
+            const existsOnBlockchain = await contract.methods.serialExists(productData.serialNumber).call();
+            if (existsOnBlockchain) {
+                throw new Error(`Product with serial number ${productData.serialNumber} already exists on blockchain`);
+            }
+        } catch (duplicateError) {
+            if (duplicateError.message.includes('already exists')) {
+                throw duplicateError;
+            }
+            // If it's just a contract call error, continue (maybe the function doesn't exist)
+            console.warn('Could not check blockchain duplicates:', duplicateError.message);
+        }
+        
+        updateTransactionStatus('Saving to database...');
+        
+        // STEP 2: Save to backend database first
+        const backendResponse = await axios.post('/manufacturer/register-product', {
+            serialNumber: productData.serialNumber,
+            brand: productData.brand,
+            model: productData.model,
+            deviceType: productData.deviceType,
+            storageData: productData.storageData,
+            color: productData.color,
+            batchNumber: productData.batchNumber,
+            manufacturerWallet: manufacturerWallet,
+            specificationHash: specificationHash,
+            registrationType: 'blockchain_pending'
+        }, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (backendResponse.data.status !== "success") {
+            throw new Error(backendResponse.data.error || backendResponse.data.message || 'Backend registration failed');
+        }
+        
+        productId = backendResponse.data.product_id;
+        updateTransactionStatus('Database saved! Registering on blockchain...');
+        
+        // STEP 3: Register on blockchain with correct parameters
+        const gasEstimate = await contract.methods.registerDevice(
+            productData.serialNumber,
+            productData.brand,
+            productData.model,
+            productData.deviceType,
+            productData.storageData || "N/A",
+            productData.color || "N/A",
+            productData.batchNumber || `BATCH-${Date.now()}`,
+            specificationHash
+        ).estimateGas({ from: userAccount });
+
+        const gasPrice = web3.utils.toWei('2', 'gwei');
+        const gasLimit = Math.floor(gasEstimate * 1.2);
+
+        updateTransactionStatus('Sending blockchain transaction...');
+
+        const result = await contract.methods.registerDevice(
+            productData.serialNumber,
+            productData.brand,
+            productData.model,
+            productData.deviceType,
+            productData.storageData || "N/A",
+            productData.color || "N/A",
+            productData.batchNumber || `BATCH-${Date.now()}`,
+            specificationHash
+        ).send({
+            from: userAccount,
+            gas: gasLimit,
+            gasPrice: gasPrice
+        });
+        
+        updateTransactionStatus('Blockchain confirmed! Updating database...');
+        
+        // STEP 4: Update backend with blockchain confirmation
+        const ownershipData = {
+            owner_address: manufacturerWallet,
+            owner_type: 'manufacturer',
+            owner_name: user.current_company_name || user.company_names?.[0] || 'Unknown',
+            transfer_date: new Date().toISOString(),
+            transfer_type: 'initial_registration',
+            transaction_hash: result.transactionHash,
+            notes: 'Initial product registration on blockchain'
+        };
+        await axios.put(`/products/${productId}/blockchain-confirm`, {
+            transactionHash: result.transactionHash,
+            blockNumber: result.blockNumber,
+            gasUsed: result.gasUsed,
+            gasPrice: gasPrice,
+            registrationType: 'blockchain_confirmed',
+            ownershipData: ownershipData
+        }, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        updateTransactionStatus(`
+            <div style="color: #10b981;">
+                <h4>Product Registered Successfully!</h4>
+                <p><strong>Serial:</strong> ${productData.serialNumber}</p>
+                <p><strong>Brand:</strong> ${productData.brand} ${productData.model}</p>
+                <p><strong>Transaction:</strong> 
+                    <a href="https://sepolia.etherscan.io/tx/${result.transactionHash}" target="_blank">
+                        View on Etherscan
+                    </a>
+                </p>
+                <p><strong>Gas Used:</strong> ${result.gasUsed.toLocaleString()}</p>
+            </div>
+        `);
+        
+        showAlert(`Product "${productData.brand} ${productData.model}" registered successfully!`, 'success');
+        
+        // Reset form and refresh data
+        document.getElementById('product-registration-form').reset();
+        setTimeout(() => {
+            closeTransactionModal();
+            hideProductForm();
+            refreshDashboard();
+        }, 15000);
+        
+    } catch (error) {
+        console.error('Registration error:', error);
+        
+        let errorMessage = 'Registration failed';
+        
+        if (error.code === 401) {
+            errorMessage = 'Transaction rejected by user';
+        } else if (error.message.includes('already exists')) {
+            errorMessage = error.message;
+        } else if (error.message.includes('insufficient funds')) {
+            errorMessage = 'Insufficient ETH for gas fees';
+        } else if (error.message.includes('execution reverted')) {
+            if (error.message.includes('Only authorized manufacturers')) {
+                errorMessage = 'Your wallet is not authorized as a manufacturer';
+            } else if (error.message.includes('Serial number already exists')) {
+                errorMessage = 'Product with this serial number already exists';
+            } else {
+                errorMessage = 'Smart contract rejected the transaction';
+            }
+        } else if (error.response) {
+            errorMessage = error.response.data.error || error.response.data.message || 'Backend error';
+        } else if (error.message.includes('Product registered successfully')) {
+            errorMessage = 'Registration completed but with warnings';
+            showAlert('Registration completed successfully!', 'success');
+        } else {
+            errorMessage = error.message || 'Unknown error occurred';
+        }
+        
+        if (!error.message.includes('Product registered successfully')) {
+            showAlert(errorMessage, 'error');
+        }
+        
+        updateTransactionStatus(`
+            <div style="color: ${error.message.includes('Product registered successfully') ? '#10b981' : '#ef4444'};">
+                <h4>${error.message.includes('Product registered successfully') ? 'Registration Complete!' : 'Registration Failed'}</h4>
+                <p>${errorMessage}</p>
+            </div>
+        `);
+        
+        if (productId && !error.message.includes('Product registered successfully')) {
+            try {
+                await axios.put(`/products/${productId}/blockchain-failed`, {
+                    error: error.message,
+                    registrationType: 'blockchain_failed'
+                }, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+            } catch (updateError) {
+                console.error('Failed to update backend with error status:', updateError);
+            }
+        }
+        
+    } finally {
+        registerBtn.disabled = false;
+        btnText.style.display = 'inline';
+        btnSpinner.style.display = 'none';
+    }
+}
+
+// 
 // Handle product registration form submit
 async function handleProductSubmit(event) {
     event.preventDefault();
@@ -928,7 +1142,8 @@ async function handleProductSubmit(event) {
 
   // Load manufacturer's products
         async function loadManufacturerProducts() {
-            loading.style.display = "block";
+            loading = document.querySelector('.loading')
+            loading.innerHTML = `<div class="spinner"></div>`
             try {
                 const response = await axios.get(`/manufacturer/products?_t=${Date.now()}`, {
                 headers: {
@@ -1128,213 +1343,7 @@ const formHtml = `
         }
 
         // Generate random serial number
-async function registerProductOnBlockchain(productData) {
-    const registerBtn = document.getElementById('register-btn');
-    const btnText = registerBtn.querySelector('.btn-text');
-    const btnSpinner = registerBtn.querySelector('.btn-spinner');
-    
-    let productId = null; 
-    try {
-        // Show loading state
-        registerBtn.disabled = true;
-        btnText.style.display = 'none';
-        btnSpinner.style.display = 'inline';
-        
-        // Get user data
-        const user = JSON.parse(localStorage.getItem('user'));
-        const manufacturerWallet = user.primary_wallet;
-        
-        // Generate specification hash
-        const specificationHash = await generateSpecHash(productData);
-        
-        showTransactionModal('Checking for duplicates...');
-        
-        // STEP 1: Check if product already exists on blockchain
-        try {
-            const existsOnBlockchain = await contract.methods.serialExists(productData.serialNumber).call();
-            if (existsOnBlockchain) {
-                throw new Error(`Product with serial number ${productData.serialNumber} already exists on blockchain`);
-            }
-        } catch (duplicateError) {
-            if (duplicateError.message.includes('already exists')) {
-                throw duplicateError;
-            }
-            // If it's just a contract call error, continue (maybe the function doesn't exist)
-            console.warn('Could not check blockchain duplicates:', duplicateError.message);
-        }
-        
-        updateTransactionStatus('Saving to database...');
-        
-        // STEP 2: Save to backend database first
-        const backendResponse = await axios.post('/manufacturer/register-product', {
-            serialNumber: productData.serialNumber,
-            brand: productData.brand,
-            model: productData.model,
-            deviceType: productData.deviceType,
-            storageData: productData.storageData,
-            color: productData.color,
-            batchNumber: productData.batchNumber,
-            manufacturerWallet: manufacturerWallet,
-            specificationHash: specificationHash,
-            registrationType: 'blockchain_pending'
-        }, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        if (backendResponse.data.status !== "success") {
-            throw new Error(backendResponse.data.error || backendResponse.data.message || 'Backend registration failed');
-        }
-        
-        productId = backendResponse.data.product_id;
-        updateTransactionStatus('Database saved! Registering on blockchain...');
-        
-        // STEP 3: Register on blockchain with correct parameters
-        const gasEstimate = await contract.methods.registerDevice(
-            productData.serialNumber,
-            productData.brand,
-            productData.model,
-            productData.deviceType,
-            productData.storageData || "N/A",
-            productData.color || "N/A",
-            productData.batchNumber || `BATCH-${Date.now()}`,
-            specificationHash
-        ).estimateGas({ from: userAccount });
-
-        const gasPrice = web3.utils.toWei('2', 'gwei');
-        const gasLimit = Math.floor(gasEstimate * 1.2);
-
-        updateTransactionStatus('Sending blockchain transaction...');
-
-        const result = await contract.methods.registerDevice(
-            productData.serialNumber,
-            productData.brand,
-            productData.model,
-            productData.deviceType,
-            productData.storageData || "N/A",
-            productData.color || "N/A",
-            productData.batchNumber || `BATCH-${Date.now()}`,
-            specificationHash
-        ).send({
-            from: userAccount,
-            gas: gasLimit,
-            gasPrice: gasPrice
-        });
-        
-        updateTransactionStatus('Blockchain confirmed! Updating database...');
-        
-        // STEP 4: Update backend with blockchain confirmation
-        const ownershipData = {
-            owner_address: manufacturerWallet,
-            owner_type: 'manufacturer',
-            owner_name: user.current_company_name || user.company_names?.[0] || 'Unknown',
-            transfer_date: new Date().toISOString(),
-            transfer_type: 'initial_registration',
-            transaction_hash: result.transactionHash,
-            notes: 'Initial product registration on blockchain'
-        };
-        await axios.put(`/products/${productId}/blockchain-confirm`, {
-            transactionHash: result.transactionHash,
-            blockNumber: result.blockNumber,
-            gasUsed: result.gasUsed,
-            gasPrice: gasPrice,
-            registrationType: 'blockchain_confirmed',
-            ownershipData: ownershipData
-        }, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        updateTransactionStatus(`
-            <div style="color: #10b981;">
-                <h4>Product Registered Successfully!</h4>
-                <p><strong>Serial:</strong> ${productData.serialNumber}</p>
-                <p><strong>Brand:</strong> ${productData.brand} ${productData.model}</p>
-                <p><strong>Transaction:</strong> 
-                    <a href="https://sepolia.etherscan.io/tx/${result.transactionHash}" target="_blank">
-                        View on Etherscan
-                    </a>
-                </p>
-                <p><strong>Gas Used:</strong> ${result.gasUsed.toLocaleString()}</p>
-            </div>
-        `);
-        
-        showAlert(`Product "${productData.brand} ${productData.model}" registered successfully!`, 'success');
-        
-        // Reset form and refresh data
-        document.getElementById('product-registration-form').reset();
-        setTimeout(() => {
-            closeTransactionModal();
-            hideProductForm();
-            refreshDashboard();
-        }, 15000);
-        
-    } catch (error) {
-        console.error('Registration error:', error);
-        
-        let errorMessage = 'Registration failed';
-        
-        if (error.code === 4001) {
-            errorMessage = 'Transaction rejected by user';
-        } else if (error.message.includes('already exists')) {
-            errorMessage = error.message;
-        } else if (error.message.includes('insufficient funds')) {
-            errorMessage = 'Insufficient ETH for gas fees';
-        } else if (error.message.includes('execution reverted')) {
-            if (error.message.includes('Only authorized manufacturers')) {
-                errorMessage = 'Your wallet is not authorized as a manufacturer';
-            } else if (error.message.includes('Serial number already exists')) {
-                errorMessage = 'Product with this serial number already exists';
-            } else {
-                errorMessage = 'Smart contract rejected the transaction';
-            }
-        } else if (error.response) {
-            errorMessage = error.response.data.error || error.response.data.message || 'Backend error';
-        } else if (error.message.includes('Product registered successfully')) {
-            errorMessage = 'Registration completed but with warnings';
-            showAlert('Registration completed successfully!', 'success');
-        } else {
-            errorMessage = error.message || 'Unknown error occurred';
-        }
-        
-        if (!error.message.includes('Product registered successfully')) {
-            showAlert(errorMessage, 'error');
-        }
-        
-        updateTransactionStatus(`
-            <div style="color: ${error.message.includes('Product registered successfully') ? '#10b981' : '#ef4444'};">
-                <h4>${error.message.includes('Product registered successfully') ? 'Registration Complete!' : 'Registration Failed'}</h4>
-                <p>${errorMessage}</p>
-            </div>
-        `);
-        
-        if (productId && !error.message.includes('Product registered successfully')) {
-            try {
-                await axios.put(`/products/${productId}/blockchain-failed`, {
-                    error: error.message,
-                    registrationType: 'blockchain_failed'
-                }, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                    }
-                });
-            } catch (updateError) {
-                console.error('Failed to update backend with error status:', updateError);
-            }
-        }
-        
-    } finally {
-        registerBtn.disabled = false;
-        btnText.style.display = 'inline';
-        btnSpinner.style.display = 'none';
-    }
-}
-
-// Updated generate spec hash function
+//Updated generate spec hash function
 async function generateSpecHash(productData) {
     try {
         const specString = `${productData.serialNumber}${productData.brand}${productData.model}${productData.deviceType}${productData.storageData || ''}${productData.color || ''}`;
@@ -1612,8 +1621,6 @@ async function transferProductOwnership(transferData) {
             
             const productsHTML = products.map(product => `
                 <div class="product-card">
-                    // <div class="product-image">
-                    // </div>
                     <div class="placeholder-image">📦</div>
                     <div class="product-info">
                         <h4>${product.name}</h4>

@@ -470,7 +470,7 @@ def get_sample_data():
 
 @app.route('/device-details/<serial_number>', methods=['GET'])
 @token_required_with_roles(['manufacturer', 'customer'])
-def get_device_details(serial_number):
+def get_device_details(user_id, user_role, serial_number):
     """Get detailed device information"""
     try:
         db = get_db_connection()
@@ -513,11 +513,10 @@ def get_device_details(serial_number):
 
 @app.route('/ownership-history/<serial_number>', methods=['GET'])
 @token_required_with_roles(['manufacturer', 'customer'])
-def get_ownership_history(serial_number):
+def get_ownership_history(user_id, user_role, serial_number):
     """Get ownership history for a verified product"""
     try:
         db = get_db_connection()
-        
         # Check if product exists first
         product = db.products.find_one({"serial_number": serial_number})
         if not product:
@@ -525,33 +524,42 @@ def get_ownership_history(serial_number):
                 "status": "not_found",
                 "message": "Product not found"
             }), 404
+
+        # Get ownership history from the product document itself
+        ownership_history = product.get("ownership_history", [])
         
-        # Get ownership transfers
-        transfers = list(db.ownership_transfers.find(
-            {"serial_number": serial_number}
-        ).sort("transfer_date", -1))
-        
-        history = []
-        for transfer in transfers:
-            history.append({
-                "transfer_reason": transfer.get("transfer_reason", "Ownership Transfer"),
-                "previous_owner": transfer.get("previous_owner"),
-                "new_owner": transfer.get("new_owner"),
-                "transfer_date": transfer.get("transfer_date"),
+        data = []
+        for transfer in ownership_history:
+            data.append({
+                "transfer_reason": transfer.get("notes", "Initial Registration"),
+                "from": transfer.get("previous_owner", "Manufacturer"),
+                "to": transfer.get("owner_name"),
+                "transfer_date": transfer.get("transfer_date", product.get("registered_at")),
                 "sale_price": transfer.get("sale_price", 0),
-                "transaction_hash": transfer.get("transaction_hash")
+                "transaction_hash": transfer.get("transaction_hash", product.get("transaction_hash"))
             })
-        
+
+        # If no ownership history exists, create a default entry for initial registration
+        if not data:
+            data.append({
+                "transfer_reason": "Initial Registration",
+                "previous_owner": "Manufacturer",
+                "new_owner": product.get("current_owner", product.get("manufacturer_wallet")),
+                "transfer_date": product.get("registered_at"),
+                "sale_price": 0,
+                "transaction_hash": product.get("transaction_hash")
+            })
+
         return jsonify({
             "status": "success",
             "serial_number": serial_number,
-            "history": history
+            "history": data
         }), 200
-        
+
     except Exception as e:
         print(f"Ownership history error: {e}")
         return jsonify({"error": "Could not load ownership history"}), 500
-
+    
 @app.route('/log-verification', methods=['POST'])
 def log_verification_attempt():
     """Log verification attempts for analytics"""
@@ -911,8 +919,7 @@ def token_required(f):
 def register_manufacturer_product(current_user_id, current_user_role):
     try:
         data = request.get_json()
-        print(f"Received registration data: {data}")  # Debug log
-        
+        print(f"Received registration data: {data}")
         # Validate required fields - handle both field name formats
         serial_number = data.get('serialNumber') or data.get('serial_number')
         brand = data.get('brand')
@@ -945,8 +952,9 @@ def register_manufacturer_product(current_user_id, current_user_role):
         existing_product = get_product_by_serial(serial_number)
         if existing_product:
             return jsonify({"error": "Product with this serial number already exists"}), 400
+        # ... your existing validation code ...
         
-        # Prepare product data with consistent field names
+        # Prepare product data - REMOVE blockchain registration
         product_data = {
             "_id": ObjectId(),
             "serial_number": serial_number,
@@ -961,79 +969,34 @@ def register_manufacturer_product(current_user_id, current_user_role):
             "description": f"{brand} {model} - {data.get('storageData', '')} {data.get('color', '')}",
             "manufacturer_wallet": data.get('manufacturerWallet', primary_wallet),
             "specification_hash": data.get('specificationHash', ''),
-            "registration_type": "blockchain_pending",  # Will be updated after blockchain registration
+            "registration_type": data.get('registrationType', 'blockchain_pending'),  # Use the type from frontend
             "manufacturer_id": current_user_id,
             "manufacturer_name": current_company_name,
             "wallet_address": primary_wallet,
-            "blockchain_verified": False,  # Will be updated after blockchain registration
-            "ownership_history": [],  # Will be populated after blockchain registration
+            "blockchain_verified": False,
+            "ownership_history": [],
             "registered_at": datetime.now(timezone.utc),
             "created_at": datetime.now(timezone.utc),
             "updated_at": datetime.now(timezone.utc)
         }
         
-        # Register device on blockchain
-        blockchain_tx = register_device_blockchain(serial_number, data)
+        # REMOVE this blockchain registration block:
+        # blockchain_tx = register_device_blockchain(serial_number, data)
+        # if not blockchain_tx.get('success'):
+        #     return jsonify({"success": False, "error": "Blockchain registration failed"}), 500
         
-        if not blockchain_tx.get('success'):
-            return jsonify({
-                "success": False,
-                "error": "Blockchain registration failed"
-            }), 500
-        
-        # Update product data with blockchain information
-        tx_hash = blockchain_tx.get('transaction_hash')
-        product_data.update({
-            "transaction_hash": tx_hash,
-            "block_number": blockchain_tx.get('blockNumber'),
-            "gas_used": blockchain_tx.get('gasUsed'),
-            "gas_price": blockchain_tx.get('gasPrice'),
-            "registration_type": "blockchain_confirmed",
-            "blockchain_verified": True,
-            "ownership_history": [{
-                "owner_address": primary_wallet,
-                "owner_type": "manufacturer", 
-                "owner_name": current_company_name,
-                "transfer_date": datetime.now(timezone.utc),
-                "transfer_type": "initial_registration",
-                "previous_owner": None,
-                "transaction_hash": tx_hash,
-                "notes": "Initial product registration"
-            }]
-        })
-        
-        # Save to database
+        # Save to database WITHOUT blockchain info (frontend will handle blockchain)
         try:
             db = get_db_connection()
             result = db.products.insert_one(product_data)
             product_id = str(result.inserted_id)
             
-            print(f"Product saved with ID: {product_id}")  # Debug log
-            
-            # Update manufacturer's last product update timestamp
-            db.users.update_one(
-                {"_id": ObjectId(current_user_id)}, 
-                {"$set": {"last_product_update": datetime.now(timezone.utc)}}
-            )
-            
-            # Store blockchain registration transaction
-            store_registration_transaction(serial_number, tx_hash)
-            
             return jsonify({
                 "status": "success",
                 "success": True,
-                "message": "Product registered successfully",
-                "transaction_hash": tx_hash,
+                "message": "Product saved to database successfully",
                 "product_id": product_id,
-                "serial_number": serial_number,
-                "product": {
-                    "id": product_id,
-                    "serial_number": serial_number,
-                    "brand": brand,
-                    "model": model,
-                    "name": f"{brand} {model}",
-                    "registration_type": product_data["registration_type"]
-                }
+                "serial_number": serial_number
             }), 201
             
         except Exception as db_error:
@@ -1042,10 +1005,8 @@ def register_manufacturer_product(current_user_id, current_user_role):
         
     except Exception as e:
         print(f"Product registration error: {e}")
-        import traceback
-        traceback.print_exc()  # Full error trace
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
-    
+      
 @app.route('/manufacturer/dashboard-stats')
 @token_required_with_roles(['manufacturer'])
 def get_manufacturer_dashboard_stats(current_user_id, current_user_role):

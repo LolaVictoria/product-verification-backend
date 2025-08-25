@@ -248,6 +248,7 @@ body {
     transition: all 0.3s ease;
     border: 1px solid #e2e8f0;
     display: flex;
+    position: relative;
 }
 
 .product-card:hover {
@@ -258,8 +259,6 @@ body {
     position: absolute;
     top: 12px;
     left: 12px;
-    width: 16px;
-    height: 16px;
     padding: 6px 12px;
     border-radius: 20px;
     font-size: 0.75rem;
@@ -1616,20 +1615,11 @@ textarea:focus {
     }
 }
 
-.products-filter {
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* Two equal-width columns */
-    gap: 1rem; /* Space between grid items */
-    place-items: center stretch; /* Vertically center and stretch items */
-    margin: 1rem 0;
-    max-width: 600px; /* Optional: Limit width for better control */
-    width: 100%; /* Full width up to max-width */
-}
+
 
 /* Style the search input and select to fit the grid */
 #serial-number-search,
 #products-filter {
-    width: 100%; /* Ensure they fill their grid cells */
     box-sizing: border-box; /* Include padding in width calculation */
 }
 
@@ -1665,8 +1655,8 @@ textarea:focus {
 .products-filter::after {
     content: '▼';
     position: absolute;
-    top: 50%;
-    right: 1rem;
+    top: 3px;
+    right: 3px;
     transform: translateY(-50%);
     font-size: 0.875rem;
     color: #6b7280;
@@ -1793,11 +1783,4 @@ textarea:focus {
 .search-input:focus {
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-}
-
-.products-filter {
-    position: relative;
-    display: flex;
-    align-items: center; /* Align input and select vertically */
-    margin: 1rem 0;
 }

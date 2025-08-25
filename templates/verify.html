@@ -49,8 +49,8 @@
             <div style="margin-bottom: 2rem;">
                 <div style="display: flex; justify-content: center; gap: 1rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem;">
                     <button class="nav-tab active" onclick="showPage('verify-content')">🔍 Single Verification</button>
-                    <button class="nav-tab" onclick="showPage('batch-content')">📋 Batch Verification</button>
-                    <button class="nav-tab" onclick="showPage('sample-content')">🧪 Sample Data</button>
+                    <!-- <button class="nav-tab" onclick="showPage('batch-content')">📋 Batch Verification</button>
+                    <button class="nav-tab" onclick="showPage('sample-content')">🧪 Sample Data</button> -->
                     <!-- <button class="nav-tab" onclick="showPage('stats-content')">📊 System Stats</button> -->
                 </div>
             </div>
@@ -105,7 +105,7 @@
             </div>
 
             <!-- Batch Verification Content -->
-            <div id="batch-content" class="page-content" style="display: none;">
+            <!-- <div id="batch-content" class="page-content" style="display: none;">
                 <h2>📋 Batch Verification</h2>
                 <p style="text-align: center; color: #64748b; margin-bottom: 2rem;">
                     Verify multiple products at once (up to 10 devices)
@@ -125,10 +125,10 @@
 
                 <!-- Batch Results -->
                 <div id="batch-results" style="margin-top: 2rem;"></div>
-            </div>
+            </div> -->
 
             <!-- Sample Data Content -->
-            <div id="sample-content" class="page-content" style="display: none;">
+            <!-- <div id="sample-content" class="page-content" style="display: none;">
                 <h2>🧪 Sample Test Data</h2>
                 <p style="text-align: center; color: #64748b; margin-bottom: 2rem;">
                     Explore sample products in our database for testing
@@ -139,7 +139,7 @@
                 </button>
 
                 <div id="sample-data-container"></div>
-            </div>
+            </div> -->
 
             <!-- Stats Content -->
             <div id="stats-content" class="page-content" style="display: none;">
@@ -493,9 +493,6 @@ async function verifyDevice() {
 
     try {
         const token = localStorage.getItem('authToken');
-        
-        console.log(`Verifying serial: ${serialNumber}`);
-        
         const response = await axios.get(`/verify/${encodeURIComponent(serialNumber)}`, {
             headers: { 
                 'Authorization': `Bearer ${token}`,
@@ -902,71 +899,75 @@ document.getElementById('batch-form').addEventListener('submit', async function(
         }
 
         // Show ownership history
-        async function showOwnershipHistory(serialNumber) {
-            const modal = document.getElementById('ownership-modal');
-            const content = document.getElementById('ownership-content');
-            
-            content.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading ownership history...</p></div>';
-            modal.style.display = 'block';
- 
-            try {
-                token = localStorage.getItem('authToken')
-                const response = await axios.get(`/ownership-history/${encodeURIComponent(serialNumber)}`, {
-                    Header: {
-                        Authorization: token
-                    }
-                });
-                const data = response.data;
+   async function showOwnershipHistory(serialNumber) {
+    const modal = document.getElementById('ownership-modal');
+    const content = document.getElementById('ownership-content');
+    
+    content.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading ownership history...</p></div>';
+    modal.style.display = 'block';
 
-                if (data.history && data.history.length > 0) {
-                    let html = `
-                        <h4>Device: ${serialNumber}</h4>
-                        <div class="ownership-timeline">
-                    `;
+    try {
+        const token = localStorage.getItem('authToken');
+        const response = await axios.get(`/ownership-history/${encodeURIComponent(serialNumber)}`, {
+            headers: {  
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        const data = response.data;
+        const historyList = data.history;  
 
-                    data.history.forEach((record, index) => {
-                        const date = new Date(record.transfer_date || record.date).toLocaleDateString();
-                        html += `
-                            <div class="timeline-item">
-                                <div class="timeline-marker"></div>
-                                <div class="timeline-content">
-                                    <h5>${record.transfer_reason || record.reason || 'Ownership Transfer'}</h5>
-                                    <p><strong>From:</strong> ${record.previous_owner || record.from}</p>
-                                    <p><strong>To:</strong> ${record.new_owner || record.to}</p>
-                                    <p><strong>Date:</strong> ${date}</p>
-                                    ${record.sale_price > 0 ? `<p><strong>Price:</strong> ${record.sale_price.toLocaleString()}</p>` : ''}
-                                    ${record.transaction_hash ? `<p><strong>Transaction:</strong> <code>${record.transaction_hash}</code></p>` : ''}
-                                </div>
-                            </div>
-                        `;
-                    });
+        if (historyList && historyList.length > 0) {
+            let html = `
+                <h4>Serial Number: ${serialNumber}</h4>
+                <div class="ownership-timeline">
+            `;
 
-                    html += '</div>';
-                    content.innerHTML = html;
-                } else {
-                    content.innerHTML = `
-                        <div class="result-card result-not-found">
-                            <h4>No Ownership History</h4>
-                            <p>No ownership transfers found for this device.</p>
-                            <p>This device may still be with the original manufacturer.</p>
+            historyList.forEach((record, index) => {
+                const date = new Date(record.transfer_date || record.date).toLocaleDateString();
+                html += `
+                    <div class="timeline-item">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <p><strong>From:</strong> ${record.from || record.previous_owner || 'Unknown'}</p>
+                            <p><strong>To:</strong> ${record.to || record.new_owner || 'Unknown'}</p>
+                            <p><strong>Date:</strong> ${date}</p>
+                            <p><strong>Note:</strong>${record.transfer_reason || record.reason || 'Ownership Transfer'}</p>
+                            ${record.transaction_hash ? `<p><strong>Transaction:</strong> <code>${record.transaction_hash}</code></p>` : ''}
                         </div>
-                    `;
-                }
-            } catch (error) {
-                content.innerHTML = `
-                    <div class="result-card result-counterfeit">
-                        <h4>Error Loading History</h4>
-                        <p>Failed to load ownership history.</p>
-                        <p><small>Error: ${error.message}</small></p>
                     </div>
                 `;
-            }
-        }
+            });
 
-        // Get full device details
+            html += '</div>';
+            content.innerHTML = html;
+        } else {
+            content.innerHTML = `
+                <div class="result-card result-not-found">
+                    <h4>No Ownership History</h4>
+                    <p>No ownership transfers found for this device.</p>
+                    <p>This device may still be with the original manufacturer.</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        content.innerHTML = `
+            <div class="result-card result-counterfeit">
+                <h4>Error Loading History</h4>
+                <p>Failed to load ownership history.</p>
+                <p><small>Error: ${error.message}</small></p>
+            </div>
+        `;
+    }
+}
+// Get full device details
         async function getDeviceDetails(serialNumber) {
             try {
-                const response = await axios.get(`/device-details/${encodeURIComponent(serialNumber)}`);
+                const response = await axios.get(`/device-details/${encodeURIComponent(serialNumber)}`, {
+                    Header: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
                 const device = response.data;
 
                 if (device.error) {
