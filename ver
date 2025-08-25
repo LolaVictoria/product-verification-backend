@@ -1,482 +1,93 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unified Profile System</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+### Use Case Diagram
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
+#### Description
+A Use Case Diagram illustrates the interactions between actors and the system’s functionalities. For your project, the primary actors are **Manufacturer** and **User**, with the system supporting product registration, ownership transfer, and product verification.
 
-        /* Navbar Styles */
-        .navbar {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
+- **Actors**:
+  - **Manufacturer**: Represents a logged-in manufacturer accessing the dashboard.
+  - **User**: Represents a logged-in end-user verifying product authenticity.
+  - **System**: The blockchain-based authentication system (implicitly includes Ethereum, React.js frontend, Flask backend, and Web3.js).
 
-        .logo {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: white;
-        }
+- **Use Cases**:
+  - **Login**: Both Manufacturer and User initiate a session by logging into the system.
+  - **Register Product**: Manufacturer registers a new product on the blockchain.
+  - **Transfer Ownership**: Manufacturer transfers ownership of a product to another party.
+  - **Verify Product**: User checks the authenticity of a product using its serial number.
 
-        .nav-user {
-            position: relative;
-        }
+- **Relationships**:
+  - **Include**: "Login" is a prerequisite for "Register Product," "Transfer Ownership," and "Verify Product" (all use cases depend on a successful login).
+  - **Extend**: Optional extensions like "Generate Serial Number" (for Register Product) or "View Transaction History" (for Verify Product) can be included if needed.
 
-        .profile-icon {
-            width: 45px;
-            height: 45px;
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-        }
+- **Textual Representation**:
+  - Draw an oval for each use case: "Login," "Register Product," "Transfer Ownership," "Verify Product."
+  - Place stick figures for "Manufacturer" and "User" actors.
+  - Connect "Manufacturer" to "Register Product" and "Transfer Ownership" with lines.
+  - Connect "User" to "Verify Product" with a line.
+  - Connect all use cases to "Login" with a dashed "include" line.
+  - Label the system boundary as "Blockchain Authentication System."
 
-        .profile-icon:hover {
-            transform: scale(1.1);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-        }
+- **Example in Draw.io**:
+  - Create a rectangle for the system boundary.
+  - Add ovals inside for use cases, stick figures outside for actors, and use arrows/lines with labels ("include," "extends" if applicable).
 
-        .profile-letter {
-            color: white;
-            font-weight: bold;
-            font-size: 1.2rem;
-            text-transform: uppercase;
-        }
+---
 
-        .dropdown-toggle {
-            position: absolute;
-            top: 60px;
-            right: 0;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            min-width: 280px;
-            padding: 1.5rem;
-            transform: translateY(-20px);
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            border: 1px solid rgba(0, 0, 0, 0.1);
-        }
+### Class Diagram
 
-        .dropdown-toggle.show {
-            transform: translateY(0);
-            opacity: 1;
-            visibility: visible;
-        }
+#### Description
+A Class Diagram represents the static structure of your system, showing classes, attributes, methods, and relationships. Based on your project, the diagram includes core entities like Product, Manufacturer, User, and interactions with the blockchain.
 
-        .user-info {
-            margin-bottom: 1rem;
-        }
+- **Classes and Attributes**:
+  - **User**:
+    - Attributes: `userId: String`, `primaryEmail: String`, `primaryWallet: String`, `verificationStatus: String`
+    - Methods: `login()`, `logout()`
+  - **Manufacturer** (inherits from User):
+    - Attributes: `currentCompanyName: String`
+    - Methods: `registerProduct()`, `transferOwnership()`
+  - **Product**:
+    - Attributes: `serialNumber: String`, `brand: String`, `model: String`, `deviceType: String`, `storageData: String`, `color: String`, `batchNumber: String`, `transactionHash: String`, `registrationType: String`, `currentOwner: String`
+    - Methods: `verifyAuthenticity()`, `updateOwnership()`
+  - **Blockchain**:
+    - Attributes: `contractAddress: String`, `chainId: Integer`, `contractABI: Array`
+    - Methods: `deployContract()`, `callSmartContract(method: String)`
+  - **Dashboard**:
+    - Attributes: `userType: String`, `products: Array`
+    - Methods: `displayProducts()`, `filterProducts()`
 
-        .user-email {
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 0.5rem;
-        }
+- **Relationships**:
+  - **Inheritance**: Manufacturer inherits from User (arrow from Manufacturer to User with a hollow triangle).
+  - **Association**: Manufacturer has a one-to-many relationship with Product (line with 1 on Manufacturer side, * on Product side).
+  - **Association**: User has a one-to-many relationship with Product (line with 1 on User side, * on Product side for verification history).
+  - **Dependency**: Dashboard depends on Product and Blockchain (dashed line from Dashboard to Product and Blockchain).
+  - **Association**: Product is managed by Blockchain (line with 1 on Blockchain side, * on Product side).
 
-        .company-name {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 0.5rem;
-            font-size: 1rem;
-        }
+- **Textual Representation**:
+  - Draw rectangles for each class.
+  - List attributes in the top compartment, methods in the bottom compartment.
+  - Use lines with labels (e.g., 1..*, <|--) to show relationships.
+  - Example:
+    - `User` rectangle: `+userId: String`, `+login()`, with an arrow to `Manufacturer`.
+    - `Product` rectangle: `+serialNumber: String`, `+verifyAuthenticity()`, with a line to `Manufacturer` (1..*).
 
-        .wallet-address {
-            font-size: 0.8rem;
-            color: #888;
-            font-family: 'Courier New', monospace;
-            background: #f8f9fa;
-            padding: 0.3rem 0.6rem;
-            border-radius: 6px;
-            display: inline-block;
-            margin-bottom: 0.5rem;
-            word-break: break-all;
-        }
+- **Example in Draw.io**:
+  - Create rectangles for each class.
+  - Add compartments for attributes and methods.
+  - Use inheritance arrows and association lines with multiplicity (e.g., 1, *).
+  - Group related classes within a package (e.g., "Authentication System").
 
-        .verification-status {
-            font-size: 0.8rem;
-            padding: 0.2rem 0.6rem;
-            border-radius: 20px;
-            font-weight: 500;
-            display: inline-block;
-        }
+---
 
-        .verification-status.verified {
-            background: #d4edda;
-            color: #155724;
-        }
+### Instructions for Creation
+1. **Use Case Diagram**:
+   - Open Draw.io (diagrams.net).
+   - Select "Use Case" template.
+   - Add actors (stick figures), use cases (ovals), and system boundary (rectangle).
+   - Connect with lines and label relationships.
+   - Save as PNG or embed in your document.
 
-        .verification-status.pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .verification-status.rejected {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .dropdown-divider {
-            border: none;
-            height: 1px;
-            background: #eee;
-            margin: 1rem 0;
-        }
-
-        .nav-link {
-            display: block;
-            padding: 0.8rem 0;
-            color: #333;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            border-radius: 6px;
-            margin: 0.2rem 0;
-            cursor: pointer;
-        }
-
-        .nav-link:hover {
-            background: #f8f9fa;
-            color: #667eea;
-            transform: translateX(5px);
-        }
-
-        /* Demo Content */
-        .demo-content {
-            padding: 2rem;
-            color: white;
-            text-align: center;
-        }
-
-        .demo-buttons {
-            margin-top: 2rem;
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .demo-btn {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: none;
-            padding: 0.8rem 1.5rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .demo-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .navbar {
-                padding: 1rem;
-            }
-
-            .dropdown-toggle {
-                min-width: 250px;
-                right: -50px;
-            }
-
-            .demo-buttons {
-                flex-direction: column;
-                align-items: center;
-            }
-        }
-    </style>
-</head>
-<body>
-    <!-- Navbar -->
-    <nav class="navbar">
-        <div class="logo">Your App</div>
-        <div class="nav-user">
-            <div class="profile-icon" onclick="toggleDropdown()">
-                <span id="profile-letter" class="profile-letter">U</span>
-            </div>
-            <div class="dropdown-toggle" id="profile-dropdown">
-                <div class="user-info">
-                    <p id="user-email" class="user-email">Loading...</p>
-                    <p id="company-name" class="company-name">Loading...</p>
-                    <span id="wallet-address" class="wallet-address">Loading...</span>
-                    <p id="verification-status" class="verification-status">Loading...</p>
-                </div>
-                <hr class="dropdown-divider">
-                <a class="nav-link" onclick="viewProfile()">View Profile</a>
-                <a class="nav-link" onclick="editProfile()">Edit Profile</a>
-                <a href="#" class="nav-link" onclick="logout()">Logout</a>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Demo Content -->
-    <div class="demo-content">
-        <h1>Profile System Demo</h1>
-        <p>This demonstrates the unified profile system with logout functionality</p>
-        
-        <div class="demo-buttons">
-            <button class="demo-btn" onclick="simulateManufacturer()">Load as Manufacturer</button>
-            <button class="demo-btn" onclick="simulateCustomer()">Load as Customer</button>
-            <button class="demo-btn" onclick="clearProfile()">Clear Profile</button>
-        </div>
-    </div>
-
-    <script>
-        // API Configuration
-        const API_BASE = '/api';
-        
-        // Profile data storage
-        let currentUserProfile = null;
-        
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeProfile();
-        });
-
-        // Initialize profile system
-        async function initializeProfile() {
-            const token = localStorage.getItem('auth_token');
-            const userRole = localStorage.getItem('user_role');
-            
-            if (!token || !userRole) {
-                handleUnauthenticatedUser();
-                return;
-            }
-            
-            try {
-                await loadUserProfile(userRole);
-            } catch (error) {
-                console.error('Failed to load profile:', error);
-                handleProfileError();
-            }
-        }
-
-        // Load user profile based on role
-        async function loadUserProfile(role) {
-            const endpoint = role === 'manufacturer' ? '/manufacturer/profile' : '/customer/profile';
-            
-            try {
-                const response = await fetch(API_BASE + endpoint, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    currentUserProfile = data.user;
-                    updateProfileUI(data.user);
-                } else {
-                    throw new Error(data.error || 'Failed to load profile');
-                }
-            } catch (error) {
-                console.error('Profile loading error:', error);
-                handleProfileError();
-            }
-        }
-
-        // Update UI with profile data
-        function updateProfileUI(user) {
-            // Update profile letter
-            const profileLetter = document.getElementById('profile-letter');
-            const name = user.name || user.primary_email || 'U';
-            profileLetter.textContent = name.charAt(0).toUpperCase();
-
-            // Update user info
-            document.getElementById('user-email').textContent = user.primary_email || 'No email';
-            
-            // Handle role-specific data
-            if (user.role === 'manufacturer') {
-                document.getElementById('company-name').textContent = user.current_company_name || 'No company';
-                document.getElementById('wallet-address').textContent = 
-                    user.primary_wallet ? formatWalletAddress(user.primary_wallet) : 'No wallet';
-                
-                // Update verification status
-                const statusElement = document.getElementById('verification-status');
-                const verificationStatus = user.verification_status || 'pending';
-                statusElement.textContent = verificationStatus.charAt(0).toUpperCase() + verificationStatus.slice(1);
-                statusElement.className = `verification-status ${verificationStatus}`;
-            } else if (user.role === 'customer') {
-                document.getElementById('company-name').textContent = user.full_name || user.name || 'Customer';
-                document.getElementById('wallet-address').textContent = 
-                    user.wallet_address ? formatWalletAddress(user.wallet_address) : 'No wallet';
-                
-                // Update customer status
-                const statusElement = document.getElementById('verification-status');
-                statusElement.textContent = 'Customer';
-                statusElement.className = 'verification-status verified';
-            }
-        }
-
-        // Format wallet address for display
-        function formatWalletAddress(address) {
-            if (!address) return 'No wallet';
-            if (address.length > 20) {
-                return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-            }
-            return address;
-        }
-
-        // Toggle dropdown
-        function toggleDropdown() {
-            const dropdown = document.getElementById('profile-dropdown');
-            dropdown.classList.toggle('show');
-        }
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            const profileIcon = document.querySelector('.profile-icon');
-            const dropdown = document.getElementById('profile-dropdown');
-            
-            if (!profileIcon.contains(event.target) && !dropdown.contains(event.target)) {
-                dropdown.classList.remove('show');
-            }
-        });
-
-        // Profile actions
-        function viewProfile() {
-            alert('View Profile clicked');
-            // Implement navigation to profile view
-        }
-
-        function editProfile() {
-            alert('Edit Profile clicked');
-            // Implement navigation to profile edit
-        }
-
-        // Enhanced logout function with complete local storage clearing
-        async function logout() {
-            try {
-                // Optional: Call logout API endpoint
-                const token = localStorage.getItem('auth_token');
-                if (token) {
-                    try {
-                        await fetch('/api/auth/logout', {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            }
-                        });
-                    } catch (error) {
-                        console.warn('Logout API call failed:', error);
-                    }
-                }
-
-                // Clear ALL localStorage items
-                localStorage.clear();
-                
-                // Alternatively, remove specific items if you want to preserve some data:
-                /*
-                const itemsToRemove = [
-                    'auth_token',
-                    'refresh_token', 
-                    'user_role',
-                    'user_id',
-                    'user_email',
-                    'company_name',
-                    'wallet_address',
-                    'profile_data',
-                    'session_data'
-                ];
-                itemsToRemove.forEach(item => localStorage.removeItem(item));
-                */
-
-                // Clear session storage as well
-                sessionStorage.clear();
-
-                // Reset current profile
-                currentUserProfile = null;
-
-                // Show logout success message
-                alert('Successfully logged out!');
-
-                // Redirect to login page
-                window.location.href = '/login';
-
-            } catch (error) {
-                console.error('Logout error:', error);
-                alert('Logout failed. Please try again.');
-            }
-        }
-
-        // Handle unauthenticated users
-        function handleUnauthenticatedUser() {
-            document.getElementById('user-email').textContent = 'Not logged in';
-            document.getElementById('company-name').textContent = 'Please log in';
-            document.getElementById('wallet-address').textContent = '';
-            document.getElementById('verification-status').textContent = '';
-        }
-
-        // Handle profile loading errors
-        function handleProfileError() {
-            document.getElementById('user-email').textContent = 'Error loading profile';
-            document.getElementById('company-name').textContent = 'Please refresh';
-            document.getElementById('wallet-address').textContent = '';
-            document.getElementById('verification-status').textContent = '';
-        }
-
-        // Demo functions for testing
-        function simulateManufacturer() {
-            const mockManufacturer = {
-                name: 'John Doe',
-                role: 'manufacturer',
-                primary_email: 'john@techcorp.com',
-                current_company_name: 'TechCorp Industries',
-                primary_wallet: '0x1234567890abcdef1234567890abcdef12345678',
-                verification_status: 'verified'
-            };
-            updateProfileUI(mockManufacturer);
-        }
-
-        function simulateCustomer() {
-            const mockCustomer = {
-                name: 'Jane Smith',
-                role: 'customer',
-                primary_email: 'jane@email.com',
-                full_name: 'Jane Smith',
-                wallet_address: '0xabcdef1234567890abcdef1234567890abcdef12'
-            };
-            updateProfileUI(mockCustomer);
-        }
-
-        function clearProfile() {
-            handleUnauthenticatedUser();
-        }
-    </script>
-</body>
-</html>
+2. **Class Diagram**:
+   - Select "UML" template in Draw.io.
+   - Add rectangles for classes, divide into compartments.
+   - Use the toolbar to draw inheritance (triangle arrow) and association lines.
+   - Label attributes/methods and relationships.
+   - Export as needed.

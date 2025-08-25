@@ -409,7 +409,6 @@ body {
 }
 
 .form-submit {
-    width: 100%;
     background: linear-gradient(45deg, #4f46e5, #7c3aed);
     color: white;
     padding: 12px;
@@ -419,6 +418,8 @@ body {
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
+    margin:0 auto;
+    display: block;
 }
 
 .form-submit:hover {
