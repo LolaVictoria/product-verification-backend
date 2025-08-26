@@ -1,93 +1,85 @@
-### Use Case Diagram
+This is a CORS (Cross-Origin Resource Sharing) issue. The error indicates your backend server needs to be configured to allow credentials and proper CORS headers. Here are the solutions:
 
-#### Description
-A Use Case Diagram illustrates the interactions between actors and the system’s functionalities. For your project, the primary actors are **Manufacturer** and **User**, with the system supporting product registration, ownership transfer, and product verification.
+## Frontend Fix (Immediate):
 
-- **Actors**:
-  - **Manufacturer**: Represents a logged-in manufacturer accessing the dashboard.
-  - **User**: Represents a logged-in end-user verifying product authenticity.
-  - **System**: The blockchain-based authentication system (implicitly includes Ethereum, React.js frontend, Flask backend, and Web3.js).
+**1. Update your `apiClient.ts` to handle credentials properly:**
 
-- **Use Cases**:
-  - **Login**: Both Manufacturer and User initiate a session by logging into the system.
-  - **Register Product**: Manufacturer registers a new product on the blockchain.
-  - **Transfer Ownership**: Manufacturer transfers ownership of a product to another party.
-  - **Verify Product**: User checks the authenticity of a product using its serial number.
+```typescript
+import axios from 'axios';
 
-- **Relationships**:
-  - **Include**: "Login" is a prerequisite for "Register Product," "Transfer Ownership," and "Verify Product" (all use cases depend on a successful login).
-  - **Extend**: Optional extensions like "Generate Serial Number" (for Register Product) or "View Transaction History" (for Verify Product) can be included if needed.
+const apiClient = axios.create({
+  baseURL: 'https://product-verification-blockchain.onrender.com',
+  timeout: 10000,
+  withCredentials: true, // Add this
+  headers: {
+    'Content-Type': 'application/json',
+  }
+});
 
-- **Textual Representation**:
-  - Draw an oval for each use case: "Login," "Register Product," "Transfer Ownership," "Verify Product."
-  - Place stick figures for "Manufacturer" and "User" actors.
-  - Connect "Manufacturer" to "Register Product" and "Transfer Ownership" with lines.
-  - Connect "User" to "Verify Product" with a line.
-  - Connect all use cases to "Login" with a dashed "include" line.
-  - Label the system boundary as "Blockchain Authentication System."
+// Add token to requests
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-- **Example in Draw.io**:
-  - Create a rectangle for the system boundary.
-  - Add ovals inside for use cases, stick figures outside for actors, and use arrows/lines with labels ("include," "extends" if applicable).
+// Handle CORS errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.code === 'ERR_NETWORK') {
+      console.error('CORS or network error:', error);
+    }
+    return Promise.reject(error);
+  }
+);
 
----
+export default apiClient;
+```
 
-### Class Diagram
+## Backend Fix (Required):
 
-#### Description
-A Class Diagram represents the static structure of your system, showing classes, attributes, methods, and relationships. Based on your project, the diagram includes core entities like Product, Manufacturer, User, and interactions with the blockchain.
+Your backend server needs proper CORS configuration. Add this to your backend:
 
-- **Classes and Attributes**:
-  - **User**:
-    - Attributes: `userId: String`, `primaryEmail: String`, `primaryWallet: String`, `verificationStatus: String`
-    - Methods: `login()`, `logout()`
-  - **Manufacturer** (inherits from User):
-    - Attributes: `currentCompanyName: String`
-    - Methods: `registerProduct()`, `transferOwnership()`
-  - **Product**:
-    - Attributes: `serialNumber: String`, `brand: String`, `model: String`, `deviceType: String`, `storageData: String`, `color: String`, `batchNumber: String`, `transactionHash: String`, `registrationType: String`, `currentOwner: String`
-    - Methods: `verifyAuthenticity()`, `updateOwnership()`
-  - **Blockchain**:
-    - Attributes: `contractAddress: String`, `chainId: Integer`, `contractABI: Array`
-    - Methods: `deployContract()`, `callSmartContract(method: String)`
-  - **Dashboard**:
-    - Attributes: `userType: String`, `products: Array`
-    - Methods: `displayProducts()`, `filterProducts()`
+**For Express.js backend:**
 
-- **Relationships**:
-  - **Inheritance**: Manufacturer inherits from User (arrow from Manufacturer to User with a hollow triangle).
-  - **Association**: Manufacturer has a one-to-many relationship with Product (line with 1 on Manufacturer side, * on Product side).
-  - **Association**: User has a one-to-many relationship with Product (line with 1 on User side, * on Product side for verification history).
-  - **Dependency**: Dashboard depends on Product and Blockchain (dashed line from Dashboard to Product and Blockchain).
-  - **Association**: Product is managed by Blockchain (line with 1 on Blockchain side, * on Product side).
+```javascript
+const cors = require('cors');
 
-- **Textual Representation**:
-  - Draw rectangles for each class.
-  - List attributes in the top compartment, methods in the bottom compartment.
-  - Use lines with labels (e.g., 1..*, <|--) to show relationships.
-  - Example:
-    - `User` rectangle: `+userId: String`, `+login()`, with an arrow to `Manufacturer`.
-    - `Product` rectangle: `+serialNumber: String`, `+verifyAuthenticity()`, with a line to `Manufacturer` (1..*).
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:5173', 'https://your-frontend-domain.com'],
+  credentials: true, // This is crucial - must be true
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
-- **Example in Draw.io**:
-  - Create rectangles for each class.
-  - Add compartments for attributes and methods.
-  - Use inheritance arrows and association lines with multiplicity (e.g., 1, *).
-  - Group related classes within a package (e.g., "Authentication System").
+// Handle preflight requests
+app.options('*', cors());
+```
 
----
+**Alternative temporary fix (less secure):**
 
-### Instructions for Creation
-1. **Use Case Diagram**:
-   - Open Draw.io (diagrams.net).
-   - Select "Use Case" template.
-   - Add actors (stick figures), use cases (ovals), and system boundary (rectangle).
-   - Connect with lines and label relationships.
-   - Save as PNG or embed in your document.
+```javascript
+app.use(cors({
+  origin: true, // Allow all origins temporarily
+  credentials: true
+}));
+```
 
-2. **Class Diagram**:
-   - Select "UML" template in Draw.io.
-   - Add rectangles for classes, divide into compartments.
-   - Use the toolbar to draw inheritance (triangle arrow) and association lines.
-   - Label attributes/methods and relationships.
-   - Export as needed.
+## Environment-specific solution:
+
+**Development:**
+```javascript
+origin: ['http://localhost:3000', 'http://localhost:5173']
+```
+
+**Production:**
+```javascript
+origin: ['https://your-frontend-domain.vercel.app']
+```
+
+The key issue is that your backend's CORS configuration doesn't have `credentials: true` set properly, which is required when your frontend sends `withCredentials: true`.
+
+Contact your backend developer or update your backend CORS settings to include `credentials: true` and your frontend domain in the allowed origins.

@@ -18,7 +18,11 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
-CORS(app)
+CORS(app,
+    origins=['http://localhost:3000', 'http://localhost:5173', 'https://your-frontend-domain.com'],
+     supports_credentials=True,  # This is crucial - must be True
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+     allow_headers=['Content-Type', 'Authorization'])
 
 # Initialize Web3 (you'll need this for blockchain operations)
 try:
