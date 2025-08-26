@@ -1217,7 +1217,7 @@ def transfer_ownership(current_user_id, current_user_role):
         new_ownership_entry = {
             "owner_address": data['newOwnerAddress'],
             "owner_type": "customer",  # You might want to determine this
-            "owner_name": data.get('newOwnerName', 'Unknown'),
+            "owner_name": data.get('newOwnerName', 'null'),
             "previous_owner": current_owner_wallet,
             "transfer_date": datetime.utcnow(),
             "transfer_type": data['transferReason'],

@@ -876,7 +876,7 @@ function showProductForm() {
     const form = document.getElementById('product-form');
     if (form) form.style.display = form.style.display === 'block' ? 'none' : 'block';
 }
-
+// Fixed registerProductOnBlockchain function
 async function registerProductOnBlockchain(productData) {
     const registerBtn = document.getElementById('register-btn');
     const btnText = registerBtn.querySelector('.btn-text');
@@ -908,13 +908,14 @@ async function registerProductOnBlockchain(productData) {
             if (duplicateError.message.includes('already exists')) {
                 throw duplicateError;
             }
-            // If it's just a contract call error, continue (maybe the function doesn't exist)
             console.warn('Could not check blockchain duplicates:', duplicateError.message);
         }
         
+        // Add delay to ensure modal update is visible
+        await new Promise(resolve => setTimeout(resolve, 1000));
         updateTransactionStatus('Saving to database...');
         
-        // STEP 2: Save to backend database first
+        // STEP 2: Save to backend database first (FIXED: Only once)
         const backendResponse = await axios.post('/manufacturer/register-product', {
             serialNumber: productData.serialNumber,
             brand: productData.brand,
@@ -925,7 +926,7 @@ async function registerProductOnBlockchain(productData) {
             batchNumber: productData.batchNumber,
             manufacturerWallet: manufacturerWallet,
             specificationHash: specificationHash,
-            registrationType: 'blockchain_pending'
+            registrationType: 'blockchain_pending' // This prevents double saves
         }, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -938,7 +939,10 @@ async function registerProductOnBlockchain(productData) {
         }
         
         productId = backendResponse.data.product_id;
-        updateTransactionStatus('Database saved! Registering on blockchain...');
+        
+        // FIXED: Add delay and ensure modal update shows
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        updateTransactionStatus('✅ Database saved! Preparing blockchain transaction...');
         
         // STEP 3: Register on blockchain with correct parameters
         const gasEstimate = await contract.methods.registerDevice(
@@ -955,7 +959,8 @@ async function registerProductOnBlockchain(productData) {
         const gasPrice = web3.utils.toWei('2', 'gwei');
         const gasLimit = Math.floor(gasEstimate * 1.2);
 
-        updateTransactionStatus('Sending blockchain transaction...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        updateTransactionStatus('📡 Sending blockchain transaction...');
 
         const result = await contract.methods.registerDevice(
             productData.serialNumber,
@@ -972,9 +977,10 @@ async function registerProductOnBlockchain(productData) {
             gasPrice: gasPrice
         });
         
-        updateTransactionStatus('Blockchain confirmed! Updating database...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        updateTransactionStatus('⛓️ Blockchain confirmed! Updating database...');
         
-        // STEP 4: Update backend with blockchain confirmation
+        // STEP 4: Update backend with blockchain confirmation (NOT creating new record)
         const ownershipData = {
             owner_address: manufacturerWallet,
             owner_type: 'manufacturer',
@@ -984,6 +990,8 @@ async function registerProductOnBlockchain(productData) {
             transaction_hash: result.transactionHash,
             notes: 'Initial product registration on blockchain'
         };
+        
+        // FIXED: Use PUT to update existing record, not create new one
         await axios.put(`/products/${productId}/blockchain-confirm`, {
             transactionHash: result.transactionHash,
             blockNumber: result.blockNumber,
@@ -998,17 +1006,21 @@ async function registerProductOnBlockchain(productData) {
             }
         });
         
+        await new Promise(resolve => setTimeout(resolve, 1000));
         updateTransactionStatus(`
-            <div style="color: #10b981;">
-                <h4>Product Registered Successfully!</h4>
-                <p><strong>Serial:</strong> ${productData.serialNumber}</p>
-                <p><strong>Brand:</strong> ${productData.brand} ${productData.model}</p>
-                <p><strong>Transaction:</strong> 
-                    <a href="https://sepolia.etherscan.io/tx/${result.transactionHash}" target="_blank">
-                        View on Etherscan
-                    </a>
-                </p>
-                <p><strong>Gas Used:</strong> ${result.gasUsed.toLocaleString()}</p>
+            <div style="color: #10b981; text-align: center;">
+                <h4>🎉 Product Registered Successfully!</h4>
+                <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>Serial:</strong> ${productData.serialNumber}</p>
+                    <p><strong>Brand:</strong> ${productData.brand} ${productData.model}</p>
+                    <p><strong>Transaction:</strong> 
+                        <a href="https://sepolia.etherscan.io/tx/${result.transactionHash}" target="_blank" style="color: #0066cc;">
+                            View on Etherscan ↗
+                        </a>
+                    </p>
+                    <p><strong>Gas Used:</strong> ${result.gasUsed.toLocaleString()}</p>
+                </div>
+                <small>This modal will close automatically in 15 seconds</small>
             </div>
         `);
         
@@ -1055,12 +1067,15 @@ async function registerProductOnBlockchain(productData) {
         }
         
         updateTransactionStatus(`
-            <div style="color: ${error.message.includes('Product registered successfully') ? '#10b981' : '#ef4444'};">
-                <h4>${error.message.includes('Product registered successfully') ? 'Registration Complete!' : 'Registration Failed'}</h4>
-                <p>${errorMessage}</p>
+            <div style="color: ${error.message.includes('Product registered successfully') ? '#10b981' : '#ef4444'}; text-align: center;">
+                <h4>${error.message.includes('Product registered successfully') ? '✅ Registration Complete!' : '❌ Registration Failed'}</h4>
+                <div style="background: ${error.message.includes('Product registered successfully') ? '#f0fdf4' : '#fef2f2'}; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p>${errorMessage}</p>
+                </div>
             </div>
         `);
         
+        // FIXED: Only update error status if there was actually an error
         if (productId && !error.message.includes('Product registered successfully')) {
             try {
                 await axios.put(`/products/${productId}/blockchain-failed`, {
@@ -1083,7 +1098,179 @@ async function registerProductOnBlockchain(productData) {
     }
 }
 
-// 
+// FIXED: Centered Modal CSS
+const modalStyles = `
+<style>
+.transaction-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+}
+
+.transaction-modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.transaction-modal-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.transaction-modal-header h3 {
+    color: #333;
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.transaction-modal-body {
+    text-align: center;
+    line-height: 1.6;
+}
+
+.transaction-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.transaction-modal-close:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+`;
+
+// FIXED: Modal Functions
+function showTransactionModal(message) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById('transaction-modal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add styles if not already added
+    if (!document.getElementById('modal-styles')) {
+        const styleSheet = document.createElement('style');
+        styleSheet.id = 'modal-styles';
+        styleSheet.textContent = modalStyles.replace('<style>', '').replace('</style>', '');
+        document.head.appendChild(styleSheet);
+    }
+    
+    const modal = document.createElement('div');
+    modal.id = 'transaction-modal';
+    modal.className = 'transaction-modal';
+    modal.innerHTML = `
+        <div class="transaction-modal-content">
+            <button class="transaction-modal-close" onclick="closeTransactionModal()">×</button>
+            <div class="transaction-modal-header">
+                <h3>🔄 Processing Transaction</h3>
+            </div>
+            <div class="transaction-modal-body" id="transaction-status">
+                <div class="loading-spinner"></div>
+                <p>${message}</p>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function updateTransactionStatus(message) {
+    const statusElement = document.getElementById('transaction-status');
+    if (statusElement) {
+        // Add a small delay to ensure the message is visible
+        setTimeout(() => {
+            statusElement.innerHTML = `
+                <div class="loading-spinner"></div>
+                <div>${message}</div>
+            `;
+        }, 100);
+    }
+}
+
+function closeTransactionModal() {
+    const modal = document.getElementById('transaction-modal');
+    if (modal) {
+        modal.style.animation = 'modalSlideOut 0.3s ease-in forwards';
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    }
+}
+
+// Add slide out animation
+const additionalStyles = `
+@keyframes modalSlideOut {
+    from {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+    }
+}
+`;
+
+// Add the additional styles
+document.head.insertAdjacentHTML('beforeend', `<style>${additionalStyles}</style>`);
+
+
 // Handle product registration form submit
 async function handleProductSubmit(event) {
     event.preventDefault();
@@ -1187,7 +1374,6 @@ function connectWallet() {
 
         
 async function refreshDashboard() {
-    showAlert('Refreshing dashboard data...', 'info');
     const token = localStorage.getItem('authToken');
     if (token) {
         axios.get(`/manufacturer/dashboard-stats?_t=${Date.now()}`, {

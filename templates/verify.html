@@ -929,7 +929,7 @@ document.getElementById('batch-form').addEventListener('submit', async function(
                     <div class="timeline-item">
                         <div class="timeline-marker"></div>
                         <div class="timeline-content">
-                            <p><strong>From:</strong> ${record.from || record.previous_owner || 'Unknown'}</p>
+                            <p><strong>From:</strong> ${record.from || record.previous_owner || 'null'}</p>
                             <p><strong>To:</strong> ${record.to || record.new_owner || 'Unknown'}</p>
                             <p><strong>Date:</strong> ${date}</p>
                             <p><strong>Note:</strong>${record.transfer_reason || record.reason || 'Ownership Transfer'}</p>
