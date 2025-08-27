@@ -1187,13 +1187,13 @@ def confirm_blockchain_registration(current_user_id, current_user_role, product_
         print(f"Blockchain confirmation error: {e}")
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
     
-@app.route('/products/transfer-ownership', methods=['POST'])
+@app.route('/products/transfer-ownership', methods=['PUT'])  # Changed to PUT
 @token_required_with_roles(['manufacturer', 'customer'])
 def transfer_ownership(current_user_id, current_user_role):
     try:
         data = request.get_json()
         
-        # Validate required fields
+        # Validate required fields - updated field names
         required_fields = ['serialNumber', 'newOwnerAddress', 'transferReason']
         for field in required_fields:
             if not data.get(field):
@@ -1250,7 +1250,6 @@ def transfer_ownership(current_user_id, current_user_role):
             "previous_owner": current_owner_wallet,
             "new_owner": data['newOwnerAddress'],
             "transfer_reason": data['transferReason'],
-            "sale_price": float(data.get('salePrice', 0)),
             "transaction_hash": data.get('transactionHash'),
             "transfer_date": datetime.utcnow(),
             "created_at": datetime.utcnow()
