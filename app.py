@@ -18,12 +18,12 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
-CORS(app,
-    origins=['http://localhost:3000', 'http://localhost:5173', 'https://your-frontend-domain.com'],
-     supports_credentials=True,  # This is crucial - must be True
+CORS(app, 
+     origins=['http://localhost:3000', 'https://your-frontend-domain.com'],
+     allow_headers=['Content-Type', 'Authorization', 'X-Requested-With'],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-     allow_headers=['Content-Type', 'Authorization'])
-
+     supports_credentials=True
+)
 # Initialize Web3 (you'll need this for blockchain operations)
 try:
     w3 = Web3(Web3.HTTPProvider(os.getenv('BLOCKCHAIN_RPC_URL')))
@@ -131,8 +131,6 @@ def token_required(f):
         
         return f(current_user_id, current_user_role, *args, **kwargs)
     return decorated
-
-
 
 def token_required_with_roles(allowed_roles):
     def decorator(f):
