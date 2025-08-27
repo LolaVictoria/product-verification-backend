@@ -1,6 +1,6 @@
 # app.py - Main Flask Application
 from bson import ObjectId
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, make_response
 from flask_cors import CORS
 import jwt
 from functools import wraps
@@ -25,6 +25,7 @@ CORS(app,  resources={
         "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"]
     }
 })
+
 # Initialize Web3 (you'll need this for blockchain operations)
 try:
     w3 = Web3(Web3.HTTPProvider(os.getenv('BLOCKCHAIN_RPC_URL')))
@@ -85,16 +86,6 @@ def validate_token(token, secret_key):
         return None, None, {'message': 'Token is invalid!'}, 401
     except Exception as e:
         return None, None, {'message': 'Token validation failed'}, 401
-
-# def token_required(f):
-#     @wraps(f)
-#     def decorated(*args, **kwargs):
-#         token = request.headers.get('Authorization')
-#         user_id, user_role, error, status = validate_token(token, app.config['SECRET_KEY'])
-#         if error:
-#             return jsonify(error), status
-#         return f(user_id, user_role, *args, **kwargs)
-#     return decorated
 
 def token_required(f):
     @wraps(f)
@@ -165,7 +156,6 @@ def api_key_required(f):
 # ===============================
 # PUBLIC VERIFICATION ROUTES (for verify.html)
 # ===============================
-
 
 @app.route('/verify/<serial_number>', methods=['GET'])
 @token_required_with_roles(allowed_roles=['manufacturer', 'customer'])
@@ -400,7 +390,6 @@ def verify_batch_public():
         return jsonify({"error": "Batch verification failed"}), 500
     
 @app.route('/stats', methods=['GET'])
-# @token_required_with_roles(['manufacturer', 'customer'])
 def get_verification_stats():
     """Get system verification statistics"""
     try:
@@ -653,24 +642,39 @@ def signup():
     except Exception as e:
         print(f"Signup error: {e}")
         return jsonify({"error": "Internal server error"}), 500
-@app.route('/auth/login', methods=['POST'])
+
+@app.route('/auth/login', methods=['POST', 'OPTIONS'])
 def login():
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = make_response()
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
+        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+        return response
+        
     try:
         data = request.get_json()
         email = data.get('email')
         password = data.get('password')
         
         if not email or not password:
-            return jsonify({"error": "Email and password required"}), 400
+            response = jsonify({"error": "Email and password required"})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
         
         # Get user with all fields from database
         user = get_user_by_email(email)
         if not user:
-            return jsonify({"error": "Invalid credentials"}), 401
+            response = jsonify({"error": "Invalid credentials"})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 401
         
         # Check password
         if not verify_password(user["password_hash"], password):
-            return jsonify({"error": "Invalid credentials"}), 401
+            response = jsonify({"error": "Invalid credentials"})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 401
         
         # Create JWT token
         token_payload = {
@@ -710,16 +714,21 @@ def login():
         # Remove None values
         user_data = {k: v for k, v in user_data.items() if v is not None}
         
-        return jsonify({
+        response = jsonify({
             "status": "success",
             "token": token,
             "user": user_data,
             "message": "Login successful"
-        }), 200
+        })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 200
         
     except Exception as e:
         print(f"Login error: {e}")
-        return jsonify({"error": "Internal server error"}), 500
+        response = jsonify({"error": "Internal server error"})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
+
 # ===============================
 # MANUFACTURER ROUTES
 # ===============================
@@ -757,11 +766,6 @@ def get_manufacturer_profile(current_user_id, current_user_role):
             "registration_number": user.get('registration_number'),
             "business_address": user.get('business_address'),
             "website": user.get('website'),
-            
-            # Statistics
-            # "total_products": get_manufacturer_product_count(current_user_id),
-            # "total_sales": get_manufacturer_sales_count(current_user_id),
-            # "last_product_update": user.get('last_product_update')
         }
         
         return jsonify({
@@ -769,6 +773,7 @@ def get_manufacturer_profile(current_user_id, current_user_role):
             "user": profile_data
         }), 200
         
+
     except Exception as e:
         print(f"Manufacturer profile error: {e}")
         return jsonify({"error": "Internal server error"}), 500
