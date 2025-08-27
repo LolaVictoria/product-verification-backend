@@ -805,11 +805,6 @@ def get_customer_profile(current_user_id, current_user_role):
             "gender": user.get('gender'),
             "address": user.get('address', {}),
             "preferences": user.get('preferences', {}),
-            
-            # Statistics
-            # "total_purchases": get_customer_purchase_count(current_user_id),
-            # "total_owned_products": get_customer_owned_products_count(current_user_id),
-            # "last_purchase_date": get_customer_last_purchase_date(current_user_id)
         }
         
         return jsonify({
@@ -851,76 +846,6 @@ def logout_user(current_user_id, current_user_role):
         print(f"Logout error: {e}")
         return jsonify({"error": "Logout failed"}), 500
 
-
-
-
-   
-
-# Update your token_required decorator to check blacklist
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = None
-        auth_header = request.headers.get('Authorization')
-        
-        if auth_header:
-            try:
-                token = auth_header.split(' ')[1]
-            except IndexError:
-                return jsonify({'message': 'Invalid token format'}), 401
-        
-        if not token:
-            return jsonify({'message': 'Token is missing'}), 401
-        
-        try:
-            # Check if token is blacklisted
-            db = get_db_connection()
-            blacklisted = db.blacklisted_tokens.find_one({"token": token})
-            if blacklisted:
-                return jsonify({'message': 'Token has been revoked'}), 401
-            
-            # Verify token
-            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
-            current_user_id = data['user_id']
-            current_user_role = data.get('role')
-            
-        except jwt.ExpiredSignatureError:
-            return jsonify({'message': 'Token has expired'}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({'message': 'Invalid token'}), 401
-        except Exception as e:
-            return jsonify({'message': 'Token verification failed'}), 401
-        
-        return f(current_user_id, current_user_role, *args, **kwargs)
-    return decorated
-
-# @app.route('/register-batch', methods=['POST'])
-# @token_required_with_roles(['manufacturer'])
-# def register_batch_devices(current_user_id, current_user_role):
-#     try:
-#         data = request.get_json()
-#         devices = data.get('devices', [])
-#         results = []
-        
-#         for device_data in devices:
-#             serial_number = device_data.get('serial_number')
-            
-#             # Register on blockchain
-#             blockchain_tx = register_device_blockchain(serial_number, device_data)
-            
-#             if blockchain_tx.get('success'):
-#                 tx_hash = blockchain_tx.get('transaction_hash')
-#                 # Store the transaction hash
-#                 store_registration_transaction(serial_number, tx_hash)
-#                 results.append({"serial": serial_number, "success": True, "tx_hash": tx_hash})
-#             else:
-#                 results.append({"serial": serial_number, "success": False, "error": blockchain_tx.get('error')})
-        
-#         return jsonify({"results": results})
-        
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
-    
 @app.route('/manufacturer/register-product', methods=['POST'])
 @token_required_with_roles(allowed_roles=['manufacturer'])
 def register_manufacturer_product(current_user_id, current_user_role):
@@ -986,11 +911,6 @@ def register_manufacturer_product(current_user_id, current_user_role):
             "created_at": datetime.now(timezone.utc),
             "updated_at": datetime.now(timezone.utc)
         }
-        
-        # REMOVE this blockchain registration block:
-        # blockchain_tx = register_device_blockchain(serial_number, data)
-        # if not blockchain_tx.get('success'):
-        #     return jsonify({"success": False, "error": "Blockchain registration failed"}), 500
         
         # Save to database WITHOUT blockchain info (frontend will handle blockchain)
         try:
@@ -1300,8 +1220,6 @@ def mark_blockchain_failed(current_user_id, product_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-
 # Add Email Route
 @app.route('/manufacturer/profile/add-email', methods=['POST'])
 @token_required_with_roles(allowed_roles=['manufacturer'])
@@ -1314,7 +1232,7 @@ def add_email(current_user_id, current_user_role):
             return jsonify({"error": "Email address is required"}), 400
             
         # Validate email format
-        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
         if not re.match(email_regex, email):
             return jsonify({"error": "Invalid email format"}), 400
         
@@ -1336,6 +1254,149 @@ def add_email(current_user_id, current_user_role):
         updated_emails = current_emails + [email]
         
         # Update user in database
+        db = get_db_connection()
+        db.users.update_one(
+            {"_id": ObjectId(current_user_id)},
+            {
+                "$set": {
+                    "company_names": updated_company_names,
+                    "current_company_name": company_name,
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        
+        # Get updated user data
+        updated_user = get_user_by_id(current_user_id)
+        profile_data = format_user_profile(updated_user)
+        
+        return jsonify({
+            "status": "success",
+            "message": "Company name updated successfully",
+            "user": profile_data
+        }), 200
+        
+    except Exception as e:
+        print(f"Update company name error: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+# ===============================
+# LOAD BACKEND CONFIGURATION
+# ===============================
+@app.route('/blockchain-config', methods=['GET'])
+def get_blockchain_config():
+    """Return blockchain configuration for frontend"""
+    try:
+        return jsonify({
+            "chainId": os.getenv('CHAINID'),      
+            "rpcUrl": os.getenv('BLOCKCHAIN_RPC_URL'),
+            "contractAddress": os.getenv('CONTRACT_ADDRESS'),
+            "walletAddress": os.getenv('WALLET_ADDRESS')
+            
+        }), 200
+    except Exception as e:
+        print(f"Blockchain config error: {e}")
+        return jsonify({"error": "Could not load blockchain configuration"}), 500
+
+# ===============================
+# FRONTEND ROUTES
+# ===============================
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/login')
+def login_page():
+    return render_template('login.html')
+
+@app.route('/signup')
+def signup_page():
+    return render_template('signup.html')
+
+@app.route('/dashboard')
+def dashboard():
+    # Provide safe defaults
+    chain_id = int(os.getenv('CHAIN_ID', '11155111'))
+    contract_address = os.getenv('CONTRACT_ADDRESS', '')
+    account_address = os.getenv('ACCOUNT_ADDRESS', '')
+    rpc_url = os.getenv('RPC_URL', '')
+    
+    # Read contract ABI from file path
+    contract_abi = '[]'  # Default empty array
+    contract_abi_path = os.getenv('CONTRACT_ABI_PATH', '')
+    
+    if contract_abi_path and os.path.exists(contract_abi_path):
+        try:
+            with open(contract_abi_path, 'r') as f:
+                abi_content = f.read()
+            # Validate it's valid JSON
+            import json
+            json.loads(abi_content)  # Test if it's valid JSON
+            contract_abi = abi_content
+        except (json.JSONDecodeError, IOError, TypeError) as e:
+            print(f"Error reading ABI file {contract_abi_path}: {e}")
+            contract_abi = '[]'  # Fallback to empty array
+    else:
+        print(f"ABI file not found at path: {contract_abi_path}")
+    
+    return render_template('dashboard.html',
+                         chain_id=chain_id,
+                         contract_address=contract_address,
+                         wallet_address=account_address,
+                         contract_abi=contract_abi,
+                         rpc_url=rpc_url)
+    
+@app.route('/verify')
+def verify_page():
+    return render_template('verify.html')
+
+@app.route('/edit-profile')
+def edit_profile():
+    return render_template('edit-profile.html')
+
+# ===============================
+# ERROR HANDLERS
+# ===============================
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"error": "Endpoint not found"}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({"error": "Internal server error"}), 500
+
+@app.errorhandler(ValidationError)
+def handle_validation_error(error):
+    return jsonify({"error": str(error)}), 400
+
+@app.errorhandler(AuthenticationError)
+def handle_auth_error(error):
+    return jsonify({"error": str(error)}), 401
+
+@app.errorhandler(BlockchainError)
+def handle_blockchain_error(error):
+    return jsonify({"error": str(error)}), 500
+
+# ===============================
+# HEALTH CHECK
+# ===============================
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({
+        "status": "healthy",
+        "timestamp": get_current_utc(),
+        "version": "1.0.0"
+    }), 200
+
+if __name__ == '__main__':
+    app.run(
+        host='0.0.0.0',
+        port=int(os.getenv('PORT', 5000)),
+        debug=os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
+    )
         db.users.update_one(
             {"_id": ObjectId(current_user_id)},
             {
@@ -1481,7 +1542,7 @@ def add_wallet(current_user_id, current_user_role):
             return jsonify({"error": "Wallet address is required"}), 400
             
         # Validate wallet address format (basic Ethereum address validation)
-        if not re.match(r'^0x[a-fA-F0-9]{40}$', wallet_address):
+        if not re.match(r'^0x[a-fA-F0-9]{40}, wallet_address):
             return jsonify({"error": "Invalid wallet address format"}), 400
         
         user = get_user_by_id(current_user_id)
