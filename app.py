@@ -97,7 +97,8 @@ CORS(app,
          'Accept',
          'Origin',
          'Cache-Control',
-         'Pragma'
+         'Pragma',
+         'headers'
      ],
      supports_credentials=True,
      expose_headers=['Authorization', 'X-Total-Count'],
@@ -124,7 +125,7 @@ def add_cors_headers(response):
         response.headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'
     
     response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS,PATCH'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,X-Requested-With,X-API-Key,Accept,Origin,Cache-Control,Pragma'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,X-Requested-With,X-API-Key,Accept,Origin,Cache-Control,Pragma, headers'
     response.headers['Access-Control-Expose-Headers'] = 'Authorization,X-Total-Count'
     response.headers['Access-Control-Allow-Credentials'] = 'true'
     response.headers['Access-Control-Max-Age'] = '86400'
