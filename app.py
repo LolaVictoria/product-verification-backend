@@ -690,7 +690,7 @@ def signup():
         print(f"Signup error: {e}")
         return create_cors_response({"error": "Internal server error"}, 500)
 
-@app.route('/auth/login', methods=['POST'])
+@app.route('/auth/login', methods=['POST', 'OPTIONS'])
 def login():
     try:
         data = request.get_json()
@@ -831,8 +831,6 @@ def get_customer_profile(current_user_id, current_user_role):
     except Exception as e:
         print(f"Customer profile error: {e}")
         return jsonify({"error": "Internal server error"}), 500
-
-
 
 # ===============================
 # PROFILE
