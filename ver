@@ -1,85 +1,816 @@
-This is a CORS (Cross-Origin Resource Sharing) issue. The error indicates your backend server needs to be configured to allow credentials and proper CORS headers. Here are the solutions:
+# app.py - Optimized Flask Application with CORS
+from bson import ObjectId
+from flask import Flask, request, jsonify, render_template, send_from_directory, make_response
+from flask_cors import CORS, cross_origin
+import jwt
+from functools import wraps
+from datetime import datetime, timedelta, timezone
+import os
+from dotenv import load_dotenv
+from web3 import Web3
+import hashlib
+import re
+import traceback
 
-## Frontend Fix (Immediate):
+# Load environment variables
+load_dotenv()
 
-**1. Update your `apiClient.ts` to handle credentials properly:**
+# Initialize Flask app
+app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
-```typescript
-import axios from 'axios';
+# Enhanced CORS Configuration
+CORS(app, 
+     origins=[
+         'http://localhost:3000',
+         'http://localhost:5000',
+         'https://yourdomain.com',
+         'https://your-frontend-domain.com'
+     ],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+     allow_headers=[
+         'Content-Type', 
+         'Authorization', 
+         'X-Requested-With',
+         'X-API-Key',
+         'Accept',
+         'Origin',
+         'Cache-Control',
+         'Pragma'
+     ],
+     supports_credentials=True,
+     expose_headers=['Authorization', 'X-Total-Count'],
+     max_age=86400
+)
 
-const apiClient = axios.create({
-  baseURL: 'https://product-verification-blockchain.onrender.com',
-  timeout: 10000,
-  withCredentials: true, // Add this
-  headers: {
-    'Content-Type': 'application/json',
-  }
-});
+# Initialize Web3
+try:
+    w3 = Web3(Web3.HTTPProvider(os.getenv('BLOCKCHAIN_RPC_URL')))
+except:
+    w3 = None
+    print("Warning: Web3 not initialized")
 
-// Add token to requests
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+# Import helper functions
+from helper_functions import (
+    # Database functions
+    get_user_by_email, get_user_by_id, create_user, update_user_verification_status, get_db_connection,
+    get_product_by_serial, create_product, get_all_products, get_products_by_manufacturer,
+    get_pending_manufacturers, create_api_key, get_api_keys_by_user, validate_api_key, update_user,
+    get_primary_email, get_primary_wallet, is_valid_email, is_valid_wallet_address, email_exists_globally,
+    wallet_exists_globally, get_current_company_name, get_verified_wallets, generate_verification_token,
+    send_email_verification, initiate_wallet_verification, format_user_profile, validate_product_data,
+    validate_ownership_transfer, get_ownership_history_by_serial, create_ownership_transfer,
+    log_verification_attempt, blacklist_token,
+    
+    # Blockchain functions
+    verify_on_blockchain, register_product_blockchain, verify_manufacturer_on_blockchain,
+    check_manufacturer_authorization, get_blockchain_product_details, verify_product_on_blockchain,
+    store_registration_transaction, register_device_blockchain,
+    
+    # Utility functions
+    hash_password, verify_password, format_product_response, format_user_response,
+    get_current_utc,
+    
+    # Validation functions
+    validate_user_registration, validate_product_data, ValidationError, 
+    AuthenticationError, BlockchainError,
+    
+    # New verification classes
+    ElectronicsAuthenticator, DatabaseManager
+)
 
-// Handle CORS errors
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.code === 'ERR_NETWORK') {
-      console.error('CORS or network error:', error);
-    }
-    return Promise.reject(error);
-  }
-);
+# ===============================
+# CORS UTILITIES
+# ===============================
 
-export default apiClient;
-```
+def add_cors_headers(response):
+    """Add CORS headers to any response"""
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,X-API-Key,Accept,Origin,Cache-Control,Pragma')
+    response.headers.add('Access-Control-Expose-Headers', 'Authorization,X-Total-Count')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    response.headers.add('Access-Control-Max-Age', '86400')
+    return response
 
-## Backend Fix (Required):
+def create_cors_response(data, status_code=200):
+    """Helper function to create CORS-enabled responses"""
+    response = jsonify(data)
+    return add_cors_headers(response), status_code
 
-Your backend server needs proper CORS configuration. Add this to your backend:
+@app.after_request
+def after_request(response):
+    return add_cors_headers(response)
 
-**For Express.js backend:**
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = make_response()
+        return add_cors_headers(response)
 
-```javascript
-const cors = require('cors');
+# ===============================
+# AUTHENTICATION DECORATORS
+# ===============================
 
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'https://your-frontend-domain.com'],
-  credentials: true, // This is crucial - must be true
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+def validate_token(token, secret_key):
+    """Validate JWT token and return user info"""
+    if not token:
+        return None, None, {'message': 'Token is missing!'}, 401
+    
+    if token.startswith('Bearer '):
+        token = token[7:]
+        
+    try:
+        data = jwt.decode(token, secret_key, algorithms=['HS256'])
+        if 'sub' not in data or 'role' not in data:
+            return None, None, {'message': 'Invalid token: missing required fields'}, 401
+        return ObjectId(data['sub']), data['role'], None, None
+    except jwt.ExpiredSignatureError:
+        return None, None, {'message': 'Token has expired!'}, 401
+    except jwt.InvalidTokenError:
+        return None, None, {'message': 'Token is invalid!'}, 401
+    except Exception:
+        return None, None, {'message': 'Token validation failed'}, 401
 
-// Handle preflight requests
-app.options('*', cors());
-```
+def token_required(f):
+    """Decorator for routes requiring authentication"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        auth_header = request.headers.get('Authorization')
+        
+        if auth_header:
+            try:
+                token = auth_header.split(' ')[1]
+            except IndexError:
+                return create_cors_response({'message': 'Invalid token format'}, 401)
+        
+        if not token:
+            return create_cors_response({'message': 'Token is missing'}, 401)
+        
+        try:
+            # Check if token is blacklisted
+            db = get_db_connection()
+            blacklisted = db.blacklisted_tokens.find_one({"token": token})
+            if blacklisted:
+                return create_cors_response({'message': 'Token has been revoked'}, 401)
+            
+            # Verify token
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            current_user_id = data['sub']
+            current_user_role = data.get('role')
+            
+        except jwt.ExpiredSignatureError:
+            return create_cors_response({'message': 'Token has expired'}, 401)
+        except jwt.InvalidTokenError:
+            return create_cors_response({'message': 'Invalid token'}, 401)
+        except Exception:
+            return create_cors_response({'message': 'Token verification failed'}, 401)
+        
+        return f(current_user_id, current_user_role, *args, **kwargs)
+    return decorated
 
-**Alternative temporary fix (less secure):**
+def token_required_with_roles(allowed_roles):
+    """Decorator for routes requiring specific roles"""
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            token = request.headers.get('Authorization')
+            user_id, user_role, error, status = validate_token(token, app.config['SECRET_KEY'])
+            if error:
+                return create_cors_response(error, status)
+            if allowed_roles and user_role not in allowed_roles:
+                return create_cors_response({'message': f'Access denied: requires one of {allowed_roles}'}, 403)
+            return f(user_id, user_role, *args, **kwargs)
+        return decorated
+    return decorator
 
-```javascript
-app.use(cors({
-  origin: true, // Allow all origins temporarily
-  credentials: true
-}));
-```
+def api_key_required(f):
+    """Decorator for API key authentication"""
+    @wraps(f)
+    def decorator(*args, **kwargs):
+        api_key = request.headers.get('x-api-key')
+        
+        if not api_key:
+            return create_cors_response({'message': 'API key is required'}, 401)
+            
+        key_data = validate_api_key(api_key)
+        if not key_data:
+            return create_cors_response({'message': 'Invalid API key'}, 401)
+            
+        return f(*args, **kwargs)
+    return decorator
 
-## Environment-specific solution:
+# ===============================
+# STATIC FILES
+# ===============================
 
-**Development:**
-```javascript
-origin: ['http://localhost:3000', 'http://localhost:5173']
-```
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory('static', filename)
 
-**Production:**
-```javascript
-origin: ['https://your-frontend-domain.vercel.app']
-```
+# ===============================
+# PUBLIC VERIFICATION ROUTES
+# ===============================
 
-The key issue is that your backend's CORS configuration doesn't have `credentials: true` set properly, which is required when your frontend sends `withCredentials: true`.
+@app.route('/verify/<serial_number>', methods=['GET'])
+@token_required_with_roles(allowed_roles=['manufacturer', 'customer'])
+def verify_product_public(current_user_id, current_user_role, serial_number):
+    """Enhanced verification with blockchain check"""
+    try:
+        db = get_db_connection()
+        
+        if db is None:
+            print("Database connection failed")
+            return create_cors_response({"authentic": False, "message": "Database connection failed"}, 500)
+            
+        print("Database connection established")
+        
+        # Debug: Show sample serials (remove in production)
+        try:
+            all_serials = list(db.products.find({}, {"serial_number": 1}).limit(5))
+            print(f"Sample serial numbers in DB: {all_serials}")
+        except Exception as e:
+            print(f"Error fetching sample serials: {e}")
+        
+        user_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+        
+        # Database lookup with error handling
+        try:
+            product = db.products.find_one({"serial_number": serial_number})
+            print(f"Database query result: {product is not None}")
+            if product:
+                print(f"Product found: {product.get('brand', 'Unknown')} {product.get('model', 'Unknown')}")
+        except Exception as e:
+            print(f"Database query error: {e}")
+            return create_cors_response({"authentic": False, "message": "Database query error"}, 500)
+        
+        if product:
+            print(f"Product found in DB. Blockchain verified flag: {product.get('blockchain_verified')}")
+            
+            if product.get("blockchain_verified"):
+                # Try blockchain verification with proper error handling
+                try:
+                    blockchain_result = verify_product_on_blockchain(serial_number)
+                    print(f"Blockchain result: {blockchain_result}")
+                except Exception as e:
+                    print(f"Blockchain verification failed: {e}")
+                    blockchain_result = {"verified": False, "error": str(e)}
+                
+                if not blockchain_result.get("verified"):
+                    result = {
+                        "authentic": False,
+                        "message": "Product found in database but blockchain verification failed",
+                        "source": "database_only",
+                        "blockchain_error": blockchain_result.get("error"),
+                        "serialNumber": serial_number
+                    }
+                else:
+                    result = {
+                        "authentic": True,
+                        "serialNumber": serial_number,
+                        "brand": product.get("brand"),
+                        "model": product.get("model"),
+                        "deviceType": product.get("device_type"),
+                        "color": product.get("color"),
+                        "storage": product.get("storage_data"),
+                        "manufacturerName": product.get("manufacturer_name"),
+                        "source": "blockchain",
+                        "blockchain_verified": True,
+                        "ownership_history": product.get("ownership_history", []),
+                        "message": "Product verified on blockchain",
+                        "blockchain_proof": blockchain_result.get("proof"),
+                        "registered_at": product.get("registered_at"),
+                        "created_at": product.get("created_at"),
+                        "verification_timestamp": datetime.now(timezone.utc)
+                    }
+            else:
+                result = {
+                    "authentic": True,
+                    "serialNumber": serial_number,
+                    "brand": product.get("brand"),
+                    "model": product.get("model"),
+                    "deviceType": product.get("device_type"),
+                    "color": product.get("color"),
+                    "storage": product.get("storage_data"),
+                    "manufacturerName": product.get("manufacturer_name"),
+                    "source": "database",
+                    "blockchain_verified": False,
+                    "message": "Product verified in database only"
+                }
+        else:
+            print("Product not found in DB, checking blockchain...")
+            
+            # Check blockchain directly with error handling
+            try:
+                blockchain_result = verify_product_on_blockchain(serial_number)
+                print(f"Blockchain check result: {blockchain_result}")
+            except Exception as e:
+                print(f"Blockchain verification failed: {e}")
+                blockchain_result = {"verified": False, "error": str(e)}
 
-Contact your backend developer or update your backend CORS settings to include `credentials: true` and your frontend domain in the allowed origins.
+            if blockchain_result.get("verified"):
+                tx_hash = blockchain_result.get("transaction_hash")
+                contract_address = blockchain_result.get("contract_address")
+                network = blockchain_result.get("network", "sepolia")
+    
+                explorer_urls = {
+                    "ethereum": "https://etherscan.io",
+                    "sepolia": "https://sepolia.etherscan.io",
+                    "polygon": "https://polygonscan.com", 
+                    "bsc": "https://bscscan.com"
+                }
+                
+                base_url = explorer_urls.get(network, "https://sepolia.etherscan.io")
+    
+                result = {
+                    "authentic": True,
+                    "serialNumber": serial_number,
+                    "source": "blockchain",
+                    "blockchain_verified": True,
+                    "message": "Product verified on blockchain",
+                    "blockchain_proof": {
+                        "transaction_hash": tx_hash,
+                        "contract_address": contract_address or "0x07c05F17f53ff83d0b5F469bFA0Cb36bDc9eA950",
+                        "network": network,
+                        "explorer_links": {
+                            "transaction": f"{base_url}/tx/{tx_hash}" if tx_hash else None,
+                            "contract": f"{base_url}/address/{contract_address or '0x07c05F17f53ff83d0b5F469bFA0Cb36bDc9eA950'}"
+                        }
+                    },
+                    "verification_timestamp": datetime.now(timezone.utc).isoformat()
+                }
+            else:
+                result = {
+                    "authentic": False,
+                    "message": "Product not found in database or blockchain",
+                    "source": "not_found",
+                    "serialNumber": serial_number
+                }
+        
+        # Log verification attempt
+        try:
+            log_verification_attempt(db, {
+                "serial_number": serial_number,
+                "authentic": result["authentic"],
+                "source": result["source"],
+                "user_id": current_user_id,
+                "user_role": current_user_role,
+                "user_ip": user_ip,
+                "timestamp": datetime.now(timezone.utc)
+            })
+        except Exception as e:
+            print(f"Logging failed: {e}")
+        
+        print(f"Returning result: {result}")
+        return create_cors_response(result, 200)
+        
+    except Exception as e:
+        print(f"Verification route error: {e}")
+        traceback.print_exc()
+        return create_cors_response({
+            "authentic": False, 
+            "message": "Verification service error",
+            "error": str(e)
+        }, 500)
+    
+@app.route('/verify-batch', methods=['POST'])
+@token_required_with_roles(['manufacturer', 'customer'])
+def verify_batch_public(current_user_id, current_user_role):
+    """Enhanced public batch verification endpoint"""
+    try:
+        data = request.get_json()
+        serial_numbers = data.get('serialNumbers', [])
+        
+        if not serial_numbers or len(serial_numbers) > 10:
+            return create_cors_response({
+                "error": "Please provide 1-10 serial numbers"
+            }, 400)
+        
+        db = get_db_connection()
+        user_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+        
+        results = []
+        total_verified = 0
+        
+        for serial_number in serial_numbers:
+            product = db.products.find_one({"serial_number": serial_number})
+            
+            if product:
+                result = {
+                    "serialNumber": serial_number,
+                    "authentic": True,
+                    "brand": product.get("brand"),
+                    "model": product.get("model"),
+                    "deviceType": product.get("device_type"),
+                    "manufacturerName": product.get("manufacturer_name"),
+                    "source": "blockchain" if product.get("blockchain_verified") else "database"
+                }
+                total_verified += 1
+            else:
+                result = {
+                    "serialNumber": serial_number,
+                    "authentic": False,
+                    "source": "not_found",
+                    "message": "Product not found"
+                }
+            
+            results.append(result)
+            
+            # Log each verification
+            log_verification_attempt(db, {
+                "serial_number": serial_number,
+                "authentic": result["authentic"],
+                "source": result.get("source", "unknown"),
+                "user_ip": user_ip,
+                "timestamp": datetime.now(timezone.utc)
+            })
+        
+        return create_cors_response({
+            "status": "success",
+            "results": results,
+            "total_verified": total_verified,
+            "total_checked": len(results)
+        }, 200)
+        
+    except Exception as e:
+        print(f"Batch verification error: {e}")
+        return create_cors_response({"error": "Batch verification failed"}, 500)
+    
+@app.route('/stats', methods=['GET'])
+def get_verification_stats():
+    """Get system verification statistics"""
+    try:
+        db = get_db_connection()
+        
+        # Count total products
+        total_devices = db.products.count_documents({})
+        blockchain_devices = db.products.count_documents({"blockchain_verified": True})
+        
+        # Count verification logs
+        total_verifications = db.verification_logs.count_documents({}) if hasattr(db, 'verification_logs') else 0
+        
+        # Calculate authenticity rate
+        authentic_verifications = db.verification_logs.count_documents({"authentic": True}) if hasattr(db, 'verification_logs') else 0
+        authenticity_rate = int((authentic_verifications / total_verifications * 100)) if total_verifications > 0 else 0
+        
+        stats = {
+            "total_devices": total_devices,
+            "blockchain_devices": blockchain_devices,
+            "total_verifications": total_verifications,
+            "authenticity_rate": authenticity_rate
+        }
+        
+        return create_cors_response(stats, 200)
+        
+    except Exception as e:
+        print(f"Stats error: {e}")
+        return create_cors_response({
+            "total_devices": 0,
+            "blockchain_devices": 0,
+            "total_verifications": 0,
+            "authenticity_rate": 0
+        }, 500)
+
+@app.route('/sample-data', methods=['GET'])
+@token_required_with_roles(['manufacturer', 'customer'])
+def get_sample_data(current_user_id, current_user_role):
+    """Get sample serial numbers for testing"""
+    try:
+        db = get_db_connection()
+        
+        # Get authentic devices from database
+        authentic_products = list(db.products.find(
+            {"blockchain_verified": True}
+        ).limit(5))
+        
+        database_products = list(db.products.find(
+            {"blockchain_verified": False}
+        ).limit(5))
+        
+        # Some fake serials for testing
+        fake_serials = ["FAKE001", "INVALID123", "COUNTERFEIT", "NOTREAL999", "BOGUS456"]
+        
+        sample_data = {
+            "authentic": {
+                "blockchain": [product["serial_number"] for product in authentic_products],
+                "database": [product["serial_number"] for product in database_products]
+            },
+            "counterfeit": fake_serials
+        }
+        
+        return create_cors_response(sample_data, 200)
+        
+    except Exception as e:
+        print(f"Sample data error: {e}")
+        return create_cors_response({
+            "authentic": {"blockchain": [], "database": []},
+            "counterfeit": ["FAKE001", "INVALID123"]
+        }, 500)
+
+@app.route('/device-details/<serial_number>', methods=['GET'])
+@token_required_with_roles(['manufacturer', 'customer'])
+def get_device_details(current_user_id, current_user_role, serial_number):
+    """Get detailed device information"""
+    try:
+        db = get_db_connection()
+        product = db.products.find_one({"serial_number": serial_number})
+        
+        if product:
+            # Convert ObjectId to string
+            product['_id'] = str(product['_id'])
+            
+            details = {
+                "status": "success",
+                "serial_number": product.get("serial_number"),
+                "serialNumber": product.get("serial_number"),
+                "brand": product.get("brand"),
+                "model": product.get("model"),
+                "device_type": product.get("device_type"),
+                "deviceType": product.get("device_type"),
+                "storage_data": product.get("storage_data"),
+                "storage": product.get("storage_data"),
+                "color": product.get("color"),
+                "manufacturer_name": product.get("manufacturer_name"),
+                "manufacturerName": product.get("manufacturer_name"),
+                "registration_type": product.get("registration_type"),
+                "blockchain_verified": product.get("blockchain_verified", False),
+                "transaction_hash": product.get("transaction_hash"),
+                "registered_at": product.get("registered_at"),
+                "created_at": product.get("created_at")
+            }
+            
+            return create_cors_response(details, 200)
+        else:
+            return create_cors_response({
+                "status": "not_found",
+                "error": "Device details not found"
+            }, 404)
+            
+    except Exception as e:
+        print(f"Device details error: {e}")
+        return create_cors_response({"error": "Could not load device details"}, 500)
+
+@app.route('/ownership-history/<serial_number>', methods=['GET'])
+@token_required_with_roles(['manufacturer', 'customer'])
+def get_ownership_history(user_id, user_role, serial_number):
+    """Get ownership history for a verified product"""
+    try:
+        db = get_db_connection()
+        product = db.products.find_one({"serial_number": serial_number})
+        if not product:
+            return create_cors_response({
+                "status": "not_found",
+                "message": "Product not found"
+            }, 404)
+
+        ownership_history = product.get("ownership_history", [])
+        
+        data = []
+        for transfer in ownership_history:
+            data.append({
+                "transfer_reason": transfer.get("notes", "Initial Registration"),
+                "from": transfer.get("previous_owner", "Manufacturer"),
+                "to": transfer.get("owner_name"),
+                "transfer_date": transfer.get("transfer_date", product.get("registered_at")),
+                "sale_price": transfer.get("sale_price", 0),
+                "transaction_hash": transfer.get("transaction_hash", product.get("transaction_hash"))
+            })
+
+        # If no ownership history exists, create default entry
+        if not data:
+            data.append({
+                "transfer_reason": "Initial Registration",
+                "previous_owner": "Manufacturer",
+                "new_owner": product.get("current_owner", product.get("manufacturer_wallet")),
+                "transfer_date": product.get("registered_at"),
+                "sale_price": 0,
+                "transaction_hash": product.get("transaction_hash")
+            })
+
+        return create_cors_response({
+            "status": "success",
+            "serial_number": serial_number,
+            "history": data
+        }, 200)
+
+    except Exception as e:
+        print(f"Ownership history error: {e}")
+        return create_cors_response({"error": "Could not load ownership history"}, 500)
+    
+@app.route('/log-verification', methods=['POST'])
+def log_verification_attempt():
+    """Log verification attempts for analytics"""
+    try:
+        data = request.get_json()
+        db = get_db_connection()
+        
+        log_entry = {
+            "serial_number": data.get("serial_number"),
+            "authentic": data.get("authentic", False),
+            "timestamp": datetime.now(timezone.utc),
+            "user_ip": request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr),
+            "user_agent": data.get("user_agent", "")
+        }
+        
+        db.verification_logs.insert_one(log_entry)
+        return create_cors_response({"status": "logged"}, 200)
+        
+    except Exception as e:
+        print(f"Verification logging error: {e}")
+        return create_cors_response({"error": "Logging failed"}, 500)
+    
+@app.route('/seed-data', methods=['GET'])
+def seed_sample_data():
+    """Seed database with sample verification data"""
+    try:
+        db = get_db_connection()
+        db_manager = DatabaseManager(db)
+        
+        result = db_manager.seed_sample_data()
+        
+        return create_cors_response({
+            "status": "success",
+            "message": result["message"],
+            "details": result
+        }, 200)
+        
+    except Exception as e:
+        print(f"Seed data error: {e}")
+        return create_cors_response({"error": "Could not seed sample data"}, 500)
+
+# ===============================
+# AUTHENTICATION ROUTES
+# ===============================
+
+@app.route('/auth/signup', methods=['POST'])
+def signup():
+    try:
+        data = request.get_json()
+        
+        # Validate input data
+        validate_user_registration(data)
+        
+        # Check if user already exists
+        existing_user = get_user_by_email(data["email"])
+        if existing_user:
+            return create_cors_response({"error": "User with this email already exists"}, 400)
+        
+        # Create user data
+        user_data = {
+            "emails": [data["email"]],  
+            "primary_email": data["email"],  
+            "password_hash": hash_password(data["password"]),
+            "role": data["role"],
+            "created_at": get_current_utc(),
+        }
+
+        # For manufacturers
+        if data["role"] == "manufacturer":
+            user_data.update({
+                "wallet_addresses": [data["wallet_address"]],
+                "primary_wallet": data["wallet_address"],
+                "company_names": [data.get("company_name", "")],
+                "current_company_name": data.get("company_name", ""),
+                "verification_status": "pending",
+                "verified_wallets": []
+            })
+        
+        # Create user
+        user_id = create_user(user_data)
+        
+        return create_cors_response({
+            "status": "success",
+            "message": "User registered successfully",
+            "user_id": user_id
+        }, 201)
+        
+    except ValidationError as e:
+        return create_cors_response({"error": str(e)}, 400)
+    except Exception as e:
+        print(f"Signup error: {e}")
+        return create_cors_response({"error": "Internal server error"}, 500)
+
+@app.route('/auth/login', methods=['POST'])
+def login():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not email or not password:
+            return create_cors_response({"error": "Email and password required"}, 400)
+        
+        # Get user from database
+        user = get_user_by_email(email)
+        if not user:
+            return create_cors_response({"error": "Invalid credentials"}, 401)
+        
+        # Check password
+        if not verify_password(user["password_hash"], password):
+            return create_cors_response({"error": "Invalid credentials"}, 401)
+        
+        # Create JWT token
+        token_payload = {
+            'sub': str(user["_id"]),
+            'role': user["role"],
+            'email': user["primary_email"],
+            'exp': datetime.now(timezone.utc) + timedelta(hours=24)
+        }
+        token = jwt.encode(token_payload, app.config['SECRET_KEY'], algorithm='HS256')
+        
+        # Format user data
+        user_data = {
+            "id": str(user["_id"]),
+            "role": user["role"],
+            "primary_email": user["primary_email"],
+            "emails": user.get("emails", []),
+            "created_at": user["created_at"].isoformat() if user.get("created_at") else None,
+            "updated_at": user.get("updated_at").isoformat() if user.get("updated_at") else None,
+        }
+        
+        # Add role-specific fields
+        if user["role"] == "manufacturer":
+            user_data.update({
+                "verification_status": user.get("verification_status", "pending"),
+                "current_company_name": user.get("current_company_name"),
+                "company_names": user.get("company_names", []),
+                "primary_wallet": user.get("primary_wallet"),
+                "verified_wallets": user.get("verified_wallets", []),
+                "wallet_addresses": user.get("wallet_addresses", [])
+            })
+        elif user["role"] == "customer":
+            user_data.update({
+                "verification_status": "customer"
+            })
+        
+        # Remove None values
+        user_data = {k: v for k, v in user_data.items() if v is not None}
+        
+        return create_cors_response({
+            "status": "success",
+            "token": token,
+            "user": user_data,
+            "message": "Login successful"
+        }, 200)
+        
+    except Exception as e:
+        print(f"Login error: {e}")
+        return create_cors_response({"error": "Internal server error"}, 500)
+
+@app.route('/auth/logout', methods=['POST'])
+@token_required
+def logout_user(current_user_id, current_user_role):
+    """Logout user and invalidate token"""
+    try:
+        # Get the token from request header
+        auth_header = request.headers.get('Authorization')
+        if auth_header:
+            token = auth_header.split(' ')[1] if ' ' in auth_header else auth_header
+            
+            # Update user's last logout time
+            db = get_db_connection()
+            db.users.update_one(
+                {"_id": ObjectId(current_user_id)},
+                {"$set": {"last_logout": datetime.now(timezone.utc)}}
+            )
+        
+        return create_cors_response({
+            "status": "success",
+            "message": "Successfully logged out"
+        }, 200)
+        
+    except Exception as e:
+        print(f"Logout error: {e}")
+        return create_cors_response({"error": "Logout failed"}, 500)
+
+# ===============================
+# PROFILE
+
+The key changes I've made to properly handle CORS in your Flask application:
+Main CORS Configuration Updates:
+
+Enhanced Flask-CORS setup with all necessary headers and options
+Global CORS handler using @app.after_request to ensure all responses have CORS headers
+Preflight OPTIONS handling with @app.before_request
+Helper functions for consistent CORS response handling
+
+Critical CORS Headers Added:
+
+Access-Control-Allow-Origin: Specifies allowed origins
+Access-Control-Allow-Methods: All HTTP methods your API uses
+Access-Control-Allow-Headers: All headers your frontend sends
+Access-Control-Allow-Credentials: Enables cookies/auth headers
+Access-Control-Expose-Headers: Headers frontend can access
+Access-Control-Max-Age: Caches preflight requests
+
+Key Issues Fixed:
+
+Inconsistent CORS handling - Your login route had manual CORS headers while others relied on Flask-CORS
+Missing headers - Added X-API-Key, Cache-Control, Pragma to allowed headers
+OPTIONS method handling - Proper preflight request handling
+Global application - CORS headers now apply to all routes consistently
+
+ also remove abnormalities ike repition of route/funtions etc. also, optimize it for easy usage in all route funtions, apply dry, no spaghetti ode:
+
+  also remove abnormalities ike repition of route/funtions etc. also, optimize it for easy usage in all route funtions, apply dry, no spaghetti ode:
