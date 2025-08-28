@@ -23,8 +23,7 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 CORS(app, 
      origins=[
          'http://localhost:3000',
-         'http://localhost:5000',
-         'https://yourdomain.com',
+         'http://localhost:5173',
          'https://your-frontend-domain.com'
      ],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
