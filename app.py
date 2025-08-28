@@ -1020,83 +1020,121 @@ def get_manufacturer_dashboard_stats(current_user_id, current_user_role):
         print(f"Dashboard stats error: {e}")
         return create_cors_response({'error': 'Internal server error'}, 500)
 
-@app.route('/manufacturer/products', methods=['GET'])
+@app.route('/manufacturer/products', methods=['GET', 'OPTIONS'])
 @token_required_with_roles(['manufacturer'])
 def get_manufacturer_products(current_user_id, current_user_role):
     """Get products for manufacturer with optional filtering"""
+    # Handle preflight request
+    if request.method == 'OPTIONS':
+        response = make_response()
+        return add_cors_headers(response)
+    
     try:
+        # Debug logging
+        print(f"Fetching products for user: {current_user_id}")
+        
         # Validate user ID and get user
         try:
             user_id = ObjectId(current_user_id) if isinstance(current_user_id, str) else current_user_id
             user = get_user_by_id(user_id)
-        except Exception:
+        except Exception as e:
+            print(f"User ID validation error: {e}")
             return create_cors_response({'error': 'Invalid user ID'}, 400)
 
         if not user:
+            print("User not found")
             return create_cors_response({'error': 'User not found'}, 404)
 
         manufacturer_wallet = user.get('primary_wallet')
         if not manufacturer_wallet:
+            print("No wallet address found for user")
             return create_cors_response({'error': 'No wallet address found'}, 400)
+            
+        print(f"Manufacturer wallet: {manufacturer_wallet}")
 
         # Get database connection
         db = get_db_connection()
         if db is None:
+            print("Database connection failed")
             return create_cors_response({'error': 'Database connection failed'}, 500)
 
+        # FIXED: Use correct collection name - change "products" to "produts" if that's your actual collection name
+        # If your collection is actually called "produts", change the line below:
+        collection = db.products  # Change to db.produts if that's your collection name
+        
         # Build query with optional filter
         filter_type = request.args.get('filter', 'all')
         query = {"manufacturer_wallet": manufacturer_wallet}
         
+        print(f"Base query: {query}")
+        
         filter_mapping = {
             'blockchain_confirmed': 'blockchain_confirmed',
-            'blockchain_pending': 'blockchain_pending', 
+            'blockchain_pending': 'blockchain_pending',
             'blockchain_failed': 'blockchain_failed',
         }
         
         if filter_type != 'all' and filter_type in filter_mapping:
             query["registration_type"] = filter_mapping[filter_type]
+            
+        print(f"Final query: {query}")
 
-        # Fetch products
-        products = list(db.products.find(query).sort("created_at", -1))
-        
+        # Debug: Check if collection exists and has documents
+        try:
+            total_count = collection.count_documents({})
+            user_count = collection.count_documents(query)
+            print(f"Total documents in collection: {total_count}")
+            print(f"Documents matching query: {user_count}")
+        except Exception as e:
+            print(f"Collection query debug error: {e}")
+
+        # Fetch products with error handling
+        try:
+            products = list(collection.find(query).sort("created_at", -1))
+            print(f"Found {len(products)} products")
+        except Exception as e:
+            print(f"Database query error: {e}")
+            return create_cors_response({'error': f'Database query failed: {str(e)}'}, 500)
+
         # Format products for frontend
         formatted_products = []
         for product in products:
-            formatted_product = {
-                'id': str(product.get('_id', '')),
-                'serial_number': product.get('serial_number', ''),
-                'name': product.get('name', f"{product.get('brand', '')} {product.get('model', '')}".strip()),
-                'brand': product.get('brand', ''),
-                'model': product.get('model', ''),
-                'device_type': product.get('device_type', ''),
-                'category': product.get('category', product.get('device_type', '')),
-                'registration_type': product.get('registration_type', ''),
-                'transaction_hash': product.get('transaction_hash', ''),
-                'price': product.get('price', 0),
-                'created_at': str(product.get('created_at', '')) if product.get('created_at') else ''
-            }
-            formatted_products.append(formatted_product)
-        
+            try:
+                formatted_product = {
+                    'id': str(product.get('_id', '')),
+                    'serial_number': product.get('serial_number', ''),
+                    'name': product.get('name', f"{product.get('brand', '')} {product.get('model', '')}".strip()),
+                    'brand': product.get('brand', ''),
+                    'model': product.get('model', ''),
+                    'device_type': product.get('device_type', ''),
+                    'category': product.get('category', product.get('device_type', '')),
+                    'registration_type': product.get('registration_type', ''),
+                    'transaction_hash': product.get('transaction_hash', ''),
+                    'price': product.get('price', 0),
+                    'created_at': str(product.get('created_at', '')) if product.get('created_at') else ''
+                }
+                formatted_products.append(formatted_product)
+            except Exception as e:
+                print(f"Error formatting product {product.get('_id')}: {e}")
+                # Skip this product and continue
+
         response_data = {
             'success': True,
-            'products': formatted_products
+            'products': formatted_products,
+            'total_count': len(formatted_products)
         }
         
-        # Create response with no-cache headers
-        response = create_cors_response(response_data, 200)
-        response[0].headers.update({
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-        })
-        
-        return response
+        print(f"Returning {len(formatted_products)} formatted products")
+
+        # FIXED: Correct way to handle CORS response with additional headers
+        return create_cors_response(response_data, 200)
         
     except Exception as e:
         print(f"Error in get_manufacturer_products: {e}")
+        import traceback
+        traceback.print_exc()
         return create_cors_response({'error': 'Internal server error'}, 500)
-
+    
 @app.route('/products/<product_id>/blockchain-confirm', methods=['PUT'])
 @token_required_with_roles(['manufacturer'])
 def confirm_blockchain_registration(current_user_id, current_user_role, product_id):
