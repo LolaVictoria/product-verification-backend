@@ -81,32 +81,72 @@ from helper_functions import (
 # ===============================
 # CORS UTILITIES
 # ===============================
+# Enhanced CORS Configuration
+CORS(app, 
+     origins=[
+         'http://localhost:3000',
+         'http://localhost:5173',
+         'https://your-frontend-domain.com'
+     ],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+     allow_headers=[
+         'Content-Type', 
+         'Authorization', 
+         'X-Requested-With',
+         'X-API-Key',
+         'Accept',
+         'Origin',
+         'Cache-Control',
+         'Pragma'
+     ],
+     supports_credentials=True,
+     expose_headers=['Authorization', 'X-Total-Count'],
+     max_age=86400
+)
 
 def add_cors_headers(response):
-    """Add CORS headers to any response"""
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,X-API-Key,Accept,Origin,Cache-Control,Pragma')
-    response.headers.add('Access-Control-Expose-Headers', 'Authorization,X-Total-Count')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    response.headers.add('Access-Control-Max-Age', '86400')
+    """Add comprehensive CORS headers to any response"""
+    # Get the origin from the request
+    origin = request.headers.get('Origin')
+    
+    # List of allowed origins
+    allowed_origins = [
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'https://your-frontend-domain.com'
+    ]
+    
+    # Set origin if it's in allowed list, otherwise use first allowed origin
+    if origin in allowed_origins:
+        response.headers['Access-Control-Allow-Origin'] = origin
+    else:
+        response.headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'
+    
+    response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS,PATCH'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,X-Requested-With,X-API-Key,Accept,Origin,Cache-Control,Pragma'
+    response.headers['Access-Control-Expose-Headers'] = 'Authorization,X-Total-Count'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Max-Age'] = '86400'
+    
     return response
-
 def create_cors_response(data, status_code=200):
     """Helper function to create CORS-enabled responses"""
-    response = jsonify(data)
-    return add_cors_headers(response), status_code
+    response = make_response(jsonify(data), status_code)
+    return add_cors_headers(response)
 
 @app.after_request
 def after_request(response):
+    """Apply CORS headers to all responses"""
     return add_cors_headers(response)
 
 @app.before_request
 def handle_preflight():
+    """Handle preflight OPTIONS requests"""
     if request.method == "OPTIONS":
         response = make_response()
-        return add_cors_headers(response)
-
+        response = add_cors_headers(response)
+        return response
 # ===============================
 # AUTHENTICATION DECORATORS
 # ===============================
@@ -692,8 +732,22 @@ def signup():
 
 @app.route('/auth/login', methods=['POST', 'OPTIONS'])
 def login():
+    """Login with enhanced CORS handling"""
+    # Handle preflight request
+    if request.method == 'OPTIONS':
+        response = make_response()
+        return add_cors_headers(response)
+    
     try:
+        # Add debug logging
+        print(f"Login request from origin: {request.headers.get('Origin')}")
+        print(f"Request headers: {dict(request.headers)}")
+        
         data = request.get_json()
+        if not data:
+            print("No JSON data received")
+            return create_cors_response({"error": "No JSON data provided"}, 400)
+            
         email = data.get('email')
         password = data.get('password')
         
@@ -746,15 +800,20 @@ def login():
         # Remove None values
         user_data = {k: v for k, v in user_data.items() if v is not None}
         
-        return create_cors_response({
+        response_data = {
             "status": "success",
             "token": token,
             "user": user_data,
             "message": "Login successful"
-        }, 200)
+        }
+        
+        print(f"Login successful for user: {email}")
+        return create_cors_response(response_data, 200)
         
     except Exception as e:
         print(f"Login error: {e}")
+        import traceback
+        traceback.print_exc()
         return create_cors_response({"error": "Internal server error"}, 500)
 
 @app.route('/auth/logout', methods=['POST'])
