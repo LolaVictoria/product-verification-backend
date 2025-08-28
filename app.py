@@ -681,6 +681,94 @@ def seed_sample_data():
 # ===============================
 # AUTHENTICATION ROUTES
 # ===============================
+
+@app.route('/auth/login', methods=['POST', 'OPTIONS'])
+def login():
+    """Login with enhanced CORS handling"""
+    # Handle preflight request
+    if request.method == 'OPTIONS':
+        response = make_response()
+        return add_cors_headers(response)
+    
+    try:
+        # Add debug logging
+        print(f"Login request from origin: {request.headers.get('Origin')}")
+        print(f"Request headers: {dict(request.headers)}")
+        
+        data = request.get_json()
+        if not data:
+            print("No JSON data received")
+            return create_cors_response({"error": "No JSON data provided"}, 400)
+            
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not email or not password:
+            return create_cors_response({"error": "Email and password required"}, 400)
+        
+        # Get user from database
+        user = get_user_by_email(email)
+        if not user:
+            return create_cors_response({"error": "Invalid credentials"}, 401)
+        
+        # Check password
+        if not verify_password(user["password_hash"], password):
+            return create_cors_response({"error": "Invalid credentials"}, 401)
+        
+        # Create JWT token
+        token_payload = {
+            'sub': str(user["_id"]),
+            'role': user["role"],
+            'email': user["primary_email"],
+            'exp': datetime.now(timezone.utc) + timedelta(hours=24)
+        }
+        token = jwt.encode(token_payload, app.config['SECRET_KEY'], algorithm='HS256')
+        
+        # Format user data
+        user_data = {
+            "id": str(user["_id"]),
+            "role": user["role"],
+            "primary_email": user["primary_email"],
+            "emails": user.get("emails", []),
+            "created_at": user["created_at"].isoformat() if user.get("created_at") else None,
+            "updated_at": user.get("updated_at").isoformat() if user.get("updated_at") else None,
+        }
+        
+        # Add role-specific fields
+        if user["role"] == "manufacturer":
+            user_data.update({
+                "verification_status": user.get("verification_status", "pending"),
+                "current_company_name": user.get("current_company_name"),
+                "company_names": user.get("company_names", []),
+                "primary_wallet": user.get("primary_wallet"),
+                "verified_wallets": user.get("verified_wallets", []),
+                "wallet_addresses": user.get("wallet_addresses", [])
+            })
+        elif user["role"] == "customer":
+            user_data.update({
+                "verification_status": "customer"
+            })
+        
+        # Remove None values
+        user_data = {k: v for k, v in user_data.items() if v is not None}
+        
+        response_data = {
+            "status": "success",
+            "token": token,
+            "user": user_data,
+            "message": "Login successful"
+        }
+        
+        print(f"Login successful for user: {email}")
+        return create_cors_response(response_data, 200)
+        
+    except Exception as e:
+        print(f"Login error: {e}")
+        import traceback
+        traceback.print_exc()
+        return create_cors_response({"error": "Internal server error"}, 500)
+
+
 @app.route('/auth/signup', methods=['POST', 'OPTIONS'])
 def signup():
     # Handle preflight request
@@ -737,10 +825,6 @@ def signup():
 # ===============================
 # PROFILE
 # ===============================
-# MANUFACTURER ROUTES
-# ===============================
-
-# Profile Routes for Manufacturers and Customers
 
 @app.route('/manufacturer/profile', methods=['GET', 'OPTIONS'])
 @token_required_with_roles(allowed_roles=['manufacturer'])
