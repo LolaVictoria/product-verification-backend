@@ -110,7 +110,7 @@ def token_required(f):
             
             # Verify token
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
-            current_user_id = data['user_id']
+            current_user_id = data['sub']
             current_user_role = data.get('role')
             
         except jwt.ExpiredSignatureError:
@@ -161,7 +161,6 @@ def api_key_required(f):
 def verify_product_public(current_user_id, current_user_role, serial_number):
     """Enhanced verification with blockchain check"""
     try:
-        print(f"Starting verification for: {serial_number}")
         db = get_db_connection()
         
         if db is None:
@@ -178,7 +177,6 @@ def verify_product_public(current_user_id, current_user_role, serial_number):
             print(f"Error fetching sample serials: {e}")
         
         user_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
-        print(f"Looking for serial: '{serial_number}'")
         
         # Database lookup with error handling
         try:
@@ -229,7 +227,7 @@ def verify_product_public(current_user_id, current_user_role, serial_number):
                         "blockchain_proof": blockchain_result.get("proof"),
                         "registered_at": product.get("registered_at"),
                         "created_at": product.get("created_at"),
-                        "verification_timestamp": datetime.now(timezone.utc).isoformat()
+                        "verification_timestamp": datetime.now(timezone.utc)
                     }
             else:
                 # Database only verification
@@ -327,7 +325,7 @@ def verify_product_public(current_user_id, current_user_role, serial_number):
     
 @app.route('/verify-batch', methods=['POST'])
 @token_required_with_roles(['manufacturer', 'customer'])
-def verify_batch_public():
+def verify_batch_public(current_user_id, current_user_role):
     """Enhanced public batch verification endpoint"""
     try:
         data = request.get_json()
@@ -425,7 +423,7 @@ def get_verification_stats():
 
 @app.route('/sample-data', methods=['GET'])
 @token_required_with_roles(['manufacturer', 'customer'])
-def get_sample_data():
+def get_sample_data(current_user_id, current_user_role):
     """Get sample serial numbers for testing"""
     try:
         db = get_db_connection()
@@ -461,7 +459,7 @@ def get_sample_data():
 
 @app.route('/device-details/<serial_number>', methods=['GET'])
 @token_required_with_roles(['manufacturer', 'customer'])
-def get_device_details(user_id, user_role, serial_number):
+def get_device_details(current_user_id, current_user_role, serial_number):
     """Get detailed device information"""
     try:
         db = get_db_connection()
@@ -743,30 +741,7 @@ def get_manufacturer_profile(current_user_id, current_user_role):
         if not user:
             return jsonify({"error": "User not found"}), 404
         
-        # Format manufacturer profile response
-        profile_data = {
-            "id": str(user.get('_id', current_user_id)),
-            "name": user.get('name'),
-            "role": user.get('role'),
-            "emails": user.get('emails', []),
-            "primary_email": get_primary_email(user),
-            "phone_number": user.get('phone_number'),
-            "created_at": user.get('created_at'),
-            "updated_at": user.get('updated_at'),
-            "verification_status": user.get('verification_status', 'pending'),
-            
-            # Manufacturer-specific fields
-            "wallet_addresses": user.get('wallet_addresses', []),
-            "primary_wallet": get_primary_wallet(user),
-            "verified_wallets": get_verified_wallets(user),
-            "company_names": user.get('company_names', []),
-            "current_company_name": get_current_company_name(user),
-            "business_license": user.get('business_license'),
-            "registration_number": user.get('registration_number'),
-            "business_address": user.get('business_address'),
-            "website": user.get('website'),
-        }
-        
+        profile_data = format_user_profile(user)
         return jsonify({
             "status": "success",
             "user": profile_data
@@ -787,25 +762,7 @@ def get_customer_profile(current_user_id, current_user_role):
         if not user:
             return jsonify({"error": "User not found"}), 404
         
-        # Format customer profile response
-        profile_data = {
-            "id": str(user.get('_id', current_user_id)),
-            "name": user.get('name'),
-            "full_name": user.get('full_name'),
-            "role": user.get('role'),
-            "emails": user.get('emails', []),
-            "primary_email": get_primary_email(user),
-            "phone_number": user.get('phone_number'),
-            "created_at": user.get('created_at'),
-            "updated_at": user.get('updated_at'),
-            
-            # Customer-specific fields
-            "wallet_address": user.get('wallet_address'),
-            "date_of_birth": user.get('date_of_birth'),
-            "gender": user.get('gender'),
-            "address": user.get('address', {}),
-            "preferences": user.get('preferences', {}),
-        }
+        profile_data = format_user_profile(user)
         
         return jsonify({
             "status": "success",
@@ -895,13 +852,13 @@ def register_manufacturer_product(current_user_id, current_user_role):
             "device_type": device_type,
             "storage_data": data.get('storageData', ''),
             "color": data.get('color', ''),
-            "batch_number": data.get('batchNumber', f"BATCH-{int(datetime.utcnow().timestamp())}"),
+            "batch_number": data.get('batchNumber', f"BATCH-{int(datetime.now(timezone.utc).timestamp())}"),
             "name": f"{brand} {model}",
             "category": device_type,
             "description": f"{brand} {model} - {data.get('storageData', '')} {data.get('color', '')}",
             "manufacturer_wallet": data.get('manufacturerWallet', primary_wallet),
             "specification_hash": data.get('specificationHash', ''),
-            "registration_type": data.get('registrationType', 'blockchain_pending'),  # Use the type from frontend
+            "registration_type": data.get('registration_type', 'blockchain_pending'),  # Use the type from frontend
             "manufacturer_id": current_user_id,
             "manufacturer_name": current_company_name,
             "wallet_address": primary_wallet,
@@ -1146,7 +1103,7 @@ def transfer_ownership(current_user_id, current_user_role):
             "owner_type": "customer",  # You might want to determine this
             "owner_name": data.get('newOwnerName', 'null'),
             "previous_owner": current_owner_wallet,
-            "transfer_date": datetime.utcnow(),
+            "transfer_date": datetime.now(timezone.utc),
             "transfer_type": data['transferReason'],
             "transaction_hash": data.get('transactionHash'),
             "sale_price": float(data.get('salePrice', 0)),
@@ -1162,7 +1119,7 @@ def transfer_ownership(current_user_id, current_user_role):
                 "$set": {
                     "ownership_history": updated_history,
                     "current_owner": data['newOwnerAddress'],
-                    "updated_at": datetime.utcnow()
+                    "updated_at": datetime.now(timezone.utc)
                 }
             }
         )
@@ -1174,8 +1131,8 @@ def transfer_ownership(current_user_id, current_user_role):
             "new_owner": data['newOwnerAddress'],
             "transfer_reason": data['transferReason'],
             "transaction_hash": data.get('transactionHash'),
-            "transfer_date": datetime.utcnow(),
-            "created_at": datetime.utcnow()
+            "transfer_date": datetime.now(timezone.utc),
+            "created_at": datetime.now(timezone.utc)
         }
         
         db.ownership_transfers.insert_one(transfer_record)
@@ -1199,12 +1156,12 @@ def mark_blockchain_failed(current_user_id, product_id):
         # Update product status to failed
         db = get_db_connection()
         result = db.products.update_one(
-            {"_id": ObjectId(product_id), "manufacturerWallet": user.get('primary_wallet')},
+            {"_id": ObjectId(product_id), "manufacturer_wallet": user.get('primary_wallet')},
             {
             "$set": {
-            "registrationType": "blockchain_failed",
+            "registration_type": "blockchain_failed",
             "error": data.get('error'),
-            "updatedAt": get_current_utc()
+            "updated_at": get_current_utc()
             }
             }
         )
@@ -1232,7 +1189,7 @@ def add_email(current_user_id, current_user_role):
             return jsonify({"error": "Email address is required"}), 400
             
         # Validate email format
-        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
+        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         if not re.match(email_regex, email):
             return jsonify({"error": "Invalid email format"}), 400
         
@@ -1244,24 +1201,23 @@ def add_email(current_user_id, current_user_role):
         current_emails = user.get('emails', [])
         if email in current_emails:
             return jsonify({"error": "Email already exists"}), 400
+            
         db = get_db_connection()
         # Check if email is already used by another user
         existing_user = db.users.find_one({"emails": email})
-        if existing_user and str(existing_user['_id']) != current_user_id:
+        if existing_user and str(existing_user['_id']) != str(current_user_id):
             return jsonify({"error": "Email is already registered to another account"}), 400
         
         # Add email to user's email list
         updated_emails = current_emails + [email]
         
-        # Update user in database
-        db = get_db_connection()
+        # Update user in database - FIXED: Update email fields, not company fields
         db.users.update_one(
             {"_id": ObjectId(current_user_id)},
             {
                 "$set": {
-                    "company_names": updated_company_names,
-                    "current_company_name": company_name,
-                    "updated_at": datetime.utcnow()
+                    "emails": updated_emails,  # CORRECT: Update emails
+                    "updated_at": datetime.now(timezone.utc)  # FIXED: Consistent datetime
                 }
             }
         )
@@ -1272,15 +1228,15 @@ def add_email(current_user_id, current_user_role):
         
         return jsonify({
             "status": "success",
-            "message": "Company name updated successfully",
+            "message": "Email added successfully. Verification email sent.",  # FIXED: Correct message
             "user": profile_data
         }), 200
         
     except Exception as e:
-        print(f"Update company name error: {e}")
+        print(f"Add email error: {e}")  # FIXED: Correct error message
         return jsonify({"error": "Internal server error"}), 500
-
-# ===============================
+    
+#==============================
 # LOAD BACKEND CONFIGURATION
 # ===============================
 @app.route('/blockchain-config', methods=['GET'])
@@ -1297,63 +1253,6 @@ def get_blockchain_config():
     except Exception as e:
         print(f"Blockchain config error: {e}")
         return jsonify({"error": "Could not load blockchain configuration"}), 500
-
-# ===============================
-# FRONTEND ROUTES
-# ===============================
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/login')
-def login_page():
-    return render_template('login.html')
-
-@app.route('/signup')
-def signup_page():
-    return render_template('signup.html')
-
-@app.route('/dashboard')
-def dashboard():
-    # Provide safe defaults
-    chain_id = int(os.getenv('CHAIN_ID', '11155111'))
-    contract_address = os.getenv('CONTRACT_ADDRESS', '')
-    account_address = os.getenv('ACCOUNT_ADDRESS', '')
-    rpc_url = os.getenv('RPC_URL', '')
-    
-    # Read contract ABI from file path
-    contract_abi = '[]'  # Default empty array
-    contract_abi_path = os.getenv('CONTRACT_ABI_PATH', '')
-    
-    if contract_abi_path and os.path.exists(contract_abi_path):
-        try:
-            with open(contract_abi_path, 'r') as f:
-                abi_content = f.read()
-            # Validate it's valid JSON
-            import json
-            json.loads(abi_content)  # Test if it's valid JSON
-            contract_abi = abi_content
-        except (json.JSONDecodeError, IOError, TypeError) as e:
-            print(f"Error reading ABI file {contract_abi_path}: {e}")
-            contract_abi = '[]'  # Fallback to empty array
-    else:
-        print(f"ABI file not found at path: {contract_abi_path}")
-    
-    return render_template('dashboard.html',
-                         chain_id=chain_id,
-                         contract_address=contract_address,
-                         wallet_address=account_address,
-                         contract_abi=contract_abi,
-                         rpc_url=rpc_url)
-    
-@app.route('/verify')
-def verify_page():
-    return render_template('verify.html')
-
-@app.route('/edit-profile')
-def edit_profile():
-    return render_template('edit-profile.html')
 
 # ===============================
 # ERROR HANDLERS
@@ -1391,38 +1290,6 @@ def health_check():
         "version": "1.0.0"
     }), 200
 
-if __name__ == '__main__':
-    app.run(
-        host='0.0.0.0',
-        port=int(os.getenv('PORT', 5000)),
-        debug=os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
-    )
-        db.users.update_one(
-            {"_id": ObjectId(current_user_id)},
-            {
-                "$set": {
-                    "emails": updated_emails,
-                    "updated_at": datetime.utcnow()
-                }
-            }
-        )
-        
-        # TODO: Send verification email here
-        # send_verification_email(email, current_user_id)
-        
-        # Get updated user data
-        updated_user = get_user_by_id(current_user_id)
-        profile_data = format_user_profile(updated_user)
-        
-        return jsonify({
-            "status": "success",
-            "message": "Email added successfully. Verification email sent.",
-            "user": profile_data
-        }), 200
-        
-    except Exception as e:
-        print(f"Add email error: {e}")
-        return jsonify({"error": "Internal server error"}), 500
 
 # Remove Email Route
 @app.route('/manufacturer/profile/remove-email', methods=['POST'])
@@ -1460,7 +1327,7 @@ def remove_email(current_user_id, current_user_role):
             {
                 "$set": {
                     "emails": updated_emails,
-                    "updated_at": datetime.utcnow()
+                    "updated_at": datetime.now(timezone.utc)
                 }
             }
         )
@@ -1510,7 +1377,7 @@ def set_primary_email(current_user_id, current_user_role):
             {
                 "$set": {
                     "primary_email": email,
-                    "updated_at": datetime.utcnow()
+                    "updated_at": datetime.now(timezone.utc)
                 }
             }
         )
@@ -1542,7 +1409,7 @@ def add_wallet(current_user_id, current_user_role):
             return jsonify({"error": "Wallet address is required"}), 400
             
         # Validate wallet address format (basic Ethereum address validation)
-        if not re.match(r'^0x[a-fA-F0-9]{40}, wallet_address):
+        if not re.match(r'^0x[a-fA-F0-9]{40}$', wallet_address):
             return jsonify({"error": "Invalid wallet address format"}), 400
         
         user = get_user_by_id(current_user_id)
@@ -1567,7 +1434,7 @@ def add_wallet(current_user_id, current_user_role):
         # Update user in database
         update_data = {
             "wallet_addresses": updated_wallets,
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now(timezone.utc)
         }
         
         # Set as primary wallet if it's the first one
@@ -1629,7 +1496,7 @@ def set_primary_wallet(current_user_id, current_user_role):
             {
                 "$set": {
                     "primary_wallet": wallet_address,
-                    "updated_at": datetime.utcnow()
+                    "updated_at": datetime.now(timezone.utc)
                 }
             }
         )
@@ -1691,7 +1558,7 @@ def update_company_name(current_user_id, current_user_role):
                 "$set": {
                     "company_names": updated_company_names,
                     "current_company_name": company_name,
-                    "updated_at": datetime.utcnow()
+                    "updated_at": datetime.now(timezone.utc)
                 }
             }
         )
@@ -1712,23 +1579,7 @@ def update_company_name(current_user_id, current_user_role):
 
 
 
-# ===============================
-# LOAD BACKEND CONFIGURATION
-# ===============================
-@app.route('/blockchain-config', methods=['GET'])
-def get_blockchain_config():
-    """Return blockchain configuration for frontend"""
-    try:
-        return jsonify({
-            "chainId": os.getenv('CHAINID'),      
-            "rpcUrl": os.getenv('BLOCKCHAIN_RPC_URL'),
-            "contractAddress": os.getenv('CONTRACT_ADDRESS'),
-            "walletAddress": os.getenv('WALLET_ADDRESS')
             
-        }), 200
-    except Exception as e:
-        print(f"Blockchain config error: {e}")
-        return jsonify({"error": "Could not load blockchain configuration"}), 500
 # ===============================
 # FRONTEND ROUTES
 # ===============================
@@ -1810,17 +1661,6 @@ def handle_auth_error(error):
 def handle_blockchain_error(error):
     return jsonify({"error": str(error)}), 500
 
-# ===============================
-# HEALTH CHECK
-# ===============================
-
-@app.route('/health', methods=['GET'])
-def health_check():
-    return jsonify({
-        "status": "healthy",
-        "timestamp": get_current_utc(),
-        "version": "1.0.0"
-    }), 200
 
 if __name__ == '__main__':
     app.run(
@@ -1828,3 +1668,4 @@ if __name__ == '__main__':
         port=int(os.getenv('PORT', 5000)),
         debug=os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
     )
+

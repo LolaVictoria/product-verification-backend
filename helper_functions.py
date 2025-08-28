@@ -2035,9 +2035,9 @@ def log_product_registration(product_data, registration_type, transaction_hash=N
     """Log product registration for research tracking"""
     log_entry = {
         "serialNumber": product_data['serialNumber'],
-        "registrationType": registration_type,
+        "registration_type": registration_type,
         "transactionHash": transaction_hash,
-        "timestamp": datetime.utcnow(),
+        "timestamp": datetime.now(timezone.utc),
         "manufacturerWallet": product_data['manufacturerWallet']
     }
     
@@ -2057,7 +2057,7 @@ def get_manufacturer_statistics(manufacturer_wallet):
         pipeline = [
             {"$match": {"manufacturerWallet": manufacturer_wallet}},
             {"$group": {
-                "_id": "$registrationType",
+                "_id": "$registration_type",
                 "count": {"$sum": 1}
             }}
         ]
@@ -2098,9 +2098,9 @@ def log_product_registration(product_data, registration_type, transaction_hash=N
     """Log product registration for research tracking"""
     log_entry = {
         "serialNumber": product_data['serialNumber'],
-        "registrationType": registration_type,
+        "registration_type": registration_type,
         "transactionHash": transaction_hash,
-        "timestamp": datetime.utcnow(),
+        "timestamp": datetime.now(timezone.utc),
         "manufacturerWallet": product_data['manufacturerWallet']
     }
     
@@ -2120,7 +2120,7 @@ def get_manufacturer_statistics(manufacturer_wallet):
         pipeline = [
             {"$match": {"manufacturerWallet": manufacturer_wallet}},
             {"$group": {
-                "_id": "$registrationType",
+                "_id": "$registration_type",
                 "count": {"$sum": 1}
             }}
         ]

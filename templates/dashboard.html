@@ -926,7 +926,7 @@ async function registerProductOnBlockchain(productData) {
             batchNumber: productData.batchNumber,
             manufacturerWallet: manufacturerWallet,
             specificationHash: specificationHash,
-            registrationType: 'blockchain_pending' // This prevents double saves
+            registration_type: 'blockchain_pending' // This prevents double saves
         }, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -997,7 +997,7 @@ async function registerProductOnBlockchain(productData) {
             blockNumber: result.blockNumber,
             gasUsed: result.gasUsed,
             gasPrice: gasPrice,
-            registrationType: 'blockchain_confirmed',
+            registration_type: 'blockchain_confirmed',
             ownershipData: ownershipData
         }, {
             headers: {
@@ -1080,7 +1080,7 @@ async function registerProductOnBlockchain(productData) {
             try {
                 await axios.put(`/products/${productId}/blockchain-failed`, {
                     error: error.message,
-                    registrationType: 'blockchain_failed'
+                    registration_type: 'blockchain_failed'
                 }, {
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('authToken')}`
@@ -1829,8 +1829,8 @@ async function transferProductOwnership(transferData) {
         }
 
         // Get status badge for product
-        function getStatusBadge(registrationType) {
-            switch (registrationType) {
+        function getStatusBadge(registration_type) {
+            switch (registration_type) {
                 case 'blockchain_confirmed':
                     return '<span class="status-badge success">✅ On Blockchain</span>';
                 case 'blockchain_pending':
