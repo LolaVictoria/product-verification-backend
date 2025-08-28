@@ -834,34 +834,6 @@ def get_customer_profile(current_user_id, current_user_role):
         return jsonify({"error": "Internal server error"}), 500
 
 
-@app.route('/auth/logout', methods=['POST'])
-@token_required
-def logout_user(current_user_id, current_user_role):
-    """Logout user and invalidate token"""
-    try:
-        # Get the token from request header
-        auth_header = request.headers.get('Authorization')
-        if auth_header:
-            token = auth_header.split(' ')[1] if ' ' in auth_header else auth_header
-            
-            # Add token to blacklist (if you're using token blacklisting)
-            # blacklist_token(token)
-            
-            # Update user's last logout time
-            db = get_db_connection()
-            db.users.update_one(
-                {"_id": ObjectId(current_user_id)},
-                {"$set": {"last_logout": datetime.now(timezone.utc)}}
-            )
-        
-        return jsonify({
-            "status": "success",
-            "message": "Successfully logged out"
-        }), 200
-        
-    except Exception as e:
-        print(f"Logout error: {e}")
-        return jsonify({"error": "Logout failed"}), 500
 
 # ===============================
 # PROFILE
