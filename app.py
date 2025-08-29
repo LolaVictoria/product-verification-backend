@@ -1307,313 +1307,403 @@ def transfer_ownership(current_user_id, current_user_role):
 # PROFILE MANAGEMENT ROUTES
 # ===============================
 
-def update_user_profile_field(current_user_id, update_data, success_message):
-    """Helper function to update user profile fields"""
+from flask import request, jsonify
+from datetime import datetime, timezone
+from bson.objectid import ObjectId
+
+class ProfileUpdateValidator:
+    """Centralized validation for profile updates"""
+    
+    @staticmethod
+    def validate_email_operation(operation, email, user, current_user_id):
+        """Validate email operations"""
+        if not email or not email.strip():
+            return "Email address is required"
+        
+        email = email.strip().lower()
+        
+        if not is_valid_email(email):
+            return "Invalid email format"
+        
+        current_emails = user.get('emails', [])
+        primary_email = get_primary_email(user)
+        
+        if operation == 'add':
+            if email in current_emails:
+                return "Email already exists"
+            if email_exists_globally(email, current_user_id):
+                return "Email is already registered to another account"
+                
+        elif operation == 'remove':
+            if email == primary_email:
+                return "Cannot remove primary email"
+            if email not in current_emails:
+                return "Email not found"
+                
+        elif operation == 'set_primary':
+            if email not in current_emails:
+                return "Email not found in your account"
+        
+        return None
+    
+    @staticmethod
+    def validate_wallet_operation(operation, wallet_address, user, current_user_id):
+        """Validate wallet operations"""
+        if not wallet_address or not wallet_address.strip():
+            return "Wallet address is required"
+        
+        wallet_address = wallet_address.strip()
+        
+        if not is_valid_wallet_address(wallet_address):
+            return "Invalid wallet address format"
+        
+        current_wallets = user.get('wallet_addresses', [])
+        verified_wallets = user.get('verified_wallets', [])
+        
+        if operation == 'add':
+            if wallet_address in current_wallets:
+                return "Wallet already exists"
+            if wallet_exists_globally(wallet_address, current_user_id):
+                return "Wallet is already registered to another account"
+                
+        elif operation == 'remove':
+            if wallet_address not in current_wallets:
+                return "Wallet not found"
+                
+        elif operation == 'set_primary':
+            if wallet_address not in current_wallets:
+                return "Wallet not found in your account"
+            if wallet_address not in verified_wallets:
+                return "Wallet must be verified before setting as primary"
+        
+        return None
+    
+    @staticmethod
+    def validate_company_update(company_name, user):
+        """Validate company name update"""
+        if not company_name or not company_name.strip():
+            return "Company name is required"
+        
+        company_name = company_name.strip()
+        
+        if len(company_name) < 2:
+            return "Company name must be at least 2 characters"
+        
+        if len(company_name) > 100:
+            return "Company name must be less than 100 characters"
+        
+        current_company = get_current_company_name(user)
+        if company_name == current_company:
+            return "New company name must be different from current name"
+        
+        return None
+
+class ProfileUpdateHandler:
+    """Handle different types of profile updates"""
+    
+    @staticmethod
+    def handle_email_operations(operations, user, current_user_id):
+        """Process all email operations"""
+        updates = {}
+        current_emails = user.get('emails', [])
+        primary_email = user.get('primary_email')
+        
+        for op in operations:
+            operation = op.get('operation')
+            email = op.get('email', '').strip().lower()
+            
+            # Validate operation
+            error = ProfileUpdateValidator.validate_email_operation(
+                operation, email, user, current_user_id
+            )
+            if error:
+                raise ValueError(f"Email {operation}: {error}")
+            
+            # Apply operation
+            if operation == 'add':
+                if email not in current_emails:
+                    current_emails.append(email)
+                    
+            elif operation == 'remove':
+                current_emails = [e for e in current_emails if e != email]
+                # If removing primary, set new primary
+                if email == primary_email and current_emails:
+                    primary_email = current_emails[0]
+                    
+            elif operation == 'set_primary':
+                primary_email = email
+        
+        updates['emails'] = current_emails
+        if primary_email:
+            updates['primary_email'] = primary_email
+        
+        return updates
+    
+    @staticmethod
+    def handle_wallet_operations(operations, user, current_user_id):
+        """Process all wallet operations"""
+        updates = {}
+        current_wallets = user.get('wallet_addresses', [])
+        primary_wallet = user.get('primary_wallet')
+        
+        for op in operations:
+            operation = op.get('operation')
+            wallet_address = op.get('wallet_address', '').strip()
+            
+            # Validate operation
+            error = ProfileUpdateValidator.validate_wallet_operation(
+                operation, wallet_address, user, current_user_id
+            )
+            if error:
+                raise ValueError(f"Wallet {operation}: {error}")
+            
+            # Apply operation
+            if operation == 'add':
+                if wallet_address not in current_wallets:
+                    current_wallets.append(wallet_address)
+                    # Set as primary if first wallet
+                    if not primary_wallet:
+                        primary_wallet = wallet_address
+                        
+            elif operation == 'remove':
+                current_wallets = [w for w in current_wallets if w != wallet_address]
+                # If removing primary, set new primary
+                if wallet_address == primary_wallet and current_wallets:
+                    # Find first verified wallet or just first wallet
+                    verified_wallets = user.get('verified_wallets', [])
+                    for wallet in current_wallets:
+                        if wallet in verified_wallets:
+                            primary_wallet = wallet
+                            break
+                    else:
+                        primary_wallet = current_wallets[0] if current_wallets else None
+                        
+            elif operation == 'set_primary':
+                primary_wallet = wallet_address
+        
+        updates['wallet_addresses'] = current_wallets
+        if primary_wallet:
+            updates['primary_wallet'] = primary_wallet
+        
+        return updates
+    
+    @staticmethod
+    def handle_company_update(company_name, user):
+        """Process company name update"""
+        error = ProfileUpdateValidator.validate_company_update(company_name, user)
+        if error:
+            raise ValueError(f"Company update: {error}")
+        
+        company_name = company_name.strip()
+        current_company_names = user.get('company_names', [])
+        
+        # Add to history if not already present
+        updated_company_names = current_company_names
+        if company_name not in current_company_names:
+            updated_company_names = current_company_names + [company_name]
+        
+        return {
+            'company_names': updated_company_names,
+            'current_company_name': company_name
+        }
+
+@app.route('/manufacturer/profile-update', methods=['PUT', 'PATCH'])
+@token_required_with_roles(allowed_roles=['manufacturer'])
+def update_manufacturer_profile(current_user_id, current_user_role):
+    """
+    Unified endpoint for updating manufacturer profile.
+    
+    Supports batch operations and single field updates.
+    
+    Request body format:
+    {
+        "email_operations": [
+            {"operation": "add", "email": "new@example.com"},
+            {"operation": "set_primary", "email": "primary@example.com"},
+            {"operation": "remove", "email": "old@example.com"}
+        ],
+        "wallet_operations": [
+            {"operation": "add", "wallet_address": "0x123..."},
+            {"operation": "set_primary", "wallet_address": "0x456..."}
+        ],
+        "company_name": "New Company Name",
+        "direct_updates": {
+            "primary_email": "direct@example.com",
+            "primary_wallet": "0x789..."
+        }
+    }
+    """
     try:
+        data = request.get_json()
+        if not data:
+            return create_cors_response({"error": "Request body is required"}, 400)
+        
+        # Get current user
+        user = get_user_by_id(current_user_id)
+        if not user:
+            return create_cors_response({"error": "User not found"}, 404)
+        
+        # Prepare update data
+        final_updates = {}
+        operations_performed = []
+        
+        # Handle email operations
+        if 'email_operations' in data and data['email_operations']:
+            try:
+                email_updates = ProfileUpdateHandler.handle_email_operations(
+                    data['email_operations'], user, current_user_id
+                )
+                final_updates.update(email_updates)
+                operations_performed.append(f"Processed {len(data['email_operations'])} email operation(s)")
+            except ValueError as e:
+                return create_cors_response({"error": str(e)}, 400)
+        
+        # Handle wallet operations
+        if 'wallet_operations' in data and data['wallet_operations']:
+            try:
+                wallet_updates = ProfileUpdateHandler.handle_wallet_operations(
+                    data['wallet_operations'], user, current_user_id
+                )
+                final_updates.update(wallet_updates)
+                operations_performed.append(f"Processed {len(data['wallet_operations'])} wallet operation(s)")
+            except ValueError as e:
+                return create_cors_response({"error": str(e)}, 400)
+        
+        # Handle company name update
+        if 'company_name' in data and data['company_name']:
+            try:
+                company_updates = ProfileUpdateHandler.handle_company_update(
+                    data['company_name'], user
+                )
+                final_updates.update(company_updates)
+                operations_performed.append("Updated company name")
+            except ValueError as e:
+                return create_cors_response({"error": str(e)}, 400)
+        
+        # Handle direct field updates (backwards compatibility)
+        if 'direct_updates' in data:
+            direct = data['direct_updates']
+            
+            # Direct email update
+            if 'primary_email' in direct:
+                email = direct['primary_email'].strip().lower()
+                current_emails = final_updates.get('emails', user.get('emails', []))
+                if email not in current_emails:
+                    return create_cors_response({"error": "Email not found in your account"}, 400)
+                final_updates['primary_email'] = email
+                operations_performed.append("Set primary email")
+            
+            # Direct wallet update
+            if 'primary_wallet' in direct:
+                wallet = direct['primary_wallet'].strip()
+                current_wallets = final_updates.get('wallet_addresses', user.get('wallet_addresses', []))
+                verified_wallets = user.get('verified_wallets', [])
+                
+                if wallet not in current_wallets:
+                    return create_cors_response({"error": "Wallet not found in your account"}, 400)
+                if wallet not in verified_wallets:
+                    return create_cors_response({"error": "Wallet must be verified before setting as primary"}, 400)
+                
+                final_updates['primary_wallet'] = wallet
+                operations_performed.append("Set primary wallet")
+            
+            # Support for legacy single field updates
+            for field in ['emails', 'wallet_addresses', 'company_names', 'current_company_name']:
+                if field in direct:
+                    final_updates[field] = direct[field]
+                    operations_performed.append(f"Updated {field}")
+        
+        # Check if any updates were provided
+        if not final_updates:
+            return create_cors_response({"error": "No valid updates provided"}, 400)
+        
+        # Apply updates to database
+        final_updates['updated_at'] = datetime.now(timezone.utc)
+        
         db = get_db_connection()
         result = db.users.update_one(
             {"_id": ObjectId(current_user_id)},
-            {"$set": {**update_data, "updated_at": datetime.now(timezone.utc)}}
+            {"$set": final_updates}
         )
         
         if result.matched_count == 0:
-            return None, "User not found"
+            return create_cors_response({"error": "User not found"}, 404)
         
         # Get updated user data
         updated_user = get_user_by_id(current_user_id)
         profile_data = format_user_profile(updated_user)
         
-        return {
+        return create_cors_response({
             "status": "success",
-            "message": success_message,
-            "user": profile_data
-        }, None
+            "message": f"Profile updated successfully. {'; '.join(operations_performed)}",
+            "user": profile_data,
+            "operations_performed": operations_performed
+        }, 200)
         
     except Exception as e:
         print(f"Profile update error: {e}")
-        return None, "Internal server error"
+        return create_cors_response({
+            "error": "Internal server error",
+            "details": str(e) if app.debug else None
+        }, 500)
 
+# Keep individual endpoints for backwards compatibility (optional)
 @app.route('/manufacturer/profile/add-email', methods=['POST'])
 @token_required_with_roles(allowed_roles=['manufacturer'])
-def add_email(current_user_id, current_user_role):
-    """Add email to manufacturer profile"""
-    try:
-        data = request.get_json()
-        email = data.get('email', '').strip().lower()
-        
-        if not email:
-            return create_cors_response({"error": "Email address is required"}, 400)
-            
-        # Validate email format
-        if not is_valid_email(email):
-            return create_cors_response({"error": "Invalid email format"}, 400)
-        
-        user = get_user_by_id(current_user_id)
-        if not user:
-            return create_cors_response({"error": "User not found"}, 404)
-            
-        current_emails = user.get('emails', [])
-        if email in current_emails:
-            return create_cors_response({"error": "Email already exists"}, 400)
-            
-        # Check if email is used by another user
-        if email_exists_globally(email, current_user_id):
-            return create_cors_response({
-                "error": "Email is already registered to another account"
-            }, 400)
-        
-        # Update user profile
-        updated_emails = current_emails + [email]
-        result, error = update_user_profile_field(
-            current_user_id,
-            {"emails": updated_emails},
-            "Email added successfully"
-        )
-        
-        if error:
-            return create_cors_response({"error": error}, 500)
-        
-        return create_cors_response(result, 200)
-        
-    except Exception as e:
-        print(f"Add email error: {e}")
-        return create_cors_response({"error": "Internal server error"}, 500)
+def add_email_legacy(current_user_id, current_user_role):
+    """Legacy endpoint - redirects to unified endpoint"""
+    data = request.get_json()
+    email = data.get('email')
+    
+    # Transform to new format
+    unified_data = {
+        "email_operations": [{"operation": "add", "email": email}]
+    }
+    
+    # Create new request and forward
+    request.json = unified_data
+    return update_manufacturer_profile(current_user_id, current_user_role)
 
-@app.route('/manufacturer/profile/remove-email', methods=['POST'])
+# Utility function for simple profile updates from frontend
+@app.route('/manufacturer/profile/quick-update', methods=['POST'])
 @token_required_with_roles(allowed_roles=['manufacturer'])
-def remove_email(current_user_id, current_user_role):
-    """Remove email from manufacturer profile"""
+def quick_profile_update(current_user_id, current_user_role):
+    """
+    Simple endpoint for single field updates from frontend
+    
+    Request format:
+    {
+        "field": "primary_email",
+        "value": "new@example.com"
+    }
+    """
     try:
         data = request.get_json()
-        email = data.get('email', '').strip().lower()
+        field = data.get('field')
+        value = data.get('value')
         
-        if not email:
-            return create_cors_response({"error": "Email address is required"}, 400)
+        if not field or value is None:
+            return create_cors_response({"error": "Field and value are required"}, 400)
         
-        user = get_user_by_id(current_user_id)
-        if not user:
-            return create_cors_response({"error": "User not found"}, 404)
-            
-        current_emails = user.get('emails', [])
-        primary_email = get_primary_email(user)
+        # Map simple fields to unified format
+        field_mappings = {
+            'primary_email': lambda v: {"direct_updates": {"primary_email": v}},
+            'primary_wallet': lambda v: {"direct_updates": {"primary_wallet": v}},
+            'company_name': lambda v: {"company_name": v}
+        }
         
-        # Check if trying to remove primary email
-        if email == primary_email:
-            return create_cors_response({"error": "Cannot remove primary email"}, 400)
-            
-        # Check if email exists
-        if email not in current_emails:
-            return create_cors_response({"error": "Email not found"}, 404)
-            
-        # Remove email from list
-        updated_emails = [e for e in current_emails if e != email]
+        if field not in field_mappings:
+            return create_cors_response({"error": f"Field '{field}' not supported for quick updates"}, 400)
         
-        result, error = update_user_profile_field(
-            current_user_id,
-            {"emails": updated_emails},
-            "Email removed successfully"
-        )
+        # Transform and forward to unified endpoint
+        unified_data = field_mappings[field](value)
+        request.json = unified_data
         
-        if error:
-            return create_cors_response({"error": error}, 500)
-        
-        return create_cors_response(result, 200)
+        return update_manufacturer_profile(current_user_id, current_user_role)
         
     except Exception as e:
-        print(f"Remove email error: {e}")
+        print(f"Quick update error: {e}")
         return create_cors_response({"error": "Internal server error"}, 500)
-
-@app.route('/manufacturer/profile/set-primary-email', methods=['POST'])
-@token_required_with_roles(allowed_roles=['manufacturer'])
-def set_primary_email(current_user_id, current_user_role):
-    """Set primary email for manufacturer"""
-    try:
-        data = request.get_json()
-        email = data.get('email', '').strip().lower()
-        
-        if not email:
-            return create_cors_response({"error": "Email address is required"}, 400)
-        
-        user = get_user_by_id(current_user_id)
-        if not user:
-            return create_cors_response({"error": "User not found"}, 404)
-            
-        current_emails = user.get('emails', [])
-        
-        # Check if email exists
-        if email not in current_emails:
-            return create_cors_response({"error": "Email not found"}, 404)
-        
-        result, error = update_user_profile_field(
-            current_user_id,
-            {"primary_email": email},
-            "Primary email updated successfully"
-        )
-        
-        if error:
-            return create_cors_response({"error": error}, 500)
-        
-        return create_cors_response(result, 200)
-        
-    except Exception as e:
-        print(f"Set primary email error: {e}")
-        return create_cors_response({"error": "Internal server error"}, 500)
-
-@app.route('/manufacturer/profile/add-wallet', methods=['POST'])
-@token_required_with_roles(allowed_roles=['manufacturer'])
-def add_wallet(current_user_id, current_user_role):
-    """Add wallet to manufacturer profile"""
-    try:
-        data = request.get_json()
-        wallet_address = data.get('wallet_address', '').strip()
-        
-        if not wallet_address:
-            return create_cors_response({"error": "Wallet address is required"}, 400)
-            
-        # Validate wallet address format
-        if not is_valid_wallet_address(wallet_address):
-            return create_cors_response({"error": "Invalid wallet address format"}, 400)
-        
-        user = get_user_by_id(current_user_id)
-        if not user:
-            return create_cors_response({"error": "User not found"}, 404)
-            
-        current_wallets = user.get('wallet_addresses', [])
-        
-        # Check if wallet already exists
-        if wallet_address in current_wallets:
-            return create_cors_response({"error": "Wallet already exists"}, 400)
-            
-        # Check if wallet is used by another user
-        if wallet_exists_globally(wallet_address, current_user_id):
-            return create_cors_response({
-                "error": "Wallet is already registered to another account"
-            }, 400)
-        
-        # Add wallet to user's wallet list
-        updated_wallets = current_wallets + [wallet_address]
-        update_data = {"wallet_addresses": updated_wallets}
-        
-        # Set as primary wallet if it's the first one
-        if not user.get('primary_wallet'):
-            update_data["primary_wallet"] = wallet_address
-        
-        result, error = update_user_profile_field(
-            current_user_id,
-            update_data,
-            "Wallet added successfully. Verification required before use."
-        )
-        
-        if error:
-            return create_cors_response({"error": error}, 500)
-        
-        return create_cors_response(result, 200)
-        
-    except Exception as e:
-        print(f"Add wallet error: {e}")
-        return create_cors_response({"error": "Internal server error"}, 500)
-
-@app.route('/manufacturer/profile/set-primary-wallet', methods=['POST'])
-@token_required_with_roles(allowed_roles=['manufacturer'])
-def set_primary_wallet(current_user_id, current_user_role):
-    """Set primary wallet for manufacturer"""
-    try:
-        data = request.get_json()
-        wallet_address = data.get('wallet_address', '').strip()
-        
-        if not wallet_address:
-            return create_cors_response({"error": "Wallet address is required"}, 400)
-        
-        user = get_user_by_id(current_user_id)
-        if not user:
-            return create_cors_response({"error": "User not found"}, 404)
-            
-        current_wallets = user.get('wallet_addresses', [])
-        verified_wallets = user.get('verified_wallets', [])
-        
-        # Check if wallet exists
-        if wallet_address not in current_wallets:
-            return create_cors_response({"error": "Wallet not found"}, 404)
-            
-        # Check if wallet is verified
-        if wallet_address not in verified_wallets:
-            return create_cors_response({
-                "error": "Wallet must be verified before setting as primary"
-            }, 400)
-        
-        result, error = update_user_profile_field(
-            current_user_id,
-            {"primary_wallet": wallet_address},
-            "Primary wallet updated successfully"
-        )
-        
-        if error:
-            return create_cors_response({"error": error}, 500)
-        
-        return create_cors_response(result, 200)
-        
-    except Exception as e:
-        print(f"Set primary wallet error: {e}")
-        return create_cors_response({"error": "Internal server error"}, 500)
-
-@app.route('/manufacturer/profile/update-company-name', methods=['POST'])
-@token_required_with_roles(allowed_roles=['manufacturer'])
-def update_company_name(current_user_id, current_user_role):
-    """Update company name for manufacturer"""
-    try:
-        data = request.get_json()
-        company_name = data.get('company_name', '').strip()
-        
-        if not company_name:
-            return create_cors_response({"error": "Company name is required"}, 400)
-            
-        if len(company_name) < 2:
-            return create_cors_response({
-                "error": "Company name must be at least 2 characters"
-            }, 400)
-            
-        if len(company_name) > 100:
-            return create_cors_response({
-                "error": "Company name must be less than 100 characters"
-            }, 400)
-        
-        user = get_user_by_id(current_user_id)
-        if not user:
-            return create_cors_response({"error": "User not found"}, 404)
-            
-        current_company = get_current_company_name(user)
-        
-        # Check if new name is different from current
-        if company_name == current_company:
-            return create_cors_response({
-                "error": "New company name must be different from current name"
-            }, 400)
-        
-        current_company_names = user.get('company_names', [])
-        
-        # Add new company name if not already in history
-        updated_company_names = current_company_names
-        if company_name not in current_company_names:
-            updated_company_names = current_company_names + [company_name]
-        
-        result, error = update_user_profile_field(
-            current_user_id,
-            {
-                "company_names": updated_company_names,
-                "current_company_name": company_name
-            },
-            "Company name updated successfully"
-        )
-        
-        if error:
-            return create_cors_response({"error": error}, 500)
-        
-        return create_cors_response(result, 200)
-        
-    except Exception as e:
-        print(f"Update company name error: {e}")
-        return create_cors_response({"error": "Internal server error"}, 500)
-
 # ===============================
 # CONFIGURATION AND UTILITY ROUTES
 # ===============================
