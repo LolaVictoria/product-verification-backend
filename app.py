@@ -88,6 +88,7 @@ CORS(app,
          'http://localhost:5173',
          'https://blockchain-verification-esup.vercel.app'
      ],
+    supports_credentials=True,
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
      allow_headers=[
          'Content-Type', 
@@ -115,14 +116,14 @@ def add_cors_headers(response):
         'http://localhost:3000',
         'http://localhost:5173',
         'http://127.0.0.1:5173',
-        'https://your-frontend-domain.com'
+        'https://blockchain-verification-esup.vercel.app'
     ]
     
     # Set origin if it's in allowed list, otherwise use first allowed origin
     if origin in allowed_origins:
         response.headers['Access-Control-Allow-Origin'] = origin
     else:
-        response.headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'
+        response.headers['Access-Control-Allow-Origin'] = 'https://blockchain-verification-esup.vercel.ap'
     
     response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS,PATCH'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,X-Requested-With,X-API-Key,Accept,Origin,Cache-Control,Pragma, headers'
