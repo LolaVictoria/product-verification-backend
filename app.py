@@ -88,7 +88,6 @@ CORS(app,
          'http://localhost:5173',
          'https://blockchain-verification-esup.vercel.app'
      ],
-    supports_credentials=True,
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
      allow_headers=[
          'Content-Type', 
