@@ -36,7 +36,7 @@ def get_date_range(time_range):
     else:
         return datetime.utcnow() - timedelta(days=7)
 
-@analytics_bp.route('/api/analytics/verifications', methods=['GET'])
+@analytics_bp.route('/analytics/verifications', methods=['GET'])
 def get_verification_analytics():
     """Get verification trends and performance metrics"""
     try:
@@ -139,7 +139,7 @@ def get_verification_analytics():
         return jsonify({'error': str(e)}), 500
 
 
-@analytics_bp.route('/api/analytics/devices', methods=['GET'])
+@analytics_bp.route('/analytics/devices', methods=['GET'])
 def get_device_analytics():
     """Get verification analytics by device type"""
     try:
@@ -200,7 +200,7 @@ def get_device_analytics():
         return jsonify({'error': str(e)}), 500
 
 
-@analytics_bp.route('/api/analytics/customers', methods=['GET'])
+@analytics_bp.route('/analytics/customers', methods=['GET'])
 def get_customer_engagement():
     """Get customer engagement analytics (Manufacturer/Admin view only)"""
     try:
@@ -277,7 +277,7 @@ def get_customer_engagement():
         return jsonify({'error': str(e)}), 500
 
 
-@analytics_bp.route('/api/analytics/counterfeit-locations', methods=['GET'])
+@analytics_bp.route('/analytics/counterfeit-locations', methods=['GET'])
 def get_counterfeit_locations():
     """Get counterfeit detection locations from customer reports"""
     try:
@@ -334,7 +334,7 @@ def get_counterfeit_locations():
         return jsonify({'error': str(e)}), 500
 
 
-@analytics_bp.route('/api/counterfeit-reports', methods=['POST'])
+@analytics_bp.route('/counterfeit-reports', methods=['POST'])
 def submit_counterfeit_report():
     """Submit counterfeit report with optional location data"""
     try:
@@ -395,7 +395,7 @@ def submit_counterfeit_report():
         return jsonify({'error': str(e)}), 500
 
 
-@analytics_bp.route('/api/analytics/customer/<customer_id>', methods=['GET'])
+@analytics_bp.route('/analytics/customer/<customer_id>', methods=['GET'])
 def get_customer_personal_analytics(customer_id):
     """Get customer's personal verification analytics"""
     try:
@@ -534,7 +534,7 @@ def get_customer_personal_analytics(customer_id):
         return jsonify({'error': str(e)}), 500
 
 
-@analytics_bp.route('/api/analytics/security-metrics', methods=['GET'])
+@analytics_bp.route('/analytics/security-metrics', methods=['GET'])
 def get_security_metrics():
     """Get security performance metrics"""
     try:
@@ -565,7 +565,7 @@ def get_security_metrics():
         return jsonify({'error': str(e)}), 500
 
 
-@analytics_bp.route('/api/analytics/manufacturer-overview', methods=['GET'])
+@analytics_bp.route('/analytics/manufacturer-overview', methods=['GET'])
 def get_manufacturer_overview():
     """Get comprehensive manufacturer analytics overview"""
     try:
@@ -873,7 +873,7 @@ def send_manufacturer_notification(manufacturer_id, counterfeit_report):
 
 # Additional utility routes for analytics
 
-@analytics_bp.route('/api/analytics/trends', methods=['GET'])
+@analytics_bp.route('/analytics/trends', methods=['GET'])
 def get_analytics_trends():
     """Get comprehensive analytics trends for dashboard"""
     try:
@@ -969,7 +969,7 @@ def get_analytics_trends():
         return jsonify({'error': str(e)}), 500
 
 
-@analytics_bp.route('/api/analytics/performance-alerts', methods=['GET'])
+@analytics_bp.route('/analytics/performance-alerts', methods=['GET'])
 def get_performance_alerts():
     """Get performance alerts and warnings"""
     try:
@@ -1058,7 +1058,7 @@ def get_performance_alerts():
         return jsonify({'error': str(e)}), 500
 
 
-@analytics_bp.route('/api/analytics/export', methods=['POST'])
+@analytics_bp.route('/analytics/export', methods=['POST'])
 def export_analytics_data():
     """Export analytics data to CSV/JSON format"""
     try:
@@ -1195,7 +1195,7 @@ def export_analytics_data():
         return jsonify({'error': str(e)}), 500
 
 
-@analytics_bp.route('/api/analytics/real-time-status', methods=['GET'])
+@analytics_bp.route('/analytics/real-time-status', methods=['GET'])
 def get_real_time_status():
     """Get real-time system status and metrics"""
     try:
@@ -1257,7 +1257,7 @@ def get_real_time_status():
         return jsonify({'error': str(e)}), 500
 
 
-@analytics_bp.route('/api/analytics/comparison', methods=['GET'])
+@analytics_bp.route('/analytics/comparison', methods=['GET'])
 def get_comparison_analytics():
     """Get comparative analytics (current vs previous period)"""
     try:
@@ -1457,7 +1457,7 @@ def internal_error(error):
 
 
 # Health check endpoint
-@analytics_bp.route('/api/analytics/health', methods=['GET'])
+@analytics_bp.route('/analytics/health', methods=['GET'])
 def health_check():
     """Health check for analytics service"""
     try:
