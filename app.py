@@ -1,53 +1,3 @@
-# app.py - Optimized Flask Application with CORS
-from bson import ObjectId
-from flask import Flask, request, jsonify, render_template, send_from_directory, make_response
-from flask_cors import CORS, cross_origin
-import jwt
-from functools import wraps
-from datetime import datetime, timedelta, timezone
-import os
-from dotenv import load_dotenv
-from web3 import Web3
-import hashlib
-import re
-import traceback
-
-# Load environment variables
-load_dotenv()
-
-# Initialize Flask app
-app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
-
-# Enhanced CORS Configuration
-CORS(app, 
-     origins=[
-         'http://localhost:3000',
-         'http://localhost:5173',
-         'https://your-frontend-domain.com'
-     ],
-     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-     allow_headers=[
-         'Content-Type', 
-         'Authorization', 
-         'X-Requested-With',
-         'X-API-Key',
-         'Accept',
-         'Origin',
-         'Cache-Control',
-         'Pragma'
-     ],
-     supports_credentials=True,
-     expose_headers=['Authorization', 'X-Total-Count'],
-     max_age=86400
-)
-
-# Initialize Web3
-try:
-    w3 = Web3(Web3.HTTPProvider(os.getenv('BLOCKCHAIN_RPC_URL')))
-except:
-    w3 = None
-    print("Warning: Web3 not initialized")
 
 # Import helper functions
 from helper_functions import (
@@ -77,6 +27,36 @@ from helper_functions import (
     # New verification classes
     ElectronicsAuthenticator, DatabaseManager
 )
+from bson import ObjectId
+from flask import Flask, request, jsonify, render_template, send_from_directory, make_response
+from flask_cors import CORS, cross_origin
+import jwt
+from functools import wraps
+from datetime import datetime, timedelta, timezone
+import os
+from dotenv import load_dotenv
+from web3 import Web3
+import hashlib
+import re
+import traceback
+from routes.analytics_routes import init_analytics_collections
+from routes.analytics_routes import analytics_bp
+# Load environment variables
+load_dotenv()
+
+# Initialize Flask app
+app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
+init_analytics_collections()
+app.register_blueprint(analytics_bp)
+
+# Initialize Web3
+try:
+    w3 = Web3(Web3.HTTPProvider(os.getenv('BLOCKCHAIN_RPC_URL')))
+except:
+    w3 = None
+    print("Warning: Web3 not initialized")
+
 
 # ===============================
 # CORS UTILITIES
@@ -1704,6 +1684,7 @@ def quick_profile_update(current_user_id, current_user_role):
     except Exception as e:
         print(f"Quick update error: {e}")
         return create_cors_response({"error": "Internal server error"}, 500)
+
 # ===============================
 # CONFIGURATION AND UTILITY ROUTES
 # ===============================
