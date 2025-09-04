@@ -1,5 +1,3 @@
-
-# Import helper functions
 from helper_functions import (
     # Database functions
     get_user_by_email, get_user_by_id, create_user, update_user_verification_status, get_db_connection,
@@ -39,8 +37,8 @@ from web3 import Web3
 import hashlib
 import re
 import traceback
-from routes.analytics_routes import init_analytics_collections
-from routes.analytics_routes import analytics_bp
+from routes.analytics_routes import ( 
+    init_analytics_collections, analytics_bp, configure_analytics)
 # Load environment variables
 load_dotenv()
 

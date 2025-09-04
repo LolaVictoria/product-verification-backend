@@ -1,5 +1,3 @@
-# analytics_routes.py - MongoDB version for Flask application
-
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 from bson import ObjectId
@@ -11,7 +9,7 @@ from helper_functions import get_db_connection
 analytics_bp = Blueprint('analytics', __name__)
 
 db = get_db_connection()
-# Collections
+
 users_collection = db.users
 products_collection = db.products
 verifications_collection = db.verifications
