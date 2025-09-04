@@ -1771,6 +1771,7 @@ def edit_profile():
 # ===============================
 
 if __name__ == '__main__':
+    configure_analytics()
     app.run(
         host='0.0.0.0',
         port=int(os.getenv('PORT', 5000)),

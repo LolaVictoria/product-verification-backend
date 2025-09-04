@@ -1486,3 +1486,372 @@ def health_check():
             'error': str(e),
             'timestamp': datetime.utcnow().isoformat()
         }), 500
+
+
+# Additional route for recording verification attempts (for analytics tracking)
+@analytics_bp.route('/analytics/record-verification', methods=['POST'])
+def record_verification_attempt():
+    """Record a verification attempt for analytics tracking"""
+    try:
+        data = request.get_json()
+        
+        # Extract verification data
+        serial_number = data.get('serialNumber')
+        customer_id = data.get('customerId')
+        is_authentic = data.get('isAuthentic', False)
+        response_time = data.get('responseTime', 0)
+        source = data.get('source', 'database')
+        confidence_score = data.get('confidenceScore', 0)
+        verification_method = data.get('verificationMethod', 'manual')
+        device_info = data.get('deviceInfo', {})
+        
+        # Find product if it exists
+        product = None
+        if is_authentic:
+            product = products_collection.find_one({
+                'serial_number': serial_number
+            })
+        
+        # Create verification record
+        verification_doc = {
+            'serial_number': serial_number,
+            'product_id': product['_id'] if product else None,
+            'customer_id': ObjectId(customer_id) if customer_id else None,
+            'manufacturer_id': product['manufacturer_id'] if product else None,
+            'is_authentic': is_authentic,
+            'confidence_score': confidence_score,
+            'response_time': response_time,
+            'transaction_success': is_authentic,  # Assume transaction succeeds if authentic
+            'customer_satisfaction_rating': 5 if is_authentic else 2,  # Default ratings
+            'error_message': None if is_authentic else 'Product not found or counterfeit',
+            'blockchain_hash': data.get('blockchainHash'),
+            'verification_method': verification_method,
+            'device_info': device_info,
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow()
+        }
+        
+        result = verifications_collection.insert_one(verification_doc)
+        
+        return jsonify({
+            'success': True,
+            'verificationId': str(result.inserted_id)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# Additional route for getting user info (for analytics service)
+@analytics_bp.route('/auth/user-info', methods=['GET'])
+def get_user_info():
+    """Get current user information for analytics"""
+    try:
+        # Get user ID from auth token (you'll need to implement this based on your auth system)
+        user_id = request.args.get('userId') or get_user_id_from_token(request)
+        
+        user = users_collection.find_one({'_id': ObjectId(user_id)})
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+            
+        return jsonify({
+            'id': str(user['_id']),
+            'role': user.get('role', 'customer'),
+            'email': user.get('primary_email'),
+            'name': user.get('name'),
+            'verified': user.get('verification_status') == 'verified'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+def get_user_id_from_token(request):
+    """Extract user ID from auth token - implement based on your auth system"""
+    # This is a placeholder - implement according to your JWT/auth system
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        # Decode JWT token and extract user ID
+        # return decoded_user_id
+        pass
+    return None
+
+
+# Database initialization for analytics collections
+def init_analytics_indexes():
+    """Create indexes for better analytics query performance"""
+    try:
+        # Verifications collection indexes
+        verifications_collection.create_index([
+            ('manufacturer_id', 1),
+            ('created_at', -1)
+        ], name='manufacturer_date_idx')
+        
+        verifications_collection.create_index([
+            ('customer_id', 1),
+            ('created_at', -1)
+        ], name='customer_date_idx')
+        
+        verifications_collection.create_index([('serial_number', 1)], name='serial_idx')
+        verifications_collection.create_index([('product_id', 1)], name='product_idx')
+        verifications_collection.create_index([('is_authentic', 1)], name='authentic_idx')
+        verifications_collection.create_index([('verification_method', 1)], name='method_idx')
+        
+        # Counterfeit reports collection indexes
+        counterfeit_reports_collection.create_index([
+            ('manufacturer_id', 1),
+            ('created_at', -1)
+        ], name='manufacturer_report_date_idx')
+        
+        counterfeit_reports_collection.create_index([('verification_id', 1)], name='verification_report_idx')
+        counterfeit_reports_collection.create_index([('city', 1), ('state', 1)], name='location_idx')
+        counterfeit_reports_collection.create_index([('customer_consent', 1)], name='consent_idx')
+        
+        # Products collection indexes
+        products_collection.create_index([('manufacturer_id', 1)], name='manufacturer_products_idx')
+        products_collection.create_index([('serial_number', 1)], unique=True, name='product_serial_idx')
+        products_collection.create_index([('device_type', 1)], name='device_type_idx')
+        products_collection.create_index([('blockchain_verified', 1)], name='blockchain_verified_idx')
+        
+        # Users collection indexes
+        users_collection.create_index([('primary_email', 1)], unique=True, name='email_idx')
+        users_collection.create_index([('role', 1)], name='role_idx')
+        users_collection.create_index([('verification_status', 1)], name='verification_status_idx')
+        
+        print("Analytics indexes created successfully")
+        
+    except Exception as e:
+        print(f"Error creating analytics indexes: {e}")
+
+
+# Sample data insertion for testing analytics
+def insert_sample_analytics_data():
+    """Insert sample verification data for testing analytics"""
+    try:
+        # Create a sample manufacturer
+        manufacturer = {
+            '_id': ObjectId(),
+            'name': 'TechCorp Electronics',
+            'primary_email': 'manufacturer@techcorp.com',
+            'role': 'manufacturer',
+            'verification_status': 'verified',
+            'created_at': datetime.utcnow()
+        }
+        users_collection.insert_one(manufacturer)
+        
+        # Create a sample customer
+        customer = {
+            '_id': ObjectId(),
+            'name': 'John Customer',
+            'primary_email': 'customer@example.com',
+            'role': 'customer',
+            'verification_status': 'verified',
+            'created_at': datetime.utcnow()
+        }
+        users_collection.insert_one(customer)
+        
+        # Create sample products
+        products = [
+            {
+                '_id': ObjectId(),
+                'serial_number': 'ABCV-25-0607',
+                'name': 'iPhone 14 Pro',
+                'brand': 'Apple',
+                'model': 'iPhone 14 Pro',
+                'device_type': 'Smartphone',
+                'storage': '256GB',
+                'color': 'Space Black',
+                'manufacturer_id': manufacturer['_id'],
+                'blockchain_verified': True,
+                'specification_hash': 'abc123hash',
+                'created_at': datetime.utcnow()
+            },
+            {
+                '_id': ObjectId(),
+                'serial_number': 'SAMPLE123',
+                'name': 'MacBook Pro',
+                'brand': 'Apple',
+                'model': 'MacBook Pro 16"',
+                'device_type': 'Laptop',
+                'storage': '512GB SSD',
+                'color': 'Space Gray',
+                'manufacturer_id': manufacturer['_id'],
+                'blockchain_verified': False,
+                'specification_hash': 'def456hash',
+                'created_at': datetime.utcnow()
+            }
+        ]
+        products_collection.insert_many(products)
+        
+        # Create sample verifications for the last 30 days
+        import random
+        from datetime import timedelta
+        
+        for i in range(100):  # Create 100 sample verifications
+            days_ago = random.randint(0, 30)
+            verification_date = datetime.utcnow() - timedelta(days=days_ago)
+            
+            product = random.choice(products)
+            is_authentic = random.choice([True, True, True, False])  # 75% authentic
+            
+            verification = {
+                'serial_number': product['serial_number'],
+                'product_id': product['_id'],
+                'customer_id': customer['_id'],
+                'manufacturer_id': manufacturer['_id'],
+                'is_authentic': is_authentic,
+                'confidence_score': random.uniform(85, 99) if is_authentic else random.uniform(10, 30),
+                'response_time': random.uniform(0.5, 3.0),
+                'transaction_success': is_authentic,
+                'customer_satisfaction_rating': random.randint(4, 5) if is_authentic else random.randint(1, 3),
+                'error_message': None if is_authentic else 'Product verification failed',
+                'blockchain_hash': f'0x{"a" * 64}' if is_authentic and product['blockchain_verified'] else None,
+                'verification_method': random.choice(['manual', 'qr_code', 'nfc']),
+                'device_info': {
+                    'user_agent': 'Mozilla/5.0 Mobile App',
+                    'ip_address': f'192.168.1.{random.randint(1, 255)}',
+                    'location': {
+                        'latitude': random.uniform(6.5, 7.5),  # Nigeria coordinates
+                        'longitude': random.uniform(3.0, 4.0),
+                        'country': 'Nigeria',
+                        'state': random.choice(['Lagos', 'Oyo', 'Rivers', 'Kano', 'Abuja'])
+                    }
+                },
+                'created_at': verification_date,
+                'updated_at': verification_date
+            }
+            verifications_collection.insert_one(verification)
+        
+        # Create sample counterfeit reports
+        for i in range(10):  # Create 10 counterfeit reports
+            days_ago = random.randint(0, 30)
+            report_date = datetime.utcnow() - timedelta(days=days_ago)
+            
+            # Find a counterfeit verification
+            counterfeit_verification = verifications_collection.find_one({'is_authentic': False})
+            if counterfeit_verification:
+                report = {
+                    'verification_id': counterfeit_verification['_id'],
+                    'product_id': counterfeit_verification['product_id'],
+                    'manufacturer_id': manufacturer['_id'],
+                    'customer_id': customer['_id'],
+                    'serial_number': counterfeit_verification['serial_number'],
+                    'customer_consent': random.choice([True, False]),
+                    'store_name': random.choice(['Electronics Market', 'Phone Plaza', 'Tech Store', 'Mobile Hub']),
+                    'store_address': '123 Market Street',
+                    'city': random.choice(['Lagos', 'Ibadan', 'Port Harcourt', 'Abuja', 'Kano']),
+                    'state': random.choice(['Lagos State', 'Oyo State', 'Rivers State', 'FCT', 'Kano State']),
+                    'purchase_date': report_date - timedelta(days=random.randint(1, 30)),
+                    'purchase_price': random.uniform(50000, 500000),
+                    'additional_notes': 'Suspected counterfeit based on verification results',
+                    'report_status': 'pending',
+                    'created_at': report_date,
+                    'updated_at': report_date
+                }
+                counterfeit_reports_collection.insert_one(report)
+        
+        print("Sample analytics data inserted successfully")
+        
+    except Exception as e:
+        print(f"Error inserting sample data: {e}")
+
+
+# Configuration helper
+def configure_analytics():
+    """Configure analytics collections and sample data"""
+    init_analytics_indexes()
+    # Uncomment the line below to insert sample data for testing
+    # insert_sample_analytics_data()
+
+
+# Health check for analytics system
+@analytics_bp.route('/analytics/system-status', methods=['GET'])
+def get_system_status():
+    """Get comprehensive system status for analytics dashboard"""
+    try:
+        # Database connectivity
+        db.command('ping')
+        
+        # Collection counts
+        collections_status = {
+            'verifications': verifications_collection.count_documents({}),
+            'products': products_collection.count_documents({}),
+            'users': users_collection.count_documents({}),
+            'counterfeit_reports': counterfeit_reports_collection.count_documents({})
+        }
+        
+        # Recent activity (last 24 hours)
+        last_24h = datetime.utcnow() - timedelta(hours=24)
+        recent_activity = {
+            'verifications_24h': verifications_collection.count_documents({
+                'created_at': {'$gte': last_24h}
+            }),
+            'reports_24h': counterfeit_reports_collection.count_documents({
+                'created_at': {'$gte': last_24h}
+            })
+        }
+        
+        # System metrics
+        system_metrics = {
+            'avg_response_time': calculate_avg_response_time(),
+            'success_rate': calculate_success_rate(),
+            'uptime_percentage': 99.9  # You can calculate this based on your monitoring
+        }
+        
+        return jsonify({
+            'status': 'healthy',
+            'database': 'connected',
+            'collections': collections_status,
+            'recent_activity': recent_activity,
+            'system_metrics': system_metrics,
+            'timestamp': datetime.utcnow().isoformat(),
+            'version': '1.0.0'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
+
+
+def calculate_avg_response_time():
+    """Calculate average response time from recent verifications"""
+    try:
+        pipeline = [
+            {'$match': {'created_at': {'$gte': datetime.utcnow() - timedelta(hours=24)}}},
+            {'$group': {'_id': None, 'avg_time': {'$avg': '$response_time'}}}
+        ]
+        result = list(verifications_collection.aggregate(pipeline))
+        return round(result[0]['avg_time'], 2) if result else 0
+    except:
+        return 0
+
+
+def calculate_success_rate():
+    """Calculate success rate from recent verifications"""
+    try:
+        total = verifications_collection.count_documents({
+            'created_at': {'$gte': datetime.utcnow() - timedelta(hours=24)}
+        })
+        successful = verifications_collection.count_documents({
+            'created_at': {'$gte': datetime.utcnow() - timedelta(hours=24)},
+            'transaction_success': True
+        })
+        return round((successful / total) * 100, 1) if total > 0 else 100
+    except:
+        return 0
+
+
+# Error handling middleware for analytics routes
+@analytics_bp.errorhandler(Exception)
+def handle_analytics_error(error):
+    """Handle analytics-related errors"""
+    print(f"Analytics error: {str(error)}")
+    return jsonify({
+        'error': 'Analytics service temporarily unavailable',
+        'message': 'Please try again later',
+        'timestamp': datetime.utcnow().isoformat()
+    }), 500
