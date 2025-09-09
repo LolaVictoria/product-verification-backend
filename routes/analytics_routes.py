@@ -432,7 +432,7 @@ def get_customer_verification_logs(customer_id):
         verification_logs = []
         for verification in verifications:
             product_name = "Unknown Product"
-            device_category = "Unknown"  # Add default category
+            device_category = "Unknown"  
             
             # Try to find related counterfeit report for product info
             related_report = counterfeit_reports_collection.find_one({
@@ -448,7 +448,7 @@ def get_customer_verification_logs(customer_id):
             verification_logs.append({
                 'serialNumber': verification['serial_number'],
                 'product': product_name,
-                'deviceCategory': device_category,  # Add this line
+                'deviceCategory': device_category,
                 'status': 'Authentic' if verification['is_authentic'] else 'Counterfeit',
                 'date': verification['created_at'].strftime('%Y-%m-%d'),
                 'time': f"{verification.get('response_time', 0):.2f}s",
