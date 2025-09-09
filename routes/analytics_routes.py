@@ -447,7 +447,7 @@ def get_customer_verification_logs(customer_id):
             
             verification_logs.append({
                 'serialNumber': verification['serial_number'],
-                'product': product_name,
+                'deviceName': product_name,
                 'deviceCategory': device_category,
                 'status': 'Authentic' if verification['is_authentic'] else 'Counterfeit',
                 'date': verification['created_at'].strftime('%Y-%m-%d'),
