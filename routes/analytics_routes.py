@@ -368,7 +368,7 @@ def get_customer_overview(customer_id):
 
 @analytics_bp.route('/analytics/customer/<customer_id>/device-breakdown', methods=['GET'])
 def get_customer_device_breakdown(customer_id):
-    """Get customer's device verification breakdown"""
+    """Get customer's device verification breakdown with device info from counterfeit products"""
     try:
         time_range = request.args.get('timeRange', '30d')
         start_date = get_date_range(time_range)
@@ -380,7 +380,7 @@ def get_customer_device_breakdown(customer_id):
                     'created_at': {'$gte': start_date}
                 }
             },
-            # Lookup counterfeit reports to get device_category for verifications that don't have it
+            # Lookup counterfeit reports first
             {
                 '$lookup': {
                     'from': 'counterfeit_reports',
@@ -389,26 +389,99 @@ def get_customer_device_breakdown(customer_id):
                     'as': 'counterfeit_report'
                 }
             },
+            # Lookup counterfeit products to get device name and category
+            {
+                '$lookup': {
+                    'from': 'counterfeit_products',  # Adjust collection name if different
+                    'let': {'report_ids': '$counterfeit_report._id'},
+                    'pipeline': [
+                        {
+                            '$match': {
+                                '$expr': {
+                                    '$in': ['$counterfeit_report_id', '$$report_ids']  # Adjust field name
+                                }
+                            }
+                        }
+                    ],
+                    'as': 'counterfeit_products'
+                }
+            },
+            # Alternative lookup if products are directly linked to verification
+            # Uncomment this if products link directly to verification_id
+            # {
+            #     '$lookup': {
+            #         'from': 'counterfeit_products',
+            #         'localField': '_id',
+            #         'foreignField': 'verification_id',
+            #         'as': 'counterfeit_products_direct'
+            #     }
+            # },
             {
                 '$addFields': {
-                    'final_device_category': {
-                        '$cond': {
-                            'if': {'$ne': ['$device_category', None]},
-                            'then': '$device_category',
-                            'else': {
-                                '$cond': {
-                                    'if': {'$gt': [{'$size': '$counterfeit_report'}, 0]},
-                                    'then': {'$arrayElemAt': ['$counterfeit_report.device_category', 0]},
-                                    'else': 'Unknown'
+                    'device_info': {
+                        '$switch': {
+                            'branches': [
+                                # Case 1: Use device_category from verification if exists
+                                {
+                                    'case': {
+                                        '$and': [
+                                            {'$ne': ['$device_category', None]},
+                                            {'$ne': ['$device_category', '']},
+                                            {'$ne': ['$device_category', null]}
+                                        ]
+                                    },
+                                    'then': {
+                                        'category': '$device_category',
+                                        'name': {'$ifNull': ['$device_name', 'Unknown Device']}
+                                    }
+                                },
+                                # Case 2: Use from counterfeit products
+                                {
+                                    'case': {'$gt': [{'$size': '$counterfeit_products'}, 0]},
+                                    'then': {
+                                        'category': {
+                                            '$ifNull': [
+                                                {'$arrayElemAt': ['$counterfeit_products.device_category', 0]},
+                                                {'$arrayElemAt': ['$counterfeit_products.category', 0]}  # Alternative field name
+                                            ]
+                                        },
+                                        'name': {
+                                            '$ifNull': [
+                                                {'$arrayElemAt': ['$counterfeit_products.device_name', 0]},
+                                                {'$arrayElemAt': ['$counterfeit_products.name', 0]}  # Alternative field name
+                                            ]
+                                        }
+                                    }
+                                },
+                                # Case 3: Use from counterfeit report if it has device info
+                                {
+                                    'case': {'$gt': [{'$size': '$counterfeit_report'}, 0]},
+                                    'then': {
+                                        'category': {'$arrayElemAt': ['$counterfeit_report.device_category', 0]},
+                                        'name': {'$arrayElemAt': ['$counterfeit_report.device_name', 0]}
+                                    }
                                 }
+                            ],
+                            'default': {
+                                'category': 'Unknown',
+                                'name': 'Unknown Device'
                             }
                         }
                     }
                 }
             },
             {
+                '$addFields': {
+                    'final_device_category': '$device_info.category',
+                    'final_device_name': '$device_info.name'
+                }
+            },
+            {
                 '$group': {
-                    '_id': '$final_device_category',
+                    '_id': {
+                        'category': '$final_device_category',
+                        'name': '$final_device_name'
+                    },
                     'count': {'$sum': 1},
                     'authentic': {
                         '$sum': {'$cond': [{'$eq': ['$is_authentic', True]}, 1, 0]}
@@ -417,27 +490,190 @@ def get_customer_device_breakdown(customer_id):
                         '$sum': {'$cond': [{'$eq': ['$is_authentic', False]}, 1, 0]}
                     }
                 }
+            },
+            # Group by category for summary
+            {
+                '$group': {
+                    '_id': '$_id.category',
+                    'total_count': {'$sum': '$count'},
+                    'total_authentic': {'$sum': '$authentic'},
+                    'total_counterfeit': {'$sum': '$counterfeit'},
+                    'devices': {
+                        '$push': {
+                            'name': '$_id.name',
+                            'count': '$count',
+                            'authentic': '$authentic',
+                            'counterfeit': '$counterfeit'
+                        }
+                    }
+                }
             }
         ]
         
         device_breakdown = list(verifications_collection.aggregate(device_pipeline))
         
         device_data = []
-        for device in device_breakdown:
-            # Handle null/missing device_category
-            device_name = device['_id'] if device['_id'] else 'Unknown'
+        for category in device_breakdown:
+            category_name = category['_id'] if category['_id'] else 'Unknown'
             device_data.append({
-                'name': device_name,
-                'count': device['count'],
-                'authentic': device['authentic'],
-                'counterfeit': device['counterfeit']
+                'category': category_name,
+                'count': category['total_count'],
+                'authentic': category['total_authentic'],
+                'counterfeit': category['total_counterfeit'],
+                'devices': category['devices']
+            })
+        
+        return jsonify({'deviceBreakdown': device_data})
+        
+    except Exception as e:
+        print(f"Error in device breakdown: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+# Debug endpoint to see your data structure
+@analytics_bp.route('/analytics/customer/<customer_id>/debug-device-data', methods=['GET'])
+def debug_device_data(customer_id):
+    """Debug endpoint to see the structure of your collections"""
+    try:
+        time_range = request.args.get('timeRange', '30d')
+        start_date = get_date_range(time_range)
+        
+        # Get sample verification
+        sample_verification = verifications_collection.find_one({
+            'customer_id': ObjectId(customer_id),
+            'created_at': {'$gte': start_date}
+        })
+        
+        # Get sample counterfeit report
+        sample_report = None
+        if sample_verification:
+            sample_report = counterfeit_reports_collection.find_one({
+                'verification_id': sample_verification['_id']
+            })
+        
+        # Get sample counterfeit product
+        sample_product = None
+        if sample_report:
+            # Try different possible field names for the link
+            sample_product = counterfeit_products_collection.find_one({
+                '$or': [
+                    {'counterfeit_report_id': sample_report['_id']},
+                    {'report_id': sample_report['_id']},
+                    {'verification_id': sample_verification['_id']}
+                ]
+            })
+        
+        # If no product found via report, try direct verification link
+        if not sample_product and sample_verification:
+            sample_product = counterfeit_products_collection.find_one({
+                'verification_id': sample_verification['_id']
+            })
+        
+        # Get all field names from counterfeit_products to see structure
+        product_fields = []
+        if counterfeit_products_collection.find_one():
+            product_sample = counterfeit_products_collection.find_one()
+            product_fields = list(product_sample.keys())
+        
+        return jsonify({
+            'sample_verification': sample_verification,
+            'sample_counterfeit_report': sample_report,
+            'sample_counterfeit_product': sample_product,
+            'counterfeit_products_fields': product_fields,
+            'collections_info': {
+                'verifications_count': verifications_collection.count_documents({
+                    'customer_id': ObjectId(customer_id),
+                    'created_at': {'$gte': start_date}
+                }),
+                'total_counterfeit_products': counterfeit_products_collection.count_documents({}),
+                'total_counterfeit_reports': counterfeit_reports_collection.count_documents({})
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# Simplified version if you want to group by category only
+@analytics_bp.route('/analytics/customer/<customer_id>/device-categories', methods=['GET'])
+def get_customer_device_categories(customer_id):
+    """Get device categories from counterfeit products"""
+    try:
+        time_range = request.args.get('timeRange', '30d')
+        start_date = get_date_range(time_range)
+        
+        category_pipeline = [
+            {
+                '$match': {
+                    'customer_id': ObjectId(customer_id),
+                    'created_at': {'$gte': start_date}
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'counterfeit_reports',
+                    'localField': '_id',
+                    'foreignField': 'verification_id',
+                    'as': 'report'
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'counterfeit_products',
+                    'let': {'verification_id': '$_id'},
+                    'pipeline': [
+                        {
+                            '$match': {
+                                '$expr': {
+                                    '$or': [
+                                        {'$eq': ['$verification_id', '$$verification_id']},
+                                        {'$in': ['$counterfeit_report_id', '$report._id']},
+                                        {'$in': ['$report_id', '$report._id']}
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    'as': 'products'
+                }
+            },
+            {
+                '$addFields': {
+                    'device_category': {
+                        '$ifNull': [
+                            {'$arrayElemAt': ['$products.device_category', 0]},
+                            {'$arrayElemAt': ['$products.category', 0]},
+                            'Unknown'
+                        ]
+                    }
+                }
+            },
+            {
+                '$group': {
+                    '_id': '$device_category',
+                    'count': {'$sum': 1},
+                    'authentic': {'$sum': {'$cond': [{'$eq': ['$is_authentic', True]}, 1, 0]}},
+                    'counterfeit': {'$sum': {'$cond': [{'$eq': ['$is_authentic', False]}, 1, 0]}}
+                }
+            }
+        ]
+        
+        results = list(verifications_collection.aggregate(category_pipeline))
+        
+        device_data = []
+        for item in results:
+            device_data.append({
+                'name': item['_id'] or 'Unknown',
+                'count': item['count'],
+                'authentic': item['authentic'],
+                'counterfeit': item['counterfeit']
             })
         
         return jsonify({'deviceBreakdown': device_data})
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
+    
 @analytics_bp.route('/analytics/customer/<customer_id>/verification-logs', methods=['GET'])
 def get_customer_verification_logs(customer_id):
     """Get customer's recent verification logs"""
