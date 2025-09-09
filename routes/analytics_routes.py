@@ -519,12 +519,12 @@ def submit_counterfeit_report():
         device_category = data.get('deviceCategory')
         customer_consent = data.get('customerConsent', False)
         location_data = data.get('locationData') if customer_consent else None
-        customer_id = request.args.get('customerId')
-        
+        customer_id_string = request.args.get('customerId')  # "68ab7eb7a12da4179ca1fc00"
+        customer_id = ObjectId(customer_id_string)
         # Find the verification
         verification = verifications_collection.find_one({
             'serial_number': serial_number,
-            'customer_id': ObjectId(customer_id)
+            'customer_id': customer_id
         })
         
         if not verification:
