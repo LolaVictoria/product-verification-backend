@@ -407,15 +407,14 @@ def get_customer_device_breakdown(customer_id):
                 }
             },
             # Alternative lookup if products are directly linked to verification
-            # Uncomment this if products link directly to verification_id
-            # {
-            #     '$lookup': {
-            #         'from': 'counterfeit_products',
-            #         'localField': '_id',
-            #         'foreignField': 'verification_id',
-            #         'as': 'counterfeit_products_direct'
-            #     }
-            # },
+            {
+                '$lookup': {
+                    'from': 'counterfeit_products',
+                    'localField': '_id',
+                    'foreignField': 'verification_id',
+                    'as': 'counterfeit_products_direct'
+                }
+            },
             {
                 '$addFields': {
                     'device_info': {
