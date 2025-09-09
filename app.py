@@ -37,15 +37,14 @@ from web3 import Web3
 import hashlib
 import re
 import traceback
-from routes.analytics_routes import ( 
-    init_analytics_collections, analytics_bp, configure_analytics)
+from routes.analytics_routes import analytics_bp
 # Load environment variables
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
-init_analytics_collections()
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+# init_analytics_collections()
 app.register_blueprint(analytics_bp)
 
 # Initialize Web3
@@ -1769,7 +1768,7 @@ def edit_profile():
 # ===============================
 
 if __name__ == '__main__':
-    configure_analytics()
+    # configure_analytics()
     app.run(
         host='0.0.0.0',
         port=int(os.getenv('PORT', 5000)),
