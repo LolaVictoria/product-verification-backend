@@ -426,8 +426,7 @@ def get_customer_device_breakdown(customer_id):
                                     'case': {
                                         '$and': [
                                             {'$ne': ['$device_category', None]},
-                                            {'$ne': ['$device_category', '']},
-                                            {'$ne': ['$device_category', null]}
+                                            {'$ne': ['$device_category', '']}
                                         ]
                                     },
                                     'then': {
@@ -555,7 +554,7 @@ def debug_device_data(customer_id):
         sample_product = None
         if sample_report:
             # Try different possible field names for the link
-            sample_product = counterfeit_products_collection.find_one({
+            sample_product = counterfeit_reports_collection.find_one({
                 '$or': [
                     {'counterfeit_report_id': sample_report['_id']},
                     {'report_id': sample_report['_id']},
@@ -565,14 +564,14 @@ def debug_device_data(customer_id):
         
         # If no product found via report, try direct verification link
         if not sample_product and sample_verification:
-            sample_product = counterfeit_products_collection.find_one({
+            sample_product = counterfeit_reports_collection.find_one({
                 'verification_id': sample_verification['_id']
             })
         
         # Get all field names from counterfeit_products to see structure
         product_fields = []
-        if counterfeit_products_collection.find_one():
-            product_sample = counterfeit_products_collection.find_one()
+        if counterfeit_reports_collection.find_one():
+            product_sample = counterfeit_reports_collection.find_one()
             product_fields = list(product_sample.keys())
         
         return jsonify({
@@ -585,7 +584,7 @@ def debug_device_data(customer_id):
                     'customer_id': ObjectId(customer_id),
                     'created_at': {'$gte': start_date}
                 }),
-                'total_counterfeit_products': counterfeit_products_collection.count_documents({}),
+                'total_counterfeit_products': counterfeit_reports_collection.count_documents({}),
                 'total_counterfeit_reports': counterfeit_reports_collection.count_documents({})
             }
         })
