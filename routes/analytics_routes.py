@@ -425,27 +425,29 @@ def get_customer_verification_logs(customer_id):
     try:
         limit = int(request.args.get('limit', 20))
         
-        # Get verifications first
+        # Get verifications without trying to lookup products (since product_id is null)
         verifications = list(verifications_collection.find({
             'customer_id': ObjectId(customer_id)
         }).sort('created_at', -1).limit(limit))
 
         verification_logs = []
         for verification in verifications:
-            # Check if we have a valid product_id to lookup
+            # Since product_id is null, we can't lookup product details
+            # Use a default product name or try to get it from related counterfeit reports
             product_name = "Unknown Product"
             
-            if verification.get('product_id'):
-                # Only do lookup if product_id exists
-                product = products_collection.find_one({'_id': verification['product_id']})
-                if product:
-                    brand = product.get('brand', 'Unknown')
-                    model = product.get('model', 'Unknown')
-                    product_name = f"{brand} {model}"
+            # Optional: Try to find if there's a counterfeit report for this verification
+            # that might have the product name
+            related_report = counterfeit_reports_collection.find_one({
+                'verification_id': verification['_id']
+            })
+            
+            if related_report and related_report.get('product_name'):
+                product_name = related_report.get('product_name')
             
             verification_logs.append({
                 'serialNumber': verification['serial_number'],
-                'product': product_name,
+                'product': product_name,  # This should now show correct product name if report exists
                 'status': 'Authentic' if verification['is_authentic'] else 'Counterfeit',
                 'date': verification['created_at'].strftime('%Y-%m-%d'),
                 'time': f"{verification.get('response_time', 0):.2f}s",
@@ -457,7 +459,7 @@ def get_customer_verification_logs(customer_id):
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    
+
 @analytics_bp.route('/analytics/customer/<customer_id>/counterfeit-reports', methods=['GET'])
 def get_customer_counterfeit_reports(customer_id):
     """Get customer's counterfeit reports with location details"""
