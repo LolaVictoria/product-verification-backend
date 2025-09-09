@@ -507,7 +507,6 @@ def get_customer_counterfeit_reports(customer_id):
         return jsonify({'error': str(e)}), 500
     
 # SHARED ROUTES
-
 @analytics_bp.route('/counterfeit-reports', methods=['POST'])
 def submit_counterfeit_report():
     """Submit counterfeit report with optional location data"""
@@ -515,6 +514,7 @@ def submit_counterfeit_report():
         data = request.get_json()
         
         serial_number = data.get('serialNumber')
+        product_name = data.get('productName')  # Add this line
         customer_consent = data.get('customerConsent', False)
         location_data = data.get('locationData') if customer_consent else None
         customer_id = request.args.get('customerId')
@@ -534,11 +534,13 @@ def submit_counterfeit_report():
             'manufacturer_id': verification['manufacturer_id'],
             'customer_id': ObjectId(customer_id),
             'serial_number': serial_number,
+            'product_name': product_name,  # Add this line to store the product name
             'customer_consent': customer_consent,
             'report_status': 'pending',
             'created_at': datetime.utcnow()
         }
         
+        # Rest of your code remains the same...
         if customer_consent and location_data:
             report_doc.update({
                 'store_name': location_data.get('storeName'),
