@@ -465,16 +465,32 @@ def get_customer_counterfeit_reports(customer_id):
         time_range = request.args.get('timeRange', '30d')
         start_date = get_date_range(time_range)
         
-        reports = list(counterfeit_reports_collection.find({
-            'customer_id': ObjectId(customer_id),
-            'created_at': {'$gte': start_date}
-        }).sort('created_at', -1))
+        reports = list(counterfeit_reports_collection.aggregate([
+            {
+                '$match': {
+                    'customer_id': ObjectId(customer_id),
+                    'created_at': {'$gte': start_date}
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'products',
+                    'localField': 'product_id',
+                    'foreignField': '_id',
+                    'as': 'product'
+                }
+            },
+            {'$unwind': {'path': '$product', 'preserveNullAndEmptyArrays': True}},
+            {'$sort': {'created_at': -1}}
+        ]))
         
         counterfeit_reports = []
         for report in reports:
+            product = report.get('product', {})
             counterfeit_reports.append({
                 'reportId': str(report['_id']),
                 'serialNumber': report['serial_number'],
+                'productName': f"{product.get('brand', 'Unknown')} {product.get('model', 'Unknown')}", # Add this line
                 'location': f"{report.get('city', 'N/A')}, {report.get('state', 'N/A')}" if report.get('city') else 'Not specified',
                 'storeName': report.get('store_name', 'Not specified'),
                 'storeAddress': report.get('store_address', 'Not specified'),
@@ -489,7 +505,7 @@ def get_customer_counterfeit_reports(customer_id):
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
+    
 # SHARED ROUTES
 
 @analytics_bp.route('/counterfeit-reports', methods=['POST'])
