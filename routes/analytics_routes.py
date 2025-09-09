@@ -425,27 +425,27 @@ def get_customer_verification_logs(customer_id):
     try:
         limit = int(request.args.get('limit', 20))
         
-        recent_verifications = list(verifications_collection.aggregate([
-            {'$match': {'customer_id': ObjectId(customer_id)}},
-            {
-                '$lookup': {
-                    'from': 'products',
-                    'localField': 'product_id',
-                    'foreignField': '_id',
-                    'as': 'product'
-                }
-            },
-            {'$unwind': {'path': '$product', 'preserveNullAndEmptyArrays': True}},
-            {'$sort': {'created_at': -1}},
-            {'$limit': limit}
-        ]))
+        # Get verifications first
+        verifications = list(verifications_collection.find({
+            'customer_id': ObjectId(customer_id)
+        }).sort('created_at', -1).limit(limit))
 
         verification_logs = []
-        for verification in recent_verifications:
-            product = verification.get('product', {})
+        for verification in verifications:
+            # Check if we have a valid product_id to lookup
+            product_name = "Unknown Product"
+            
+            if verification.get('product_id'):
+                # Only do lookup if product_id exists
+                product = products_collection.find_one({'_id': verification['product_id']})
+                if product:
+                    brand = product.get('brand', 'Unknown')
+                    model = product.get('model', 'Unknown')
+                    product_name = f"{brand} {model}"
+            
             verification_logs.append({
                 'serialNumber': verification['serial_number'],
-                'product': f"{product.get('brand', 'Unknown')} {product.get('model', 'Unknown')}",
+                'product': product_name,
                 'status': 'Authentic' if verification['is_authentic'] else 'Counterfeit',
                 'date': verification['created_at'].strftime('%Y-%m-%d'),
                 'time': f"{verification.get('response_time', 0):.2f}s",
@@ -457,7 +457,7 @@ def get_customer_verification_logs(customer_id):
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
+    
 @analytics_bp.route('/analytics/customer/<customer_id>/counterfeit-reports', methods=['GET'])
 def get_customer_counterfeit_reports(customer_id):
     """Get customer's counterfeit reports with location details"""
@@ -490,7 +490,8 @@ def get_customer_counterfeit_reports(customer_id):
             counterfeit_reports.append({
                 'reportId': str(report['_id']),
                 'serialNumber': report['serial_number'],
-                'productName': f"{product.get('brand', 'Unknown')} {product.get('model', 'Unknown')}", # Add this line
+                'productName': f"{product.get('brand', 'Unknown')} {product.get('model', 'Unknown')}", 
+                'deviceCategory': report.get('device_category', 'Unknown'),
                 'location': f"{report.get('city', 'N/A')}, {report.get('state', 'N/A')}" if report.get('city') else 'Not specified',
                 'storeName': report.get('store_name', 'Not specified'),
                 'storeAddress': report.get('store_address', 'Not specified'),
@@ -514,7 +515,8 @@ def submit_counterfeit_report():
         data = request.get_json()
         
         serial_number = data.get('serialNumber')
-        product_name = data.get('productName')  # Add this line
+        product_name = data.get('productName')
+        device_category = data.get('deviceCategory')
         customer_consent = data.get('customerConsent', False)
         location_data = data.get('locationData') if customer_consent else None
         customer_id = request.args.get('customerId')
@@ -530,17 +532,17 @@ def submit_counterfeit_report():
 
         report_doc = {
             'verification_id': verification['_id'],
-            'product_id': verification['product_id'],
-            'manufacturer_id': verification['manufacturer_id'],
+            'product_id': verification.get('product_id'), 
+            'manufacturer_id': verification.get('manufacturer_id'),  
             'customer_id': ObjectId(customer_id),
             'serial_number': serial_number,
-            'product_name': product_name,  # Add this line to store the product name
+            'product_name': product_name,  
+            'device_category': device_category,
             'customer_consent': customer_consent,
             'report_status': 'pending',
             'created_at': datetime.utcnow()
         }
         
-        # Rest of your code remains the same...
         if customer_consent and location_data:
             report_doc.update({
                 'store_name': location_data.get('storeName'),
