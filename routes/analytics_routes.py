@@ -380,18 +380,35 @@ def get_customer_device_breakdown(customer_id):
                     'created_at': {'$gte': start_date}
                 }
             },
+            # Lookup counterfeit reports to get device_category for verifications that don't have it
             {
                 '$lookup': {
-                    'from': 'products',
-                    'localField': 'product_id',
-                    'foreignField': '_id',
-                    'as': 'product'
+                    'from': 'counterfeit_reports',
+                    'localField': '_id',
+                    'foreignField': 'verification_id',
+                    'as': 'counterfeit_report'
                 }
             },
-            {'$unwind': '$product'},
+            {
+                '$addFields': {
+                    'final_device_category': {
+                        '$cond': {
+                            'if': {'$ne': ['$device_category', None]},
+                            'then': '$device_category',
+                            'else': {
+                                '$cond': {
+                                    'if': {'$gt': [{'$size': '$counterfeit_report'}, 0]},
+                                    'then': {'$arrayElemAt': ['$counterfeit_report.device_category', 0]},
+                                    'else': 'Unknown'
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             {
                 '$group': {
-                    '_id': '$product.device_type',
+                    '_id': '$final_device_category',
                     'count': {'$sum': 1},
                     'authentic': {
                         '$sum': {'$cond': [{'$eq': ['$is_authentic', True]}, 1, 0]}
@@ -407,15 +424,17 @@ def get_customer_device_breakdown(customer_id):
         
         device_data = []
         for device in device_breakdown:
+            # Handle null/missing device_category
+            device_name = device['_id'] if device['_id'] else 'Unknown'
             device_data.append({
-                'name': device['_id'],
+                'name': device_name,
                 'count': device['count'],
                 'authentic': device['authentic'],
                 'counterfeit': device['counterfeit']
             })
-
+        
         return jsonify({'deviceBreakdown': device_data})
-
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
