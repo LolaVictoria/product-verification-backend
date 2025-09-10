@@ -242,7 +242,6 @@ def verify_product_public(current_user_id, current_user_role, serial_number):
             print("Database connection failed")
             return create_cors_response({"authentic": False, "message": "Database connection failed"}, 500)
             
-        print("Database connection established")
         
         user_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
         

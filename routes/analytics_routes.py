@@ -924,6 +924,90 @@ def record_verification_attempt():
 
 @analytics_bp.route('/counterfeit-reports', methods=['POST'])
 def submit_counterfeit_report():
+    """Enhanced counterfeit report submission with verification log update"""
+    try:
+        data = request.get_json()
+        
+        serial_number = data.get('serialNumber')
+        product_name = data.get('productName')
+        device_category = data.get('deviceCategory')
+        customer_consent = data.get('customerConsent', False)
+        location_data = data.get('locationData') if customer_consent else None
+        customer_id_string = request.args.get('customerId')
+        customer_id = ObjectId(customer_id_string)
+        
+        # Find the most recent verification for this customer and serial number
+        verification = verifications_collection.find_one({
+            'serial_number': serial_number,
+            'customer_id': customer_id
+        }, sort=[('created_at', -1)])  # Get the most recent one
+        
+        if not verification:
+            return jsonify({'error': 'Verification not found'}), 404
+
+        # **KEY ENHANCEMENT: Update the verification log with proper device info**
+        try:
+            # Update the verification document with the device information from counterfeit report
+            verification_update = {
+                'device_name': product_name,
+                'device_category': device_category,
+                'updated_at': datetime.utcnow()
+            }
+            
+            # Extract brand from product name if possible
+            if product_name:
+                # Try to extract brand (first word usually)
+                brand_guess = product_name.split()[0] if product_name.split() else 'Unknown'
+                verification_update['brand'] = brand_guess
+            
+            # Update the verification record
+            verifications_collection.update_one(
+                {'_id': verification['_id']},
+                {'$set': verification_update}
+            )
+            
+            print(f"Updated verification log {verification['_id']} with device info: {product_name}, {device_category}")
+            
+        except Exception as update_error:
+            print(f"Failed to update verification log: {str(update_error)}")
+            # Don't fail the entire request if verification update fails
+
+        # Create the counterfeit report as before
+        report_doc = {
+            'verification_id': verification['_id'],
+            'product_id': verification.get('product_id'), 
+            'manufacturer_id': verification.get('manufacturer_id'),  
+            'customer_id': ObjectId(customer_id),
+            'serial_number': serial_number,
+            'product_name': product_name,  
+            'device_category': device_category,
+            'customer_consent': customer_consent,
+            'report_status': 'pending',
+            'created_at': datetime.utcnow()
+        }
+        
+        if customer_consent and location_data:
+            report_doc.update({
+                'store_name': location_data.get('storeName'),
+                'store_address': location_data.get('storeAddress'),
+                'city': location_data.get('city'),
+                'state': location_data.get('state'),
+                'purchase_date': datetime.strptime(location_data.get('purchaseDate'), '%Y-%m-%d') if location_data.get('purchaseDate') else None,
+                'purchase_price': float(location_data.get('purchasePrice', 0)) if location_data.get('purchasePrice') else None,
+                'additional_notes': location_data.get('additionalNotes')
+            })
+        
+        result = counterfeit_reports_collection.insert_one(report_doc)
+
+        return jsonify({
+            'success': True,
+            'message': 'Counterfeit report submitted successfully and verification log updated',
+            'reportId': str(result.inserted_id)
+        })
+
+    except Exception as e:
+        print(f"Error submitting counterfeit report: {str(e)}")
+        return jsonify({'error': str(e)}), 500
     """Enhanced counterfeit report submission with proper linking"""
     try:
         data = request.get_json()
