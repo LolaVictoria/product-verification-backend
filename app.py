@@ -229,11 +229,12 @@ def static_files(filename):
 # ===============================
 # PUBLIC VERIFICATION ROUTES
 # ===============================
+# Enhanced verification route with better device info extraction and customer ID tracking
 
 @app.route('/verify/<serial_number>', methods=['GET'])
 @token_required_with_roles(allowed_roles=['manufacturer', 'customer'])
 def verify_product_public(current_user_id, current_user_role, serial_number):
-    """Enhanced verification with blockchain check"""
+    """Enhanced verification with device info and customer tracking"""
     try:
         db = get_db_connection()
         
@@ -242,13 +243,6 @@ def verify_product_public(current_user_id, current_user_role, serial_number):
             return create_cors_response({"authentic": False, "message": "Database connection failed"}, 500)
             
         print("Database connection established")
-        
-        # Debug: Show sample serials (remove in production)
-        try:
-            all_serials = list(db.products.find({}, {"serial_number": 1}).limit(5))
-            print(f"Sample serial numbers in DB: {all_serials}")
-        except Exception as e:
-            print(f"Error fetching sample serials: {e}")
         
         user_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
         
@@ -261,6 +255,8 @@ def verify_product_public(current_user_id, current_user_role, serial_number):
         except Exception as e:
             print(f"Database query error: {e}")
             return create_cors_response({"authentic": False, "message": "Database query error"}, 500)
+        
+        verification_id = None
         
         if product:
             print(f"Product found in DB. Blockchain verified flag: {product.get('blockchain_verified')}")
@@ -280,7 +276,12 @@ def verify_product_public(current_user_id, current_user_role, serial_number):
                         "message": "Product found in database but blockchain verification failed",
                         "source": "database_only",
                         "blockchain_error": blockchain_result.get("error"),
-                        "serialNumber": serial_number
+                        "serialNumber": serial_number,
+                        # Include device info for analytics
+                        "brand": product.get("brand"),
+                        "model": product.get("model"),
+                        "deviceType": product.get("device_type"),
+                        "manufacturerName": product.get("manufacturer_name")
                     }
                 else:
                     result = {
@@ -355,29 +356,72 @@ def verify_product_public(current_user_id, current_user_role, serial_number):
                             "contract": f"{base_url}/address/{contract_address or '0x07c05F17f53ff83d0b5F469bFA0Cb36bDc9eA950'}"
                         }
                     },
-                    "verification_timestamp": datetime.now(timezone.utc).isoformat()
+                    "verification_timestamp": datetime.now(timezone.utc).isoformat(),
+                    # Default device info for blockchain-only products
+                    "brand": "Unknown",
+                    "model": "Unknown", 
+                    "deviceType": "Unknown"
                 }
             else:
                 result = {
                     "authentic": False,
                     "message": "Product not found in database or blockchain",
                     "source": "not_found",
-                    "serialNumber": serial_number
+                    "serialNumber": serial_number,
+                    # Default device info for not found products
+                    "brand": "Unknown",
+                    "model": "Unknown",
+                    "deviceType": "Unknown"
                 }
         
-        # Log verification attempt
+        # Enhanced verification logging with customer ID and device info
         try:
-            log_verification_attempt(db, {
+            verification_doc = {
                 "serial_number": serial_number,
-                "authentic": result["authentic"],
+                "customer_id": ObjectId(current_user_id) if current_user_id else None,
+                "product_id": product['_id'] if product else None,
+                "manufacturer_id": product['manufacturer_id'] if product else None,
+                "is_authentic": result["authentic"],
                 "source": result["source"],
                 "user_id": current_user_id,
                 "user_role": current_user_role,
                 "user_ip": user_ip,
-                "timestamp": datetime.now(timezone.utc)
-            })
+                "confidence_score": result.get("confidence_score", 85.0 if result["authentic"] else 15.0),
+                "response_time": 0.5,  # You might want to calculate this properly
+                "verification_method": "manual",
+                "transaction_success": result["authentic"],
+                
+                # Enhanced device information
+                "device_name": f"{result.get('brand', 'Unknown')} {result.get('model', 'Unknown')}".strip(),
+                "device_category": result.get('deviceType', 'Unknown'),
+                "brand": result.get('brand', 'Unknown'),
+                
+                "timestamp": datetime.now(timezone.utc),
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
+            }
+            
+            verification_result = db.verifications.insert_one(verification_doc)
+            verification_id = str(verification_result.inserted_id)
+            result["verificationId"] = verification_id
+            
+            print(f"Verification logged with ID: {verification_id}")
+            
         except Exception as e:
-            print(f"Logging failed: {e}")
+            print(f"Enhanced logging failed: {e}")
+            # Still try basic logging
+            try:
+                log_verification_attempt(db, {
+                    "serial_number": serial_number,
+                    "authentic": result["authentic"],
+                    "source": result["source"],
+                    "user_id": current_user_id,
+                    "user_role": current_user_role,
+                    "user_ip": user_ip,
+                    "timestamp": datetime.now(timezone.utc)
+                })
+            except Exception as e2:
+                print(f"Basic logging also failed: {e2}")
         
         print(f"Returning result: {result}")
         return create_cors_response(result, 200)
@@ -487,42 +531,6 @@ def get_verification_stats():
             "blockchain_devices": 0,
             "total_verifications": 0,
             "authenticity_rate": 0
-        }, 500)
-
-@app.route('/sample-data', methods=['GET'])
-@token_required_with_roles(['manufacturer', 'customer'])
-def get_sample_data(current_user_id, current_user_role):
-    """Get sample serial numbers for testing"""
-    try:
-        db = get_db_connection()
-        
-        # Get authentic devices from database
-        authentic_products = list(db.products.find(
-            {"blockchain_verified": True}
-        ).limit(5))
-        
-        database_products = list(db.products.find(
-            {"blockchain_verified": False}
-        ).limit(5))
-        
-        # Some fake serials for testing
-        fake_serials = ["FAKE001", "INVALID123", "COUNTERFEIT", "NOTREAL999", "BOGUS456"]
-        
-        sample_data = {
-            "authentic": {
-                "blockchain": [product["serial_number"] for product in authentic_products],
-                "database": [product["serial_number"] for product in database_products]
-            },
-            "counterfeit": fake_serials
-        }
-        
-        return create_cors_response(sample_data, 200)
-        
-    except Exception as e:
-        print(f"Sample data error: {e}")
-        return create_cors_response({
-            "authentic": {"blockchain": [], "database": []},
-            "counterfeit": ["FAKE001", "INVALID123"]
         }, 500)
 
 @app.route('/device-details/<serial_number>', methods=['GET'])
@@ -655,6 +663,43 @@ def seed_sample_data():
     except Exception as e:
         print(f"Seed data error: {e}")
         return create_cors_response({"error": "Could not seed sample data"}, 500)
+
+
+@app.route('/sample-data', methods=['GET'])
+@token_required_with_roles(['manufacturer', 'customer'])
+def get_sample_data(current_user_id, current_user_role):
+    """Get sample serial numbers for testing"""
+    try:
+        db = get_db_connection()
+        
+        # Get authentic devices from database
+        authentic_products = list(db.products.find(
+            {"blockchain_verified": True}
+        ).limit(5))
+        
+        database_products = list(db.products.find(
+            {"blockchain_verified": False}
+        ).limit(5))
+        
+        # Some fake serials for testing
+        fake_serials = ["FAKE001", "INVALID123", "COUNTERFEIT", "NOTREAL999", "BOGUS456"]
+        
+        sample_data = {
+            "authentic": {
+                "blockchain": [product["serial_number"] for product in authentic_products],
+                "database": [product["serial_number"] for product in database_products]
+            },
+            "counterfeit": fake_serials
+        }
+        
+        return create_cors_response(sample_data, 200)
+        
+    except Exception as e:
+        print(f"Sample data error: {e}")
+        return create_cors_response({
+            "authentic": {"blockchain": [], "database": []},
+            "counterfeit": ["FAKE001", "INVALID123"]
+        }, 500)
 
 # ===============================
 # AUTHENTICATION ROUTES

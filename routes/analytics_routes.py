@@ -672,60 +672,26 @@ def get_customer_device_categories(customer_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
+
 @analytics_bp.route('/analytics/customer/<customer_id>/verification-logs', methods=['GET'])
 def get_customer_verification_logs(customer_id):
-    """Get customer's recent verification logs"""
+    """Get customer's recent verification logs with enhanced device info and counterfeit linking"""
     try:
         limit = int(request.args.get('limit', 20))
         
-        verifications = list(verifications_collection.find({
-            'customer_id': ObjectId(customer_id)
-        }).sort('created_at', -1).limit(limit))
-
-        verification_logs = []
-        for verification in verifications:
-            product_name = "Unknown Product"
-            device_category = "Unknown"  
-            
-            # Try to find related counterfeit report for product info
-            related_report = counterfeit_reports_collection.find_one({
-                'verification_id': verification['_id']
-            })
-            
-            if related_report:
-                if related_report.get('product_name'):
-                    product_name = related_report.get('product_name')
-                if related_report.get('device_category'):
-                    device_category = related_report.get('device_category')
-            
-            verification_logs.append({
-                'serialNumber': verification['serial_number'],
-                'deviceName': product_name,
-                'deviceCategory': device_category,
-                'status': 'Authentic' if verification['is_authentic'] else 'Counterfeit',
-                'date': verification['created_at'].strftime('%Y-%m-%d'),
-                'time': f"{verification.get('response_time', 0):.2f}s",
-                'confidence': round(verification.get('confidence_score', 0), 1),
-                'verificationMethod': verification.get('verification_method', 'manual')
-            })
-
-        return jsonify({'verificationLogs': verification_logs})
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@analytics_bp.route('/analytics/customer/<customer_id>/counterfeit-reports', methods=['GET'])
-def get_customer_counterfeit_reports(customer_id):
-    """Get customer's counterfeit reports with location details"""
-    try:
-        time_range = request.args.get('timeRange', '30d')
-        start_date = get_date_range(time_range)
-        
-        reports = list(counterfeit_reports_collection.aggregate([
+        # Enhanced pipeline to get better device info and link counterfeit reports
+        pipeline = [
             {
                 '$match': {
-                    'customer_id': ObjectId(customer_id),
-                    'created_at': {'$gte': start_date}
+                    'customer_id': ObjectId(customer_id)
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'counterfeit_reports',
+                    'localField': '_id',
+                    'foreignField': 'verification_id',
+                    'as': 'counterfeit_report'
                 }
             },
             {
@@ -736,17 +702,150 @@ def get_customer_counterfeit_reports(customer_id):
                     'as': 'product'
                 }
             },
-            {'$unwind': {'path': '$product', 'preserveNullAndEmptyArrays': True}},
+            {
+                '$addFields': {
+                    'counterfeit_report_data': {'$arrayElemAt': ['$counterfeit_report', 0]},
+                    'product_data': {'$arrayElemAt': ['$product', 0]}
+                }
+            },
+            {
+                '$addFields': {
+                    # Determine device name from multiple sources
+                    'final_device_name': {
+                        '$switch': {
+                            'branches': [
+                                {
+                                    'case': {'$ne': ['$device_name', None]},
+                                    'then': '$device_name'
+                                },
+                                {
+                                    'case': {'$ne': ['$counterfeit_report_data.product_name', None]},
+                                    'then': '$counterfeit_report_data.product_name'
+                                },
+                                {
+                                    'case': {'$ne': ['$product_data', None]},
+                                    'then': {
+                                        '$concat': [
+                                            {'$ifNull': ['$product_data.brand', '']},
+                                            ' ',
+                                            {'$ifNull': ['$product_data.model', '']}
+                                        ]
+                                    }
+                                }
+                            ],
+                            'default': 'Unknown Product'
+                        }
+                    },
+                    # Determine device category from multiple sources
+                    'final_device_category': {
+                        '$switch': {
+                            'branches': [
+                                {
+                                    'case': {'$ne': ['$device_category', None]},
+                                    'then': '$device_category'
+                                },
+                                {
+                                    'case': {'$ne': ['$counterfeit_report_data.device_category', None]},
+                                    'then': '$counterfeit_report_data.device_category'
+                                },
+                                {
+                                    'case': {'$ne': ['$product_data.device_type', None]},
+                                    'then': '$product_data.device_type'
+                                }
+                            ],
+                            'default': 'Unknown Category'
+                        }
+                    }
+                }
+            },
+            {'$sort': {'created_at': -1}},
+            {'$limit': limit}
+        ]
+
+        verifications = list(verifications_collection.aggregate(pipeline))
+
+        verification_logs = []
+        for verification in verifications:
+            # Clean up device name if it's just spaces
+            device_name = verification.get('final_device_name', 'Unknown Product').strip()
+            if not device_name or device_name == ' ':
+                device_name = 'Unknown Product'
+
+            log_entry = {
+                'serialNumber': verification['serial_number'],
+                'deviceName': device_name,
+                'deviceCategory': verification.get('final_device_category', 'Unknown Category'),
+                'status': 'Authentic' if verification['is_authentic'] else 'Counterfeit',
+                'date': verification['created_at'].strftime('%Y-%m-%d'),
+                'time': f"{verification.get('response_time', 0):.2f}s",
+                'confidence': round(verification.get('confidence_score', 0), 1),
+                'verificationMethod': verification.get('verification_method', 'manual'),
+                'customerId': str(verification['customer_id'])
+            }
+            
+            # Add counterfeit ID if this verification has a counterfeit report
+            if verification.get('counterfeit_report_data'):
+                log_entry['counterfeitId'] = str(verification['counterfeit_report_data']['_id'])
+            
+            verification_logs.append(log_entry)
+
+        return jsonify({'verificationLogs': verification_logs})
+
+    except Exception as e:
+        print(f"Error getting verification logs: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@analytics_bp.route('/analytics/customer/<customer_id>/counterfeit-reports', methods=['GET'])
+def get_customer_counterfeit_reports(customer_id):
+    """Get customer's counterfeit reports with verification linking"""
+    try:
+        time_range = request.args.get('timeRange', '30d')
+        start_date = get_date_range(time_range)
+        
+        pipeline = [
+            {
+                '$match': {
+                    'customer_id': ObjectId(customer_id),
+                    'created_at': {'$gte': start_date}
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'verifications',
+                    'localField': 'verification_id',
+                    'foreignField': '_id',
+                    'as': 'verification'
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'products',
+                    'localField': 'product_id',
+                    'foreignField': '_id',
+                    'as': 'product'
+                }
+            },
+            {
+                '$addFields': {
+                    'verification_data': {'$arrayElemAt': ['$verification', 0]},
+                    'product_data': {'$arrayElemAt': ['$product', 0]}
+                }
+            },
             {'$sort': {'created_at': -1}}
-        ]))
+        ]
+        
+        reports = list(counterfeit_reports_collection.aggregate(pipeline))
         
         counterfeit_reports = []
         for report in reports:
-            product = report.get('product', {})
-            counterfeit_reports.append({
+            product = report.get('product_data', {})
+            verification = report.get('verification_data', {})
+            
+            report_entry = {
                 'reportId': str(report['_id']),
                 'serialNumber': report['serial_number'],
-                'productName': f"{product.get('brand', 'Unknown')} {product.get('model', 'Unknown')}", 
+                'productName': report.get('product_name') or f"{product.get('brand', 'Unknown')} {product.get('model', 'Unknown')}", 
                 'deviceCategory': report.get('device_category', 'Unknown'),
                 'location': f"{report.get('city', 'N/A')}, {report.get('state', 'N/A')}" if report.get('city') else 'Not specified',
                 'storeName': report.get('store_name', 'Not specified'),
@@ -755,18 +854,77 @@ def get_customer_counterfeit_reports(customer_id):
                 'purchasePrice': report.get('purchase_price', 0),
                 'reportDate': report['created_at'].strftime('%Y-%m-%d'),
                 'status': report.get('report_status', 'pending'),
-                'additionalNotes': report.get('additional_notes', '')
-            })
+                'additionalNotes': report.get('additional_notes', ''),
+                'customerId': str(report['customer_id']),
+                'verificationId': str(report.get('verification_id')) if report.get('verification_id') else None
+            }
+            
+            counterfeit_reports.append(report_entry)
 
         return jsonify({'counterfeitReports': counterfeit_reports})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    
-# SHARED ROUTES
+
+
+@analytics_bp.route('/analytics/record-verification', methods=['POST'])
+def record_verification_attempt():
+    """Enhanced record verification with device name and category"""
+    try:
+        data = request.get_json()
+        
+        serial_number = data.get('serialNumber')
+        customer_id = data.get('customerId')
+        is_authentic = data.get('isAuthentic', False)
+        response_time = data.get('responseTime', 0)
+        confidence_score = data.get('confidenceScore', 0)
+        verification_method = data.get('verificationMethod', 'manual')
+        
+        # Enhanced device information
+        device_name = data.get('deviceName', 'Unknown Product')
+        device_category = data.get('deviceCategory', 'Unknown Category')
+        brand = data.get('brand', 'Unknown Brand')
+        
+        # Find product if it exists
+        product = None
+        if is_authentic:
+            product = products_collection.find_one({'serial_number': serial_number})
+        
+        verification_doc = {
+            'serial_number': serial_number,
+            'product_id': product['_id'] if product else None,
+            'customer_id': ObjectId(customer_id) if customer_id else None,
+            'manufacturer_id': product['manufacturer_id'] if product else None,
+            'is_authentic': is_authentic,
+            'confidence_score': confidence_score,
+            'response_time': response_time,
+            'transaction_success': is_authentic,
+            'customer_satisfaction_rating': 5 if is_authentic else 2,
+            'verification_method': verification_method,
+            
+            # Enhanced device information fields
+            'device_name': device_name,
+            'device_category': device_category,
+            'brand': brand,
+            
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow()
+        }
+        
+        result = verifications_collection.insert_one(verification_doc)
+        
+        return jsonify({
+            'success': True,
+            'verificationId': str(result.inserted_id)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @analytics_bp.route('/counterfeit-reports', methods=['POST'])
 def submit_counterfeit_report():
-    """Submit counterfeit report with optional location data"""
+    """Enhanced counterfeit report submission with proper linking"""
     try:
         data = request.get_json()
         
@@ -775,13 +933,14 @@ def submit_counterfeit_report():
         device_category = data.get('deviceCategory')
         customer_consent = data.get('customerConsent', False)
         location_data = data.get('locationData') if customer_consent else None
-        customer_id_string = request.args.get('customerId')  # "68ab7eb7a12da4179ca1fc00"
+        customer_id_string = request.args.get('customerId')
         customer_id = ObjectId(customer_id_string)
-        # Find the verification
+        
+        # Find the most recent verification for this customer and serial number
         verification = verifications_collection.find_one({
             'serial_number': serial_number,
             'customer_id': customer_id
-        })
+        }, sort=[('created_at', -1)])  # Get the most recent one
         
         if not verification:
             return jsonify({'error': 'Verification not found'}), 404
@@ -820,9 +979,57 @@ def submit_counterfeit_report():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-@analytics_bp.route('/analytics/record-verification', methods=['POST'])
-def record_verification_attempt():
+    """Enhanced record verification with device name and category"""
+    try:
+        data = request.get_json()
+        
+        serial_number = data.get('serialNumber')
+        customer_id = data.get('customerId')
+        is_authentic = data.get('isAuthentic', False)
+        response_time = data.get('responseTime', 0)
+        confidence_score = data.get('confidenceScore', 0)
+        verification_method = data.get('verificationMethod', 'manual')
+        
+        # Enhanced device information
+        device_name = data.get('deviceName', 'Unknown Product')
+        device_category = data.get('deviceCategory', 'Unknown Category')
+        brand = data.get('brand', 'Unknown Brand')
+        
+        # Find product if it exists
+        product = None
+        if is_authentic:
+            product = products_collection.find_one({'serial_number': serial_number})
+        
+        verification_doc = {
+            'serial_number': serial_number,
+            'product_id': product['_id'] if product else None,
+            'customer_id': ObjectId(customer_id) if customer_id else None,
+            'manufacturer_id': product['manufacturer_id'] if product else None,
+            'is_authentic': is_authentic,
+            'confidence_score': confidence_score,
+            'response_time': response_time,
+            'transaction_success': is_authentic,
+            'customer_satisfaction_rating': 5 if is_authentic else 2,
+            'verification_method': verification_method,
+            
+            # Enhanced device information fields
+            'device_name': device_name,
+            'device_category': device_category,
+            'brand': brand,
+            
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow()
+        }
+        
+        result = verifications_collection.insert_one(verification_doc)
+        
+        return jsonify({
+            'success': True,
+            'verificationId': str(result.inserted_id)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
     """Record a verification attempt for analytics tracking"""
     try:
         data = request.get_json()
