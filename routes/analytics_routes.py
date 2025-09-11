@@ -4,7 +4,7 @@ from bson import ObjectId
 from pymongo import MongoClient
 from collections import defaultdict
 from helper_functions import get_db_connection
-from typing import Tuple, Optional
+from typing import Tuple, Optional 
 import pytz
 
 analytics_bp = Blueprint('analytics', __name__)
