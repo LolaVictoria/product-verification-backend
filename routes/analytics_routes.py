@@ -67,11 +67,14 @@ def get_date_range_dict(time_range: str, end_date: Optional[datetime] = None) ->
     """
     start_date, end_date = get_date_range(time_range, end_date)
     
+    # FIX: Convert timedelta to integer days for JSON serialization
+    days_count = (end_date - start_date).days
+    
     return {
         'start_date': start_date.isoformat(),
         'end_date': end_date.isoformat(),
         'time_range': time_range,
-        'days_count': (end_date - start_date).days,
+        'days_count': days_count,  # Now it's an integer, not timedelta
         'range_label': get_time_range_label(time_range)
     }
 
@@ -111,7 +114,7 @@ def get_manufacturer_overview():
     try:
         manufacturer_id = request.args.get('manufacturerId')
         time_range = request.args.get('timeRange', '30d')
-        start_date = get_date_range(time_range)
+        start_date, _ = get_date_range(time_range)  # FIX: Unpack tuple properly
         
         # Aggregation pipeline for comprehensive manufacturer analytics
         pipeline = [
@@ -178,7 +181,7 @@ def get_verification_trends():
     try:
         manufacturer_id = request.args.get('manufacturerId')
         time_range = request.args.get('timeRange', '30d')
-        start_date = get_date_range(time_range)
+        start_date, _ = get_date_range(time_range)  # FIX: Unpack tuple properly
         
         pipeline = [
             {
@@ -231,7 +234,7 @@ def get_manufacturer_device_analytics():
     try:
         manufacturer_id = request.args.get('manufacturerId')
         time_range = request.args.get('timeRange', '30d')
-        start_date = get_date_range(time_range)
+        start_date, _ = get_date_range(time_range)  # FIX: Unpack tuple properly
         
         # Enhanced pipeline that looks at all verification sources
         pipeline = [
@@ -354,7 +357,7 @@ def get_manufacturer_detailed_device_breakdown():
         manufacturer_id = request.args.get('manufacturerId')
         time_range = request.args.get('timeRange', '30d')
         device_category = request.args.get('deviceCategory')  # Filter by category if provided
-        start_date = get_date_range(time_range)
+        start_date, _ = get_date_range(time_range)  # FIX: Unpack tuple properly
         
         match_criteria = {
             'manufacturer_id': ObjectId(manufacturer_id),
@@ -482,7 +485,7 @@ def get_manufacturer_customer_engagement():
     try:
         manufacturer_id = request.args.get('manufacturerId')
         time_range = request.args.get('timeRange', '30d')
-        start_date = get_date_range(time_range)
+        start_date, _ = get_date_range(time_range)  # FIX: Unpack tuple properly
         
         pipeline = [
             {
@@ -537,7 +540,7 @@ def get_manufacturer_counterfeit_locations():
     try:
         manufacturer_id = request.args.get('manufacturerId')
         time_range = request.args.get('timeRange', '30d')
-        start_date = get_date_range(time_range)
+        start_date, _ = get_date_range(time_range)  # FIX: Unpack tuple properly
         
         pipeline = [
             {
@@ -592,7 +595,7 @@ def get_customer_overview(customer_id):
     """Get customer's personal analytics overview"""
     try:
         time_range = request.args.get('timeRange', '30d')
-        start_date = get_date_range(time_range)
+        start_date, _ = get_date_range(time_range)  # FIX: Unpack tuple properly
         
         # Customer verification history
         history_pipeline = [
@@ -646,7 +649,7 @@ def get_customer_device_breakdown(customer_id):
     """Enhanced customer device breakdown with better data structure"""
     try:
         time_range = request.args.get('timeRange', '30d')
-        start_date = get_date_range(time_range)
+        start_date, _ = get_date_range(time_range)  # FIX: Unpack tuple properly
         
         # Simplified and more efficient pipeline
         device_pipeline = [
@@ -770,7 +773,7 @@ def get_customer_device_categories(customer_id):
     """Get device categories from counterfeit products"""
     try:
         time_range = request.args.get('timeRange', '30d')
-        start_date = get_date_range(time_range)
+        start_date, _ = get_date_range(time_range)  # FIX: Unpack tuple properly
         
         category_pipeline = [
             {
@@ -973,7 +976,7 @@ def get_customer_counterfeit_reports(customer_id):
     """Get customer's counterfeit reports with verification linking"""
     try:
         time_range = request.args.get('timeRange', '30d')
-        start_date = get_date_range(time_range)
+        start_date, _ = get_date_range(time_range)  # FIX: Unpack tuple properly
         
         pipeline = [
             {
@@ -1179,150 +1182,4 @@ def submit_counterfeit_report():
 
     except Exception as e:
         print(f"Error submitting counterfeit report: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-    """Enhanced counterfeit report submission with proper linking"""
-    try:
-        data = request.get_json()
-        
-        serial_number = data.get('serialNumber')
-        product_name = data.get('productName')
-        device_category = data.get('deviceCategory')
-        customer_consent = data.get('customerConsent', False)
-        location_data = data.get('locationData') if customer_consent else None
-        customer_id_string = request.args.get('customerId')
-        customer_id = ObjectId(customer_id_string)
-        
-        # Find the most recent verification for this customer and serial number
-        verification = verifications_collection.find_one({
-            'serial_number': serial_number,
-            'customer_id': customer_id
-        }, sort=[('created_at', -1)])  # Get the most recent one
-        
-        if not verification:
-            return jsonify({'error': 'Verification not found'}), 404
-
-        report_doc = {
-            'verification_id': verification['_id'],
-            'product_id': verification.get('product_id'), 
-            'manufacturer_id': verification.get('manufacturer_id'),  
-            'customer_id': ObjectId(customer_id),
-            'serial_number': serial_number,
-            'product_name': product_name,  
-            'device_category': device_category,
-            'customer_consent': customer_consent,
-            'report_status': 'pending',
-            'created_at': datetime.utcnow()
-        }
-        
-        if customer_consent and location_data:
-            report_doc.update({
-                'store_name': location_data.get('storeName'),
-                'store_address': location_data.get('storeAddress'),
-                'city': location_data.get('city'),
-                'state': location_data.get('state'),
-                'purchase_date': datetime.strptime(location_data.get('purchaseDate'), '%Y-%m-%d') if location_data.get('purchaseDate') else None,
-                'purchase_price': float(location_data.get('purchasePrice', 0)) if location_data.get('purchasePrice') else None,
-                'additional_notes': location_data.get('additionalNotes')
-            })
-        
-        result = counterfeit_reports_collection.insert_one(report_doc)
-
-        return jsonify({
-            'success': True,
-            'message': 'Counterfeit report submitted successfully',
-            'reportId': str(result.inserted_id)
-        })
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    """Enhanced record verification with device name and category"""
-    try:
-        data = request.get_json()
-        
-        serial_number = data.get('serialNumber')
-        customer_id = data.get('customerId')
-        is_authentic = data.get('isAuthentic', False)
-        response_time = data.get('responseTime', 0)
-        confidence_score = data.get('confidenceScore', 0)
-        verification_method = data.get('verificationMethod', 'manual')
-        
-        # Enhanced device information
-        device_name = data.get('deviceName', 'Unknown Product')
-        device_category = data.get('deviceCategory', 'Unknown Category')
-        brand = data.get('brand', 'Unknown Brand')
-        
-        # Find product if it exists
-        product = None
-        if is_authentic:
-            product = products_collection.find_one({'serial_number': serial_number})
-        
-        verification_doc = {
-            'serial_number': serial_number,
-            'product_id': product['_id'] if product else None,
-            'customer_id': ObjectId(customer_id) if customer_id else None,
-            'manufacturer_id': product['manufacturer_id'] if product else None,
-            'is_authentic': is_authentic,
-            'confidence_score': confidence_score,
-            'response_time': response_time,
-            'transaction_success': is_authentic,
-            'customer_satisfaction_rating': 5 if is_authentic else 2,
-            'verification_method': verification_method,
-            
-            # Enhanced device information fields
-            'device_name': device_name,
-            'device_category': device_category,
-            'brand': brand,
-            
-            'created_at': datetime.utcnow(),
-            'updated_at': datetime.utcnow()
-        }
-        
-        result = verifications_collection.insert_one(verification_doc)
-        
-        return jsonify({
-            'success': True,
-            'verificationId': str(result.inserted_id)
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    """Record a verification attempt for analytics tracking"""
-    try:
-        data = request.get_json()
-        
-        serial_number = data.get('serialNumber')
-        customer_id = data.get('customerId')
-        is_authentic = data.get('isAuthentic', False)
-        response_time = data.get('responseTime', 0)
-        confidence_score = data.get('confidenceScore', 0)
-        verification_method = data.get('verificationMethod', 'manual')
-        
-        # Find product if it exists
-        product = None
-        if is_authentic:
-            product = products_collection.find_one({'serial_number': serial_number})
-        
-        verification_doc = {
-            'serial_number': serial_number,
-            'product_id': product['_id'] if product else None,
-            'customer_id': ObjectId(customer_id) if customer_id else None,
-            'manufacturer_id': product['manufacturer_id'] if product else None,
-            'is_authentic': is_authentic,
-            'confidence_score': confidence_score,
-            'response_time': response_time,
-            'transaction_success': is_authentic,
-            'customer_satisfaction_rating': 5 if is_authentic else 2,
-            'verification_method': verification_method,
-            'created_at': datetime.utcnow(),
-            'updated_at': datetime.utcnow()
-        }
-        
-        result = verifications_collection.insert_one(verification_doc)
-        
-        return jsonify({
-            'success': True,
-            'verificationId': str(result.inserted_id)
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e)}), 500 
