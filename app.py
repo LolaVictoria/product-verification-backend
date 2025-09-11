@@ -643,63 +643,6 @@ def log_verification_attempt():
     except Exception as e:
         print(f"Verification logging error: {e}")
         return create_cors_response({"error": "Logging failed"}, 500)
-    
-@app.route('/seed-data', methods=['GET'])
-def seed_sample_data():
-    """Seed database with sample verification data"""
-    try:
-        db = get_db_connection()
-        db_manager = DatabaseManager(db)
-        
-        result = db_manager.seed_sample_data()
-        
-        return create_cors_response({
-            "status": "success",
-            "message": result["message"],
-            "details": result
-        }, 200)
-        
-    except Exception as e:
-        print(f"Seed data error: {e}")
-        return create_cors_response({"error": "Could not seed sample data"}, 500)
-
-
-@app.route('/sample-data', methods=['GET'])
-@token_required_with_roles(['manufacturer', 'customer'])
-def get_sample_data(current_user_id, current_user_role):
-    """Get sample serial numbers for testing"""
-    try:
-        db = get_db_connection()
-        
-        # Get authentic devices from database
-        authentic_products = list(db.products.find(
-            {"blockchain_verified": True}
-        ).limit(5))
-        
-        database_products = list(db.products.find(
-            {"blockchain_verified": False}
-        ).limit(5))
-        
-        # Some fake serials for testing
-        fake_serials = ["FAKE001", "INVALID123", "COUNTERFEIT", "NOTREAL999", "BOGUS456"]
-        
-        sample_data = {
-            "authentic": {
-                "blockchain": [product["serial_number"] for product in authentic_products],
-                "database": [product["serial_number"] for product in database_products]
-            },
-            "counterfeit": fake_serials
-        }
-        
-        return create_cors_response(sample_data, 200)
-        
-    except Exception as e:
-        print(f"Sample data error: {e}")
-        return create_cors_response({
-            "authentic": {"blockchain": [], "database": []},
-            "counterfeit": ["FAKE001", "INVALID123"]
-        }, 500)
-
 # ===============================
 # AUTHENTICATION ROUTES
 # ===============================
