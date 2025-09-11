@@ -353,6 +353,152 @@ def get_manufacturer_device_analytics():
     except Exception as e:
         print(f"Error in manufacturer device analytics: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@analytics_bp.route('/analytics/manufacturer/verification-logs', methods=['GET'])
+def get_manufacturer_verification_logs():
+    """Get manufacturer's verification logs with enhanced device info"""
+    try:
+        manufacturer_id = request.args.get('manufacturerId')
+        limit = int(request.args.get('limit', 50))
+        time_range = request.args.get('timeRange', '30d')
+        start_date, _ = get_date_range(time_range)
+        
+        if not manufacturer_id:
+            return jsonify({'error': 'manufacturerId is required'}), 400
+        
+        # Enhanced pipeline to get verification logs for manufacturer
+        pipeline = [
+            {
+                '$match': {
+                    'manufacturer_id': ObjectId(manufacturer_id),
+                    'created_at': {'$gte': start_date}
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'counterfeit_reports',
+                    'localField': '_id',
+                    'foreignField': 'verification_id',
+                    'as': 'counterfeit_report'
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'products',
+                    'localField': 'product_id',
+                    'foreignField': '_id',
+                    'as': 'product'
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'users',
+                    'localField': 'customer_id',
+                    'foreignField': '_id',
+                    'as': 'customer'
+                }
+            },
+            {
+                '$addFields': {
+                    'counterfeit_report_data': {'$arrayElemAt': ['$counterfeit_report', 0]},
+                    'product_data': {'$arrayElemAt': ['$product', 0]},
+                    'customer_data': {'$arrayElemAt': ['$customer', 0]}
+                }
+            },
+            {
+                '$addFields': {
+                    # Determine device name from multiple sources
+                    'final_device_name': {
+                        '$switch': {
+                            'branches': [
+                                {
+                                    'case': {'$ne': ['$device_name', None]},
+                                    'then': '$device_name'
+                                },
+                                {
+                                    'case': {'$ne': ['$counterfeit_report_data.product_name', None]},
+                                    'then': '$counterfeit_report_data.product_name'
+                                },
+                                {
+                                    'case': {'$ne': ['$product_data', None]},
+                                    'then': {
+                                        '$concat': [
+                                            {'$ifNull': ['$product_data.brand', '']},
+                                            ' ',
+                                            {'$ifNull': ['$product_data.model', '']}
+                                        ]
+                                    }
+                                }
+                            ],
+                            'default': 'Unknown Product'
+                        }
+                    },
+                    # Determine device category from multiple sources
+                    'final_device_category': {
+                        '$switch': {
+                            'branches': [
+                                {
+                                    'case': {'$ne': ['$device_category', None]},
+                                    'then': '$device_category'
+                                },
+                                {
+                                    'case': {'$ne': ['$counterfeit_report_data.device_category', None]},
+                                    'then': '$counterfeit_report_data.device_category'
+                                },
+                                {
+                                    'case': {'$ne': ['$product_data.device_type', None]},
+                                    'then': '$product_data.device_type'
+                                }
+                            ],
+                            'default': 'Unknown Category'
+                        }
+                    }
+                }
+            },
+            {'$sort': {'created_at': -1}},
+            {'$limit': limit}
+        ]
+
+        verifications = list(verifications_collection.aggregate(pipeline))
+
+        verification_logs = []
+        for verification in verifications:
+            # Clean up device name if it's just spaces
+            device_name = verification.get('final_device_name', 'Unknown Product').strip()
+            if not device_name or device_name == ' ':
+                device_name = 'Unknown Product'
+
+            # Get customer info
+            customer_data = verification.get('customer_data', {})
+            customer_name = customer_data.get('name', 'Unknown Customer')
+            customer_email = customer_data.get('email', 'Unknown Email')
+
+            log_entry = {
+                'serialNumber': verification['serial_number'],
+                'deviceName': device_name,
+                'deviceCategory': verification.get('final_device_category', 'Unknown Category'),
+                'status': 'Authentic' if verification['is_authentic'] else 'Counterfeit',
+                'date': verification['created_at'].strftime('%Y-%m-%d'),
+                'time': f"{verification.get('response_time', 0):.2f}s",
+                'confidence': round(verification.get('confidence_score', 0), 1),
+                'verificationMethod': verification.get('verification_method', 'manual'),
+                'customerId': str(verification['customer_id']) if verification.get('customer_id') else None,
+                'customerName': customer_name,
+                'customerEmail': customer_email,
+                'verificationId': str(verification['_id'])
+            }
+            
+            # Add counterfeit ID if this verification has a counterfeit report
+            if verification.get('counterfeit_report_data'):
+                log_entry['counterfeitId'] = str(verification['counterfeit_report_data']['_id'])
+            
+            verification_logs.append(log_entry)
+
+        return jsonify({'verificationLogs': verification_logs})
+
+    except Exception as e:
+        print(f"Error getting manufacturer verification logs: {str(e)}")
+        return jsonify({'error': str(e)}), 500
     
 @analytics_bp.route('/analytics/manufacturer/detailed-device-breakdown', methods=['GET'])
 def get_manufacturer_detailed_device_breakdown():
