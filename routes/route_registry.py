@@ -6,7 +6,7 @@ def register_all_routes(app):
     # Import blueprints
     try:
         from .auth_routes import auth_bp
-        app.register_blueprint(auth_bp, url_prefix='/api/auth')
+        app.register_blueprint(auth_bp, url_prefix='/auth')
     except ImportError:
         print("Warning: auth_routes not found, creating placeholder...")
         auth_bp = Blueprint('auth', __name__)
@@ -15,7 +15,7 @@ def register_all_routes(app):
         def auth_health():
             return {'status': 'Auth routes not implemented yet'}
         
-        app.register_blueprint(auth_bp, url_prefix='/api/auth')
+        app.register_blueprint(auth_bp, url_prefix='/auth')
     
     try:
         from .manufacturer_routes import manufacturer_bp
