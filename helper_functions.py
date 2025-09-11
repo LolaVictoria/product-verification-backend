@@ -2071,7 +2071,7 @@ def get_manufacturer_statistics(manufacturer_wallet):
         ))
         
         serial_numbers = [p["serialNumber"] for p in manufacturer_products]
-        verification_count = db.verification_logs.count_documents({
+        verification_count = db.verifications.count_documents({
             "serialNumber": {"$in": serial_numbers}
         }) if serial_numbers else 0
         
@@ -2134,7 +2134,7 @@ def get_manufacturer_statistics(manufacturer_wallet):
         ))
         
         serial_numbers = [p["serialNumber"] for p in manufacturer_products]
-        verification_count = db.verification_logs.count_documents({
+        verification_count = db.verifications.count_documents({
             "serialNumber": {"$in": serial_numbers}
         }) if serial_numbers else 0
         
@@ -2234,7 +2234,7 @@ def log_verification_attempt(db, log_data):
         if 'verification_logs' not in db.list_collection_names():
             db.create_collection('verification_logs')
         
-        db.verification_logs.insert_one(log_data)
+        db.verifications.insert_one(log_data)
         print(f"Verification attempt logged for {log_data.get('serial_number')}")
     except Exception as e:
         print(f"Verification logging failed: {e}")

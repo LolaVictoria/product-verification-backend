@@ -234,7 +234,7 @@ def get_manufacturer_device_analytics():
     try:
         manufacturer_id = request.args.get('manufacturerId')
         time_range = request.args.get('timeRange', '30d')
-        start_date, _ = get_date_range(time_range)  # FIX: Unpack tuple properly
+        start_date, _ = get_date_range(time_range) 
         
         # FIX: Calculate the recent date threshold outside the pipeline
         recent_threshold = datetime.utcnow() - timedelta(days=7)

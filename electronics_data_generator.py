@@ -589,7 +589,7 @@ class ElectronicsDataGenerator:
         db.manufacturers.insert_many(dataset["manufacturers"])
         db.electronics.insert_many(dataset["electronics"])
         db.ownership_history.insert_many(dataset["ownership_history"])
-        db.verification_logs.insert_many(dataset["verification_logs"])
+        db.verifications.insert_many(dataset["verification_logs"])
         db.users.insert_many(dataset["users"])
         db.supply_chain_transactions.insert_many(dataset["supply_chain_transactions"])
         
@@ -600,8 +600,8 @@ class ElectronicsDataGenerator:
         db.electronics.create_index("deviceType")
         db.electronics.create_index("isOnBlockchain")
         db.ownership_history.create_index("serialNumber")
-        db.verification_logs.create_index("serialNumber")
-        db.verification_logs.create_index("timestamp")
+        db.verifications.create_index("serialNumber")
+        db.verifications.create_index("timestamp")
         
         print("✅ Dataset saved to MongoDB successfully!")
 

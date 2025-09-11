@@ -508,10 +508,10 @@ def get_verification_stats():
         blockchain_devices = db.products.count_documents({"blockchain_verified": True})
         
         # Count verification logs
-        total_verifications = db.verification_logs.count_documents({}) if hasattr(db, 'verification_logs') else 0
+        total_verifications = db.verifications.count_documents({}) if hasattr(db, 'verification_logs') else 0
         
         # Calculate authenticity rate
-        authentic_verifications = db.verification_logs.count_documents({"authentic": True}) if hasattr(db, 'verification_logs') else 0
+        authentic_verifications = db.verifications.count_documents({"authentic": True}) if hasattr(db, 'verification_logs') else 0
         authenticity_rate = int((authentic_verifications / total_verifications * 100)) if total_verifications > 0 else 0
         
         stats = {
@@ -637,7 +637,7 @@ def log_verification_attempt():
             "user_agent": data.get("user_agent", "")
         }
         
-        db.verification_logs.insert_one(log_entry)
+        db.verifications.insert_one(log_entry)
         return create_cors_response({"status": "logged"}, 200)
         
     except Exception as e:
@@ -1025,7 +1025,7 @@ def get_manufacturer_dashboard_stats(current_user_id, current_user_role):
         
         total_verifications = 0
         if serial_numbers:
-            total_verifications = db.verification_logs.count_documents({
+            total_verifications = db.verifications.count_documents({
                 "serial_number": {"$in": serial_numbers}
             })
         
