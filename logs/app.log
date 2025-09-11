@@ -104,3 +104,22 @@
 2025-09-11 23:52:10,463 - werkzeug - INFO -  * Debugger PIN: 143-327-685
 2025-09-11 23:52:57,346 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/routes/auth_routes.py', reloading
 2025-09-11 23:53:00,051 - werkzeug - INFO -  * Restarting with stat
+2025-09-11 23:53:12,206 - config.database - INFO - Connected to database: verification_system
+2025-09-11 23:53:14,740 - services.product_service - INFO - Database indexes created successfully
+2025-09-11 23:53:14,741 - services.product_service - INFO - ProductService initialized successfully
+2025-09-11 23:53:14,902 - werkzeug - WARNING -  * Debugger is active!
+2025-09-11 23:53:14,905 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-12 00:08:26,460 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/utils/validators.py', reloading
+2025-09-12 00:08:28,621 - werkzeug - INFO -  * Restarting with stat
+2025-09-12 00:08:40,576 - config.database - INFO - Connected to database: verification_system
+2025-09-12 00:08:43,649 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 00:08:43,653 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 00:08:43,932 - werkzeug - WARNING -  * Debugger is active!
+2025-09-12 00:08:43,937 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-12 00:15:35,899 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/utils/validators.py', reloading
+2025-09-12 00:15:40,092 - werkzeug - INFO -  * Restarting with stat
+2025-09-12 00:15:51,065 - config.database - INFO - Connected to database: verification_system
+2025-09-12 00:15:54,119 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 00:15:54,120 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 00:15:54,229 - werkzeug - WARNING -  * Debugger is active!
+2025-09-12 00:15:54,231 - werkzeug - INFO -  * Debugger PIN: 143-327-685

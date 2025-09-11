@@ -135,8 +135,259 @@ def validate_user_registration(data: Dict[str, Any]) -> Dict[str, Any]:
         'valid': len(errors) == 0,
         'errors': errors
     }
+import re
+from typing import Dict, Any, Optional
 
-def validate_login_data(data: Dict[str, Any]) -> Dict[str, Any]:
+def validate_login_data(data: Dict[str, Any]) -> Optional[str]:
+    """Validate login data"""
+    if not data:
+        return "No data provided"
+    
+    # Check for email (not username)
+    if not data.get('email'):
+        return "Email is required"
+    
+    if not data.get('password'):
+        return "Password is required"
+    
+    # Validate email format
+    email = data.get('email', '').strip()
+    if not is_valid_email(email):
+        return "Please enter a valid email address"
+    
+    # Validate password length
+    password = data.get('password', '')
+    if len(password) < 6:
+        return "Password must be at least 6 characters long"
+    
+    return None
+
+def validate_user_registration(data: Dict[str, Any]) -> Optional[str]:
+    """Validate user registration data"""
+    if not data:
+        return "No data provided"
+    
+    required_fields = ['email', 'password', 'username']
+    for field in required_fields:
+        if not data.get(field):
+            return f"{field.title()} is required"
+    
+    # Validate email format
+    email = data.get('email', '').strip()
+    if not is_valid_email(email):
+        return "Please enter a valid email address"
+    
+    # Validate password
+    password = data.get('password', '')
+    if len(password) < 6:
+        return "Password must be at least 6 characters long"
+    
+    # Validate username
+    username = data.get('username', '').strip()
+    if len(username) < 3:
+        return "Username must be at least 3 characters long"
+    
+    # Validate role if provided
+    role = data.get('role', 'consumer')
+    valid_roles = ['consumer', 'manufacturer', 'admin']
+    if role not in valid_roles:
+        return f"Role must be one of: {', '.join(valid_roles)}"
+    
+    # Validate manufacturer-specific fields
+    if role == 'manufacturer':
+        if data.get('wallet_address'):
+            wallet_address = data.get('wallet_address', '').strip()
+            if not is_valid_ethereum_address(wallet_address):
+                return "Please enter a valid Ethereum wallet address"
+        
+        if data.get('company_name'):
+            company_name = data.get('company_name', '').strip()
+            if len(company_name) < 2:
+                return "Company name must be at least 2 characters long"
+    
+    return None
+
+def validate_manufacturer_data(data: Dict[str, Any]) -> Optional[str]:
+    """Validate manufacturer-specific data"""
+    if not data:
+        return "No data provided"
+    
+    # Validate wallet address if provided
+    if data.get('wallet_address'):
+        wallet_address = data.get('wallet_address', '').strip()
+        if not is_valid_ethereum_address(wallet_address):
+            return "Please enter a valid Ethereum wallet address"
+    
+    # Validate company name if provided
+    if data.get('company_name'):
+        company_name = data.get('company_name', '').strip()
+        if len(company_name) < 2:
+            return "Company name must be at least 2 characters long"
+    
+    return None
+
+def validate_email_update(data: Dict[str, Any]) -> Optional[str]:
+    """Validate email update data"""
+    if not data:
+        return "No data provided"
+    
+    if not data.get('email'):
+        return "Email is required"
+    
+    email = data.get('email', '').strip()
+    if not is_valid_email(email):
+        return "Please enter a valid email address"
+    
+    return None
+
+def validate_password_change(data: Dict[str, Any]) -> Optional[str]:
+    """Validate password change data"""
+    if not data:
+        return "No data provided"
+    
+    if not data.get('current_password'):
+        return "Current password is required"
+    
+    if not data.get('new_password'):
+        return "New password is required"
+    
+    new_password = data.get('new_password', '')
+    if len(new_password) < 6:
+        return "New password must be at least 6 characters long"
+    
+    # Check if new password is different from current
+    if data.get('current_password') == new_password:
+        return "New password must be different from current password"
+    
+    return None
+
+def validate_profile_update(data: Dict[str, Any]) -> Optional[str]:
+    """Validate profile update data"""
+    if not data:
+        return "No data provided"
+    
+    # Validate email operations
+    if 'email_operations' in data:
+        for op in data['email_operations']:
+            if not isinstance(op, dict):
+                return "Invalid email operation format"
+            
+            if 'operation' not in op or 'email' not in op:
+                return "Email operations must have 'operation' and 'email' fields"
+            
+            if op['operation'] not in ['add', 'remove', 'set_primary']:
+                return "Email operation must be 'add', 'remove', or 'set_primary'"
+            
+            if not is_valid_email(op['email']):
+                return f"Invalid email address: {op['email']}"
+    
+    # Validate wallet operations
+    if 'wallet_operations' in data:
+        for op in data['wallet_operations']:
+            if not isinstance(op, dict):
+                return "Invalid wallet operation format"
+            
+            if 'operation' not in op or 'wallet_address' not in op:
+                return "Wallet operations must have 'operation' and 'wallet_address' fields"
+            
+            if op['operation'] not in ['add', 'remove', 'set_primary']:
+                return "Wallet operation must be 'add', 'remove', or 'set_primary'"
+            
+            if not is_valid_ethereum_address(op['wallet_address']):
+                return f"Invalid wallet address: {op['wallet_address']}"
+    
+    # Validate direct updates
+    if 'direct_updates' in data:
+        direct_updates = data['direct_updates']
+        
+        if 'primary_email' in direct_updates:
+            if not is_valid_email(direct_updates['primary_email']):
+                return "Invalid primary email address"
+        
+        if 'primary_wallet' in direct_updates:
+            if not is_valid_ethereum_address(direct_updates['primary_wallet']):
+                return "Invalid primary wallet address"
+        
+        if 'emails' in direct_updates:
+            if not isinstance(direct_updates['emails'], list):
+                return "Emails must be a list"
+            
+            for email in direct_updates['emails']:
+                if not is_valid_email(email):
+                    return f"Invalid email address in list: {email}"
+        
+        if 'wallet_addresses' in direct_updates:
+            if not isinstance(direct_updates['wallet_addresses'], list):
+                return "Wallet addresses must be a list"
+            
+            for wallet in direct_updates['wallet_addresses']:
+                if not is_valid_ethereum_address(wallet):
+                    return f"Invalid wallet address in list: {wallet}"
+    
+    # Validate company name
+    if 'company_name' in data:
+        company_name = data.get('company_name', '').strip()
+        if len(company_name) < 2:
+            return "Company name must be at least 2 characters long"
+    
+    return None
+
+# Helper functions
+def is_valid_email(email: str) -> bool:
+    """Check if email format is valid"""
+    if not email or not isinstance(email, str):
+        return False
+    
+    # Basic email regex pattern
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email.strip()) is not None
+
+def is_valid_ethereum_address(address: str) -> bool:
+    """Check if Ethereum address format is valid"""
+    if not address or not isinstance(address, str):
+        return False
+    
+    # Ethereum address pattern: 0x followed by 40 hexadecimal characters
+    pattern = r'^0x[a-fA-F0-9]{40}$'
+    return re.match(pattern, address.strip()) is not None
+
+def is_valid_username(username: str) -> bool:
+    """Check if username format is valid"""
+    if not username or not isinstance(username, str):
+        return False
+    
+    username = username.strip()
+    
+    # Username rules: 3-50 characters, alphanumeric and underscores only
+    if len(username) < 3 or len(username) > 50:
+        return False
+    
+    pattern = r'^[a-zA-Z0-9_]+$'
+    return re.match(pattern, username) is not None
+
+def sanitize_input(data: str) -> str:
+    """Sanitize string input"""
+    if not isinstance(data, str):
+        return str(data)
+    
+    return data.strip()
+
+def validate_pagination_params(page: Any, limit: Any) -> tuple[int, int, Optional[str]]:
+    """Validate and normalize pagination parameters"""
+    try:
+        page = int(page) if page else 1
+        limit = int(limit) if limit else 10
+        
+        if page < 1:
+            return 1, 10, "Page number must be at least 1"
+        
+        if limit < 1 or limit > 100:
+            return page, 10, "Limit must be between 1 and 100"
+        
+        return page, limit, None
+        
+    except (ValueError, TypeError):
+        return 1, 10, "Invalid pagination parameters"
     """
     Validate user login data.
     
@@ -147,7 +398,7 @@ def validate_login_data(data: Dict[str, Any]) -> Dict[str, Any]:
         Dict[str, Any]: Validation result with 'valid' boolean and 'errors' list
     """
     errors = []
-    required_fields = ['username', 'password']
+    required_fields = ['email', 'password']
     
     # Check required fields
     for field in required_fields:
@@ -155,8 +406,8 @@ def validate_login_data(data: Dict[str, Any]) -> Dict[str, Any]:
             errors.append(f"'{field}' is required")
     
     # Basic validation - more detailed validation would be done during authentication
-    if data.get('username') and len(data['username']) < 3:
-        errors.append("Invalid username format")
+    if data.get('email') and len(data['email']) < 3:
+        errors.append("Invalid email format")
     
     if data.get('password') and len(data['password']) < 1:
         errors.append("Password cannot be empty")
