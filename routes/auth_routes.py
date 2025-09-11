@@ -16,7 +16,7 @@ from utils.helper_functions import get_db_connection, blacklist_token
 auth_bp = Blueprint('auth', __name__)
 auth_service = AuthService()
 
-@auth_bp.route('/login', methods=['POST'])
+@auth_bp.route('/auth/login', methods=['POST'])
 @rate_limit({'per_minute': 10, 'per_hour': 50})
 def login():
     """User login endpoint"""
@@ -47,7 +47,7 @@ def login():
         print(f"Login error: {e}")
         return create_error_response("Authentication failed", 500)
 
-@auth_bp.route('/register', methods=['POST'])
+@auth_bp.route('/auth/signup', methods=['POST'])
 @rate_limit({'per_minute': 5, 'per_hour': 20})
 def register():
     """User registration endpoint"""
@@ -74,7 +74,7 @@ def register():
         print(f"Registration error: {e}")
         return create_error_response("Registration failed", 500)
 
-@auth_bp.route('/logout', methods=['POST'])
+@auth_bp.route('/auth/logout', methods=['POST'])
 def logout():
     """Logout endpoint - blacklist token"""
     try:

@@ -74,3 +74,24 @@
 2025-09-11 23:21:48,080 - services.product_service - INFO - ProductService initialized successfully
 2025-09-11 23:21:48,206 - werkzeug - WARNING -  * Debugger is active!
 2025-09-11 23:21:48,210 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-11 23:31:47,786 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/routes/auth_routes.py', reloading
+2025-09-11 23:31:50,518 - werkzeug - INFO -  * Restarting with stat
+2025-09-11 23:32:01,199 - config.database - INFO - Connected to database: verification_system
+2025-09-11 23:32:04,600 - services.product_service - INFO - Database indexes created successfully
+2025-09-11 23:32:04,604 - services.product_service - INFO - ProductService initialized successfully
+2025-09-11 23:32:04,727 - werkzeug - WARNING -  * Debugger is active!
+2025-09-11 23:32:04,728 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-11 23:32:09,378 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/routes/auth_routes.py', reloading
+2025-09-11 23:32:12,379 - werkzeug - INFO -  * Restarting with stat
+2025-09-11 23:32:22,839 - config.database - INFO - Connected to database: verification_system
+2025-09-11 23:32:25,085 - services.product_service - INFO - Database indexes created successfully
+2025-09-11 23:32:25,085 - services.product_service - INFO - ProductService initialized successfully
+2025-09-11 23:32:25,246 - werkzeug - WARNING -  * Debugger is active!
+2025-09-11 23:32:25,249 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-11 23:32:31,247 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/routes/auth_routes.py', reloading
+2025-09-11 23:32:33,627 - werkzeug - INFO -  * Restarting with stat
+2025-09-11 23:32:46,256 - config.database - INFO - Connected to database: verification_system
+2025-09-11 23:32:49,391 - services.product_service - INFO - Database indexes created successfully
+2025-09-11 23:32:49,395 - services.product_service - INFO - ProductService initialized successfully
+2025-09-11 23:32:49,917 - werkzeug - WARNING -  * Debugger is active!
+2025-09-11 23:32:49,928 - werkzeug - INFO -  * Debugger PIN: 143-327-685
