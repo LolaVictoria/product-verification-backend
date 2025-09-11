@@ -236,6 +236,9 @@ def get_manufacturer_device_analytics():
         time_range = request.args.get('timeRange', '30d')
         start_date, _ = get_date_range(time_range)  # FIX: Unpack tuple properly
         
+        # FIX: Calculate the recent date threshold outside the pipeline
+        recent_threshold = datetime.utcnow() - timedelta(days=7)
+        
         # Enhanced pipeline that looks at all verification sources
         pipeline = [
             {
@@ -299,10 +302,11 @@ def get_manufacturer_device_analytics():
                     # Additional metrics for manufacturer insights
                     'unique_customers': {'$addToSet': '$customer_id'},
                     'avg_confidence': {'$avg': '$confidence_score'},
+                    # FIX: Use pre-calculated date instead of timedelta in pipeline
                     'recent_verifications': {
                         '$sum': {
                             '$cond': [
-                                {'$gte': ['$created_at', {'$subtract': [datetime.utcnow(), timedelta(days=7)]}]},
+                                {'$gte': ['$created_at', recent_threshold]},
                                 1,
                                 0
                             ]
@@ -349,7 +353,7 @@ def get_manufacturer_device_analytics():
     except Exception as e:
         print(f"Error in manufacturer device analytics: {str(e)}")
         return jsonify({'error': str(e)}), 500
-
+    
 @analytics_bp.route('/analytics/manufacturer/detailed-device-breakdown', methods=['GET'])
 def get_manufacturer_detailed_device_breakdown():
     """Get detailed device breakdown including specific models for manufacturer"""
