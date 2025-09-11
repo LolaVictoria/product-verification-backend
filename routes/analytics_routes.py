@@ -1,11 +1,8 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 from bson import ObjectId
-from pymongo import MongoClient
-from collections import defaultdict
-from helper_functions import get_db_connection
-from typing import Tuple, Optional 
-import pytz
+from utils.helper_functions import get_db_connection
+from utils.date_utils import get_date_range
 
 analytics_bp = Blueprint('analytics', __name__)
 db = get_db_connection()
@@ -16,80 +13,6 @@ verifications_collection = db.verifications
 counterfeit_reports_collection = db.counterfeit_reports
 
 
-
-def get_date_range(time_range: str, end_date: Optional[datetime] = None) -> Tuple[datetime, datetime]:
-    """
-    Helper function to calculate date range for analytics queries.
-    
-    Args:
-        time_range: String representing the time range ('7d', '30d', '90d', '1y')
-        end_date: Optional end date (defaults to current UTC time)
-    
-    Returns:
-        Tuple of (start_date, end_date) as datetime objects
-        
-    Raises:
-        ValueError: If time_range format is invalid
-    """
-    if end_date is None:
-        end_date = datetime.utcnow()
-    
-    # Ensure end_date is timezone-aware (UTC)
-    if end_date.tzinfo is None:
-        end_date = end_date.replace(tzinfo=pytz.UTC)
-    
-    # Time range mapping
-    time_deltas = {
-        '7d': 7,
-        '14d': 14,
-        '30d': 30,
-        '90d': 90,
-        '1y': 365,
-        '6m': 180,  #6 months
-        '3m': 90,   #3 months
-        '1m': 30    #1 month
-    }
-    
-    # Get days or default to 7
-    days = time_deltas.get(time_range, 7)
-    
-    # Calculate start date
-    start_date = end_date - timedelta(days=days)
-    
-    return start_date, end_date
-
-def get_date_range_dict(time_range: str, end_date: Optional[datetime] = None) -> dict:
-    """
-    Return date range as serializable dictionary.
-    
-    Returns:
-        Dict with start_date, end_date, and metadata
-    """
-    start_date, end_date = get_date_range(time_range, end_date)
-    
-    # FIX: Convert timedelta to integer days for JSON serialization
-    days_count = (end_date - start_date).days
-    
-    return {
-        'start_date': start_date.isoformat(),
-        'end_date': end_date.isoformat(),
-        'time_range': time_range,
-        'days_count': days_count,  # Now it's an integer, not timedelta
-        'range_label': get_time_range_label(time_range)
-    }
-
-def get_time_range_label(time_range: str) -> str:
-    """Get human-readable label for time range"""
-    labels = {
-        '7d': 'Last 7 Days',
-        '30d': 'Last 30 Days',
-        '90d': 'Last 90 Days',
-        '1y': 'Last Year',
-        '6m': 'Last 6 Months',
-        '3m': 'Last 3 Months',
-        '1m': 'Last Month'
-    }
-    return labels.get(time_range, 'Last 7 Days')
 
 # For database queries - returns just the start date
 def get_start_date(time_range: str) -> datetime:
@@ -107,23 +30,48 @@ def is_valid_time_range(time_range: str) -> bool:
     return time_range in valid_ranges
 
 # MANUFACTURER ANALYTICS ROUTES
-
 @analytics_bp.route('/analytics/manufacturer/overview', methods=['GET'])
 def get_manufacturer_overview():
-    """Get manufacturer analytics overview with KPIs"""
+    """Get manufacturer analytics overview with KPIs - FIXED VERSION"""
     try:
         manufacturer_id = request.args.get('manufacturerId')
         time_range = request.args.get('timeRange', '30d')
-        start_date, _ = get_date_range(time_range)  # FIX: Unpack tuple properly
         
-        # Aggregation pipeline for comprehensive manufacturer analytics
+        if not manufacturer_id:
+            return jsonify({'error': 'manufacturerId is required'}), 400
+            
+        start_date, end_date = get_date_range(time_range)
+        
+        print(f"Fetching manufacturer overview for: {manufacturer_id}, time range: {time_range}")
+        print(f"Date range: {start_date} to {end_date}")
+        
+        # FIXED: Use proper aggregation pipeline that handles manufacturer relationship
         pipeline = [
+            # First, get all verifications in the time range
             {
                 '$match': {
-                    'manufacturer_id': ObjectId(manufacturer_id),
-                    'created_at': {'$gte': start_date}
+                    'created_at': {'$gte': start_date, '$lte': end_date}
                 }
             },
+            # Join with products to get manufacturer info
+            {
+                '$lookup': {
+                    'from': 'products',
+                    'localField': 'product_id',
+                    'foreignField': '_id',
+                    'as': 'product'
+                }
+            },
+            # Filter by manufacturer after the lookup
+            {
+                '$match': {
+                    '$or': [
+                        {'manufacturer_id': ObjectId(manufacturer_id)},  # Direct manufacturer_id
+                        {'product.manufacturer_id': ObjectId(manufacturer_id)}  # Via product
+                    ]
+                }
+            },
+            # Group and calculate metrics
             {
                 '$group': {
                     '_id': None,
@@ -143,6 +91,54 @@ def get_manufacturer_overview():
         ]
         
         result = list(verifications_collection.aggregate(pipeline))
+        print(f"Aggregation result: {result}")
+        
+        if not result:
+            # If no results, try alternative approach
+            print("No results from main pipeline, trying alternative approach...")
+            
+            # Get all products for this manufacturer first
+            manufacturer_products = list(products_collection.find(
+                {'manufacturer_id': ObjectId(manufacturer_id)}, 
+                {'_id': 1}
+            ))
+            product_ids = [p['_id'] for p in manufacturer_products]
+            
+            print(f"Found {len(product_ids)} products for manufacturer")
+            
+            if product_ids:
+                # Now get verifications for these products
+                verification_stats = verifications_collection.aggregate([
+                    {
+                        '$match': {
+                            '$or': [
+                                {'product_id': {'$in': product_ids}},
+                                {'manufacturer_id': ObjectId(manufacturer_id)}
+                            ],
+                            'created_at': {'$gte': start_date, '$lte': end_date}
+                        }
+                    },
+                    {
+                        '$group': {
+                            '_id': None,
+                            'total_attempts': {'$sum': 1},
+                            'successful_verifications': {
+                                '$sum': {'$cond': [{'$eq': ['$is_authentic', True]}, 1, 0]}
+                            },
+                            'total_counterfeit': {
+                                '$sum': {'$cond': [{'$eq': ['$is_authentic', False]}, 1, 0]}
+                            },
+                            'avg_response_time': {'$avg': '$response_time'},
+                            'successful_transactions': {
+                                '$sum': {'$cond': [{'$eq': ['$transaction_success', True]}, 1, 0]}
+                            }
+                        }
+                    }
+                ])
+                
+                result = list(verification_stats)
+                print(f"Alternative approach result: {result}")
+        
         stats = result[0] if result else {
             'total_attempts': 0,
             'successful_verifications': 0,
@@ -151,7 +147,7 @@ def get_manufacturer_overview():
             'successful_transactions': 0
         }
         
-        # Calculate KPIs
+        # Calculate KPIs with safe division
         total_attempts = stats['total_attempts']
         successful_verifications = stats['successful_verifications']
         total_counterfeit = stats['total_counterfeit']
@@ -160,7 +156,7 @@ def get_manufacturer_overview():
         counterfeit_rate = (total_counterfeit / total_attempts * 100) if total_attempts > 0 else 0
         transaction_efficiency = (stats['successful_transactions'] / total_attempts * 100) if total_attempts > 0 else 0
         
-        return jsonify({
+        response_data = {
             'kpis': {
                 'totalAttempts': total_attempts,
                 'successfulVerifications': successful_verifications,
@@ -170,26 +166,58 @@ def get_manufacturer_overview():
                 'avgResponseTime': round(stats['avg_response_time'] or 0, 2),
                 'transactionEfficiency': round(transaction_efficiency, 1)
             }
-        })
+        }
+        
+        print(f"Returning KPIs: {response_data}")
+        return jsonify(response_data)
 
     except Exception as e:
+        print(f"Error in get_manufacturer_overview: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/analytics/manufacturer/verification-trends', methods=['GET'])
 def get_verification_trends():
-    """Get daily verification trends"""
+    """Get daily verification trends - FIXED VERSION"""
     try:
         manufacturer_id = request.args.get('manufacturerId')
         time_range = request.args.get('timeRange', '30d')
-        start_date, _ = get_date_range(time_range)  # FIX: Unpack tuple properly
+        
+        if not manufacturer_id:
+            return jsonify({'error': 'manufacturerId is required'}), 400
+            
+        start_date, end_date = get_date_range(time_range)
+        
+        print(f"Getting verification trends for manufacturer: {manufacturer_id}")
+        
+        # First get all products for this manufacturer
+        manufacturer_products = list(products_collection.find(
+            {'manufacturer_id': ObjectId(manufacturer_id)}, 
+            {'_id': 1}
+        ))
+        product_ids = [p['_id'] for p in manufacturer_products]
+        
+        print(f"Found {len(product_ids)} products for manufacturer")
+        
+        if not product_ids:
+            print("No products found for manufacturer, checking direct manufacturer_id on verifications...")
+        
+        # Build match criteria
+        match_criteria = {
+            'created_at': {'$gte': start_date, '$lte': end_date}
+        }
+        
+        if product_ids:
+            match_criteria['$or'] = [
+                {'product_id': {'$in': product_ids}},
+                {'manufacturer_id': ObjectId(manufacturer_id)}
+            ]
+        else:
+            match_criteria['manufacturer_id'] = ObjectId(manufacturer_id)
         
         pipeline = [
-            {
-                '$match': {
-                    'manufacturer_id': ObjectId(manufacturer_id),
-                    'created_at': {'$gte': start_date}
-                }
-            },
+            {'$match': match_criteria},
             {
                 '$group': {
                     '_id': {
@@ -212,6 +240,7 @@ def get_verification_trends():
         ]
         
         daily_stats = list(verifications_collection.aggregate(pipeline))
+        print(f"Found {len(daily_stats)} days of verification data")
         
         verification_trends = []
         for stat in daily_stats:
@@ -226,27 +255,47 @@ def get_verification_trends():
         return jsonify({'verificationTrends': verification_trends})
 
     except Exception as e:
+        print(f"Error in get_verification_trends: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/analytics/manufacturer/device-analytics', methods=['GET'])
 def get_manufacturer_device_analytics():
-    """Enhanced manufacturer device analytics with comprehensive breakdown"""
+    """Enhanced manufacturer device analytics - FIXED VERSION"""
     try:
         manufacturer_id = request.args.get('manufacturerId')
         time_range = request.args.get('timeRange', '30d')
-        start_date, _ = get_date_range(time_range) 
         
-        # FIX: Calculate the recent date threshold outside the pipeline
+        if not manufacturer_id:
+            return jsonify({'error': 'manufacturerId is required'}), 400
+            
+        start_date, end_date = get_date_range(time_range)
         recent_threshold = datetime.utcnow() - timedelta(days=7)
         
-        # Enhanced pipeline that looks at all verification sources
+        print(f"Getting device analytics for manufacturer: {manufacturer_id}")
+        
+        # Get manufacturer products first
+        manufacturer_products = list(products_collection.find(
+            {'manufacturer_id': ObjectId(manufacturer_id)}, 
+            {'_id': 1, 'device_type': 1, 'brand': 1, 'model': 1}
+        ))
+        product_ids = [p['_id'] for p in manufacturer_products]
+        
+        print(f"Found {len(product_ids)} products for manufacturer")
+        
+        if not product_ids:
+            return jsonify({'deviceVerifications': []})
+        
+        # Build match criteria
+        match_criteria = {
+            'created_at': {'$gte': start_date, '$lte': end_date},
+            '$or': [
+                {'product_id': {'$in': product_ids}},
+                {'manufacturer_id': ObjectId(manufacturer_id)}
+            ]
+        }
+        
         pipeline = [
-            {
-                '$match': {
-                    'manufacturer_id': ObjectId(manufacturer_id),
-                    'created_at': {'$gte': start_date}
-                }
-            },
+            {'$match': match_criteria},
             {
                 '$lookup': {
                     'from': 'products',
@@ -267,7 +316,6 @@ def get_manufacturer_device_analytics():
                 '$addFields': {
                     'product_data': {'$arrayElemAt': ['$product', 0]},
                     'counterfeit_report_data': {'$arrayElemAt': ['$counterfeit_report', 0]},
-                    # Determine device category with fallback logic
                     'final_device_category': {
                         '$switch': {
                             'branches': [
@@ -299,10 +347,8 @@ def get_manufacturer_device_analytics():
                     'counterfeit': {
                         '$sum': {'$cond': [{'$eq': ['$is_authentic', False]}, 1, 0]}
                     },
-                    # Additional metrics for manufacturer insights
                     'unique_customers': {'$addToSet': '$customer_id'},
                     'avg_confidence': {'$avg': '$confidence_score'},
-                    # FIX: Use pre-calculated date instead of timedelta in pipeline
                     'recent_verifications': {
                         '$sum': {
                             '$cond': [
@@ -329,8 +375,8 @@ def get_manufacturer_device_analytics():
         ]
         
         device_stats = list(verifications_collection.aggregate(pipeline))
+        print(f"Found {len(device_stats)} device categories")
         
-        # Assign colors for consistency
         colors = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6B7280']
         
         device_verifications = []
@@ -348,12 +394,15 @@ def get_manufacturer_device_analytics():
                 'recentVerifications': stat['recent_verifications']
             })
 
+        print(f"Returning {len(device_verifications)} device analytics")
         return jsonify({'deviceVerifications': device_verifications})
 
     except Exception as e:
         print(f"Error in manufacturer device analytics: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
-
+    
 @analytics_bp.route('/analytics/manufacturer/verification-logs', methods=['GET'])
 def get_manufacturer_verification_logs():
     """Get manufacturer's verification logs with enhanced device info"""

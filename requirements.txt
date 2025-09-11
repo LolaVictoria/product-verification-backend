@@ -12,6 +12,7 @@ ckzg==2.1.1
 click==8.2.1
 cytoolz==1.0.1
 dnspython==2.7.0
+email-validator==2.3.0
 eth-account==0.13.7
 eth-hash==0.7.1
 eth-keyfile==0.8.1
@@ -51,6 +52,7 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.0.0
 pytz==2025.2
 pyunormalize==16.0.0
+redis==6.4.0
 referencing==0.36.2
 regex==2025.7.34
 requests==2.31.0

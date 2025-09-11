@@ -1,0 +1,76 @@
+2025-09-11 22:32:06,266 - config.database - INFO - Connected to database: verification_system
+2025-09-11 22:32:06,727 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.43.26:5000
+2025-09-11 22:32:06,728 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-11 22:32:06,748 - werkzeug - INFO -  * Restarting with stat
+2025-09-11 22:32:14,098 - config.database - INFO - Connected to database: verification_system
+2025-09-11 22:32:14,476 - werkzeug - WARNING -  * Debugger is active!
+2025-09-11 22:32:14,886 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-11 22:32:57,555 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/routes/product_routes.py', reloading
+2025-09-11 22:33:00,537 - werkzeug - INFO -  * Restarting with stat
+2025-09-11 22:33:11,679 - config.database - INFO - Connected to database: verification_system
+2025-09-11 22:33:12,208 - werkzeug - WARNING -  * Debugger is active!
+2025-09-11 22:33:12,212 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-11 22:33:25,988 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/routes/__init__.py', reloading
+2025-09-11 22:33:28,191 - werkzeug - INFO -  * Restarting with stat
+2025-09-11 22:33:36,604 - config.database - INFO - Connected to database: verification_system
+2025-09-11 22:33:36,987 - werkzeug - WARNING -  * Debugger is active!
+2025-09-11 22:33:36,990 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-11 22:38:32,551 - config.database - INFO - Connected to database: verification_system
+2025-09-11 22:38:33,476 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.43.26:5000
+2025-09-11 22:38:33,477 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-11 22:38:33,482 - werkzeug - INFO -  * Restarting with stat
+2025-09-11 22:38:46,039 - config.database - INFO - Connected to database: verification_system
+2025-09-11 22:38:46,726 - werkzeug - WARNING -  * Debugger is active!
+2025-09-11 22:38:46,732 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-11 23:04:16,209 - config.database - INFO - Connected to database: verification_system
+2025-09-11 23:04:16,574 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.43.26:5000
+2025-09-11 23:04:16,575 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-11 23:04:16,581 - werkzeug - INFO -  * Restarting with stat
+2025-09-11 23:04:24,925 - config.database - INFO - Connected to database: verification_system
+2025-09-11 23:04:25,281 - werkzeug - WARNING -  * Debugger is active!
+2025-09-11 23:04:25,283 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-11 23:10:42,526 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/services/product_service.py', reloading
+2025-09-11 23:10:45,883 - werkzeug - INFO -  * Restarting with stat
+2025-09-11 23:11:09,493 - config.database - INFO - Connected to database: verification_system
+2025-09-11 23:11:10,087 - werkzeug - WARNING -  * Debugger is active!
+2025-09-11 23:11:10,110 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-11 23:11:12,637 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/services/__init__.py', reloading
+2025-09-11 23:11:15,894 - werkzeug - INFO -  * Restarting with stat
+2025-09-11 23:11:29,485 - config.database - INFO - Connected to database: verification_system
+2025-09-11 23:11:31,959 - services.product_service - INFO - Database indexes created successfully
+2025-09-11 23:11:31,959 - services.product_service - INFO - ProductService initialized successfully
+2025-09-11 23:11:32,129 - werkzeug - WARNING -  * Debugger is active!
+2025-09-11 23:11:32,134 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-11 23:11:38,578 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/services/__init__.py', reloading
+2025-09-11 23:11:41,059 - werkzeug - INFO -  * Restarting with stat
+2025-09-11 23:11:51,495 - config.database - INFO - Connected to database: verification_system
+2025-09-11 23:11:55,978 - services.product_service - INFO - Database indexes created successfully
+2025-09-11 23:11:55,980 - services.product_service - INFO - ProductService initialized successfully
+2025-09-11 23:11:56,316 - werkzeug - WARNING -  * Debugger is active!
+2025-09-11 23:11:56,323 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-11 23:15:49,872 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/services/route_registry.py', reloading
+2025-09-11 23:15:51,864 - werkzeug - INFO -  * Restarting with stat
+2025-09-11 23:15:58,761 - config.database - ERROR - Database setup error: All nameservers failed to answer the query _mongodb._tcp.ecommercecluster.aoxl38d.mongodb.net. IN SRV: Server Do53:127.0.0.53@53 answered REFUSED
+2025-09-11 23:21:34,152 - config.database - INFO - Connected to database: verification_system
+2025-09-11 23:21:36,409 - services.product_service - INFO - Database indexes created successfully
+2025-09-11 23:21:36,415 - services.product_service - INFO - ProductService initialized successfully
+2025-09-11 23:21:36,620 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.43.26:5000
+2025-09-11 23:21:36,622 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-11 23:21:36,635 - werkzeug - INFO -  * Restarting with stat
+2025-09-11 23:21:45,004 - config.database - INFO - Connected to database: verification_system
+2025-09-11 23:21:48,080 - services.product_service - INFO - Database indexes created successfully
+2025-09-11 23:21:48,080 - services.product_service - INFO - ProductService initialized successfully
+2025-09-11 23:21:48,206 - werkzeug - WARNING -  * Debugger is active!
+2025-09-11 23:21:48,210 - werkzeug - INFO -  * Debugger PIN: 143-327-685

@@ -1,31 +1,124 @@
-. Consumer Electronics 📱
+backend/
+├── app.py                          # Main Flask application entry point
+├── config/
+│   ├── __init__.py
+│   ├── settings.py                 # Environment-based configuration
+│   ├── database.py                 # Database connection settings
+│   └── blockchain.py               # Blockchain configuration
+├── models/
+│   ├── __init__.py
+│   ├── user.py                     # User model and schema
+│   ├── product.py                  # Product model and schema
+│   ├── verification.py             # Verification model and schema
+│   └── counterfeit_report.py       # Counterfeit report model
+├── services/
+│   ├── __init__.py
+│   ├── auth_service.py             # Authentication logic
+│   ├── verification_service.py     # Verification business logic
+│   ├── blockchain_service.py       # Blockchain interactions
+│   ├── analytics_service.py        # Analytics calculations
+│   ├── manufacturer_service.py     # Manufacturer-specific operations
+│   └── integration_service.py      # Third-party integration logic
+├── routes/
+│   ├── __init__.py
+│   ├── auth_routes.py              # Authentication endpoints
+│   ├── manufacturer_routes.py      # Manufacturer-specific endpoints
+│   ├── customer_routes.py          # Customer-specific endpoints
+│   ├── verification_routes.py      # Verification endpoints
+│   ├── analytics_routes.py         # Analytics endpoints
+│   └── integration_routes.py       # Integration endpoints
+├── middleware/
+│   ├── __init__.py
+│   ├── auth_middleware.py          # Token validation, CORS
+│   ├── rate_limiting.py            # API rate limiting
+│   └── logging_middleware.py       # Request/response logging
+├── utils/
+│   ├── __init__.py
+│   ├── validators.py               # Input validation utilities
+│   ├── formatters.py               # Response formatting
+│   ├── crypto_utils.py             # Encryption/hashing utilities
+│   └── date_utils.py               # Date/time utilities
+├── api/
+│   ├── __init__.py
+│   ├── manufacturer_integration.py # Manufacturer integration API
+│   └── webhook_handlers.py         # Webhook endpoints
+└── run.py                          # Application runner
 
-Why Perfect: Everyone understands, massive counterfeiting problem
-Serial Numbers: Every phone/laptop has IMEI/serial numbers
-Research Impact: Consumer protection, warranty fraud
-Academic Weight: Digital economy security
-Example: "AAPL-IPH15-PRO-2024-C02XY1234"
 
-. Dataset Statistics for Your Paper
+i created this prompt and got some response but it stopped midway i want to continue from where it was stopped, i will provide the responses i've received and also the be structure ii was given i've only receoved respone for thsi files: 
+manufacturer_service.py, all models, all routes except verification route and also complete d manufacturer route, middleware/auth_middleware.py, config folder that means  don't need too write code for this files anymore. 
+  so need to send codes for theem. also attached below is my code files that i sent to be worked on: sine i want its going to be integratefd into many systems that is manufacturer's platform that buy, how can i create an account for a manufacturer. also fetch customer logs(verification, counterfeit report et for that particular manufacturer when it is integrated in their system. the files beow are: app.py, analytics_routes.py, analytic service. i also have the files but i an't sned it os of file size limitauth service, api client.ts, useAuth , use verification, verification service, analytic service, useanalytic and the omponet i'm using this data for display of ui interface. also , help me prperfly structure the files for the backend ode, lke provide a proper file struture that give seperation of concern. i also have a file called helper_function.py in my backend too.
+I'll help you create a proper backend structure and develop the manufacturer account creation and integrated analytics features. Let me break this down into several parts:
+1. Proper Backend File Structure
+Recommended Backend File Structure
+Document 
+2. Manufacturer Account Creation & Integration System
+Manufacturer Integration Service
+Code 
+3. Integration Routes for Manufacturer Platforms
+Integration Routes for Manufacturer Platforms
+Code 
+Continue
+Integration Routes for Manufacturer Platforms
+Code ∙ Version 2 
+Now, let me create the middleware and utility files to complete the backend structure:
+4. Authentication Middleware & Utilities
+Authentication Middleware & Utilities
+Code       backend/
+├── app.py                          # Main Flask application entry point
+├── config/
+│   ├── **init**.py
+│   ├── settings.py                 # Environment-based configuration
+│   ├── database.py                 # Database connection settings
+│   └── blockchain.py               # Blockchain configuration
+├── models/
+│   ├── **init**.py
+│   ├── user.py                     # User model and schema
+│   ├── product.py                  # Product model and schema
+│   ├── verification.py             # Verification model and schema
+│   └── counterfeit_report.py       # Counterfeit report model
+├── services/
+│   ├── **init**.py
+│   ├── auth_service.py             # Authentication logic
+│   ├── verification_service.py     # Verification business logic
+│   ├── blockchain_service.py       # Blockchain interactions
+│   ├── analytics_service.py        # Analytics calculations
+│   ├── manufacturer_service.py     # Manufacturer-specific operations
+│   └── integration_service.py      # Third-party integration logic
+├── routes/
+│   ├── **init**.py
+│   ├── auth_routes.py              # Authentication endpoints
+│   ├── manufacturer_routes.py      # Manufacturer-specific endpoints
+│   ├── customer_routes.py          # Customer-specific endpoints
+│   ├── verification_routes.py      # Verification endpoints
+│   ├── analytics_routes.py         # Analytics endpoints
+│   └── integration_routes.py       # Integration endpoints
+├── middleware/
+│   ├── **init**.py
+│   ├── auth_middleware.py          # Token validation, CORS
+│   ├── rate_limiting.py            # API rate limiting
+│   └── logging_middleware.py       # Request/response logging
+├── utils/
+│   ├── **init**.py
+│   ├── validators.py               # Input validation utilities
+│   ├── formatters.py               # Response formatting
+│   ├── crypto_utils.py             # Encryption/hashing utilities
+│   └── date_utils.py               # Date/time utilities
+├── api/
+│   ├── **init**.py
+│   ├── manufacturer_integration.py # Manufacturer integration API
+│   └── webhook_handlers.py         # Webhook endpoints
+├── tests/
+│   ├── **init**.py
+│   ├── test_auth.py
+│   ├── test_verification.py
+│   └── test_analytics.py
+├── templates/                      # HTML templates (if needed)
+├── static/                         # Static files
+├── requirements.txt                # Python dependencies
+├── .env.example                    # Environment variables template
+├── README.md                       # Project documentation
+└── run.py                          # Application runner
+also to make things easier, from the code files i have, tell me the existing ones i still need and where to put them inn d file structure so that we don't waste response msg space. i also have a helper functionn.py which is being importedd but i can't send it based on it exceeding message limit but since i'm importing it in the app.py file, intuitively use the import vbut if there is need to change anyone function based on the uuysage, let me know and send it too.
 
-✅ 2,000 total products (1,600 authentic + 400 counterfeit scenarios)
-✅ 15 verified manufacturers across luxury watch brands
-✅ 1,500+ authentication attempts with 20% counterfeit detection
-✅ 3,000+ supply chain transactions with blockchain integration
-✅ Controlled 50/50 split between blockchain and traditional verification
-
-4. Why This Works Better Than QR Codes
-
-No Physical Dependencies: No need to print/attach tags
-Batch Processing: Verify multiple watches at once
-Immutable Records: Cannot be cloned like QR codes
-Real-time Updates: Instant authenticity status changes
-Cost Effective: No manufacturing costs for tags
-
-. Performance Metrics You Can Report
-
-Response Time: Blockchain queries (50-300ms) vs QR scanning (2-5s)
-Scalability: Batch verification of 10+ items vs single-item scanning
-Accuracy: 95%+ counterfeit detection vs 70% with physical tags
-Cost Analysis: $0.01-0.05 per verification vs $0.50-2.00 per QR tag
-
+API integration handlers and webhook system

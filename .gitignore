@@ -6,3 +6,6 @@
 .env.production
 .env.test
 *.env
+
+gtt.txt
+app-prev.py
