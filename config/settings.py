@@ -15,7 +15,7 @@ class Config:
     # Blockchain
     BLOCKCHAIN_RPC_URL = os.getenv('BLOCKCHAIN_RPC_URL')
     CONTRACT_ADDRESS = os.getenv('CONTRACT_ADDRESS')
-    CHAIN_ID = int(os.getenv('CHAIN_ID'))
+    CHAIN_ID = os.getenv('CHAIN_ID')
     
     # API Settings
     API_RATE_LIMIT = os.getenv('API_RATE_LIMIT', '100/hour')
