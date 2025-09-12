@@ -1113,7 +1113,7 @@ class BlockchainService:
             }
         ]
     
-    def is_product_verified_simple(serial_number):
+    def is_product_verified_simple(self, serial_number):
         """Simple verification check"""
         if not self.connected or not self.contract:
             return False
