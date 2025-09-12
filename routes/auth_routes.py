@@ -1,16 +1,16 @@
 # routes/auth_routes.py
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, make_response
 from functools import wraps
 from datetime import datetime, timezone, timedelta
 import jwt
 import os
 from bson import ObjectId
-
 from services.auth_service import auth_service
 from utils.validators import validate_user_registration, validate_login_data
 from utils.formatters import format_user_response, create_success_response, create_error_response
 from middleware.rate_limiting import rate_limit
-from utils.helper_functions import get_db_connection, blacklist_token
+from middleware.auth_middleware import auth_middleware
+from utils.helper_functions import get_db_connection, blacklist_token, get_user_by_id, format_user_profile
 
 # Create blueprint
 auth_bp = Blueprint('auth', __name__)
@@ -311,3 +311,62 @@ def request_manufacturer_verification():
     except Exception as e:
         print(f"Verification request error: {e}")
         return create_error_response("Verification request failed", 500)
+    
+
+# ===============================
+# PROFILE
+# ===============================
+
+@auth_bp.route('/manufacturer/profile', methods=['GET', 'OPTIONS'])
+@auth_middleware.token_required_with_roles(allowed_roles=['manufacturer'])
+def get_manufacturer_profile(current_user_id, current_user_role):
+    """Get manufacturer profile details"""
+    # Handle preflight request
+    if request.method == 'OPTIONS':
+        response = make_response()
+        return auth_middleware.add_cors_headers(response)
+    
+    try:
+        user = get_user_by_id(current_user_id)
+        if not user:
+            return auth_middleware.create_cors_response({"error": "User not found"}, 404)
+        
+        profile_data = format_user_profile(user)
+        return auth_middleware.create_cors_response({
+            "status": "success",
+            "user": profile_data
+        }, 200)
+        
+    except Exception as e:
+        print(f"Manufacturer profile error: {e}")
+        return auth_middleware.create_cors_response({"error": "Internal server error"}, 500)
+
+
+@auth_bp.route('/customer/profile', methods=['GET', 'OPTIONS'])
+@auth_middleware.token_required_with_roles(allowed_roles=['customer'])
+def get_customer_profile(current_user_id, current_user_role):
+    """Get customer profile details"""
+    # Handle preflight request
+    if request.method == 'OPTIONS':
+        response = make_response()
+        return auth_middleware.add_cors_headers(response)
+    
+    try:
+        user = get_user_by_id(current_user_id)
+        if not user:
+            return auth_middleware.create_cors_response({"error": "User not found"}, 404)
+        
+        profile_data = format_user_profile(user)
+        
+        return auth_middleware.create_cors_response({
+            "status": "success",
+            "user": profile_data
+        }, 200)
+        
+    except Exception as e:
+        print(f"Customer profile error: {e}")
+        return auth_middleware.create_cors_response({"error": "Internal server error"}, 500)
+
+################################################
+#E. O. D
+#################################

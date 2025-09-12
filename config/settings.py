@@ -3,19 +3,19 @@ from datetime import timedelta
 
 class Config:
     """Base configuration"""
-    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    SECRET_KEY = os.getenv('SECRET_KEY')
     
     # Database
-    MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/blockchain_verification')
+    MONGODB_URI = os.getenv('MONGODB_URI')
     
     # JWT
-    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', SECRET_KEY)
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
     
     # Blockchain
-    BLOCKCHAIN_RPC_URL = os.getenv('BLOCKCHAIN_RPC_URL', 'https://sepolia.infura.io/v3/your-project-id')
-    CONTRACT_ADDRESS = os.getenv('CONTRACT_ADDRESS', '0x07c05F17f53ff83d0b5F469bFA0Cb36bDc9eA950')
-    CHAIN_ID = int(os.getenv('CHAIN_ID', '11155111'))
+    BLOCKCHAIN_RPC_URL = os.getenv('BLOCKCHAIN_RPC_URL')
+    CONTRACT_ADDRESS = os.getenv('CONTRACT_ADDRESS')
+    CHAIN_ID = int(os.getenv('CHAIN_ID'))
     
     # API Settings
     API_RATE_LIMIT = os.getenv('API_RATE_LIMIT', '100/hour')

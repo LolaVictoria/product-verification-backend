@@ -1,4 +1,3 @@
-# routes/manufacturer_routes.py
 from flask import Blueprint, request, jsonify, make_response
 from datetime import datetime, timezone
 from bson import ObjectId
@@ -7,6 +6,8 @@ import secrets
 import hashlib
 import jwt
 import os
+from middleware.auth_middleware import auth_middleware
+from services.product_service import get_product_by_serial
 
 # Import your helper functions (keeping your existing imports)
 from utils.helper_functions import (
@@ -935,3 +936,428 @@ def revoke_api_key(current_user_id, current_user_role, key_id):
     except Exception as e:
         print(f"Revoke API key error: {e}")
         return create_cors_response({'error': 'Internal server error'}, 500)
+
+# ===============================
+# MANUFACTURER DASHBOARD ROUTES - prev
+# ===============================
+@manufacturer_bp.route('/register-product', methods=['POST'])
+@auth_middleware.token_required_with_roles(allowed_roles=['manufacturer'])
+def register_manufacturer_product(current_user_id, current_user_role):
+    """Register a new product (database only, frontend handles blockchain)"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields - handle both field name formats
+        serial_number = data.get('serialNumber') or data.get('serial_number')
+        brand = data.get('brand')
+        model = data.get('model')
+        device_type = data.get('deviceType') or data.get('device_type')
+        
+        if not all([serial_number, brand, model, device_type]):
+            return create_cors_response({
+                "error": "Missing required fields: serialNumber, brand, model, deviceType"
+            }, 400)
+        
+        # Get and validate manufacturer
+        manufacturer = get_user_by_id(current_user_id)
+        if not manufacturer:
+            return create_cors_response({"error": "Manufacturer not found"}, 404)
+        
+        if manufacturer.get("verification_status") != "verified":
+            return create_cors_response({
+                "error": "Your account is not verified by admin yet"
+            }, 403)
+        
+        # Validate manufacturer data
+        primary_wallet = manufacturer.get('primary_wallet')
+        if not primary_wallet:
+            return create_cors_response({
+                "error": "No wallet address found. Please add a wallet first."
+            }, 400)
+        
+        current_company_name = manufacturer.get('current_company_name')
+        if not current_company_name:
+            return create_cors_response({"error": "Company name not set"}, 400)
+        
+        # Check for duplicate serial number
+        existing_product = get_product_by_serial(serial_number)
+        if existing_product:
+            return create_cors_response({
+                "error": "Product with this serial number already exists"
+            }, 400)
+        
+        # Prepare product data
+        product_data = {
+            "_id": ObjectId(),
+            "serial_number": serial_number,
+            "brand": brand,
+            "model": model,
+            "device_type": device_type,
+            "storage_data": data.get('storageData', ''),
+            "color": data.get('color', ''),
+            "batch_number": data.get('batchNumber', f"BATCH-{int(datetime.now(timezone.utc).timestamp())}"),
+            "name": f"{brand} {model}",
+            "category": device_type,
+            "description": f"{brand} {model} - {data.get('storageData', '')} {data.get('color', '')}",
+            "manufacturer_wallet": data.get('manufacturerWallet', primary_wallet),
+            "specification_hash": data.get('specificationHash', ''),
+            "registration_type": data.get('registration_type', 'blockchain_pending'),
+            "manufacturer_id": current_user_id,
+            "manufacturer_name": current_company_name,
+            "wallet_address": primary_wallet,
+            "blockchain_verified": False,
+            "ownership_history": [],
+            "registered_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        # Save to database
+        db = get_db_connection()
+        result = db.products.insert_one(product_data)
+        product_id = str(result.inserted_id)
+        
+        return create_cors_response({
+            "status": "success",
+            "success": True,
+            "message": "Product saved to database successfully",
+            "product_id": product_id,
+            "serial_number": serial_number
+        }, 201)
+        
+    except Exception as e:
+        print(f"Product registration error: {e}")
+        return create_cors_response({
+            "error": f"Internal server error: {str(e)}"
+        }, 500)
+
+@manufacturer_bp.route('/dashboard-stats', methods=['GET'])
+@auth_middleware.token_required_with_roles(['manufacturer'])
+def get_manufacturer_dashboard_stats(current_user_id, current_user_role):
+    """Get dashboard statistics for manufacturer"""
+    try:
+        user = get_user_by_id(current_user_id)
+        if not user or user.get('role') != 'manufacturer':
+            return create_cors_response({'error': 'Unauthorized'}, 403)
+        
+        manufacturer_wallet = user.get('primary_wallet')
+        if not manufacturer_wallet:
+            return create_cors_response({'error': 'No wallet found'}, 400)
+        
+        db = get_db_connection()
+        
+        # Count products by status
+        base_query = {"manufacturer_wallet": manufacturer_wallet}
+        total_products = db.products.count_documents(base_query)
+        blockchain_products = db.products.count_documents({
+            **base_query, "registration_type": "blockchain_confirmed"
+        })
+        pending_products = db.products.count_documents({
+            **base_query, "registration_type": "blockchain_pending"
+        })
+        
+        # Count verifications for manufacturer's products
+        manufacturer_serials = list(db.products.find(base_query, {"serial_number": 1}))
+        serial_numbers = [p["serial_number"] for p in manufacturer_serials]
+        
+        total_verifications = 0
+        if serial_numbers:
+            total_verifications = db.verifications.count_documents({
+                "serial_number": {"$in": serial_numbers}
+            })
+        
+        return create_cors_response({
+            'success': True,
+            'total_products': total_products,
+            'blockchain_products': blockchain_products,
+            'pending_products': pending_products,
+            'total_verifications': total_verifications
+        }, 200)
+        
+    except Exception as e:
+        print(f"Dashboard stats error: {e}")
+        return create_cors_response({'error': 'Internal server error'}, 500)
+
+@manufacturer_bp.route('/products', methods=['GET', 'OPTIONS'])
+@auth_middleware.token_required_with_roles(['manufacturer'])
+def get_manufacturer_products(current_user_id, current_user_role):
+    """Get products for manufacturer with optional filtering"""
+    # Handle preflight request
+    if request.method == 'OPTIONS':
+        response = make_response()
+        return auth_middleware.add_cors_headers(response)
+    
+    try:
+        # Debug logging
+        print(f"Fetching products for user: {current_user_id}")
+        
+        # Validate user ID and get user
+        try:
+            user_id = ObjectId(current_user_id) if isinstance(current_user_id, str) else current_user_id
+            user = get_user_by_id(user_id)
+        except Exception as e:
+            print(f"User ID validation error: {e}")
+            return create_cors_response({'error': 'Invalid user ID'}, 400)
+
+        if not user:
+            print("User not found")
+            return create_cors_response({'error': 'User not found'}, 404)
+
+        manufacturer_wallet = user.get('primary_wallet')
+        if not manufacturer_wallet:
+            print("No wallet address found for user")
+            return create_cors_response({'error': 'No wallet address found'}, 400)
+            
+        print(f"Manufacturer wallet: {manufacturer_wallet}")
+
+        # Get database connection
+        db = get_db_connection()
+        if db is None:
+            print("Database connection failed")
+            return create_cors_response({'error': 'Database connection failed'}, 500)
+
+        # FIXED: Use correct collection name - change "products" to "produts" if that's your actual collection name
+        # If your collection is actually called "produts", change the line below:
+        collection = db.products  # Change to db.produts if that's your collection name
+        
+        # Build query with optional filter
+        filter_type = request.args.get('filter', 'all')
+        query = {"manufacturer_wallet": manufacturer_wallet}
+        
+        print(f"Base query: {query}")
+        
+        filter_mapping = {
+            'blockchain_confirmed': 'blockchain_confirmed',
+            'blockchain_pending': 'blockchain_pending',
+            'blockchain_failed': 'blockchain_failed',
+        }
+        
+        if filter_type != 'all' and filter_type in filter_mapping:
+            query["registration_type"] = filter_mapping[filter_type]
+            
+        print(f"Final query: {query}")
+
+        # Debug: Check if collection exists and has documents
+        try:
+            total_count = collection.count_documents({})
+            user_count = collection.count_documents(query)
+            print(f"Total documents in collection: {total_count}")
+            print(f"Documents matching query: {user_count}")
+        except Exception as e:
+            print(f"Collection query debug error: {e}")
+
+        # Fetch products with error handling
+        try:
+            products = list(collection.find(query).sort("created_at", -1))
+            print(f"Found {len(products)} products")
+        except Exception as e:
+            print(f"Database query error: {e}")
+            return create_cors_response({'error': f'Database query failed: {str(e)}'}, 500)
+
+        # Format products for frontend
+        formatted_products = []
+        for product in products:
+            try:
+                formatted_product = {
+                    'id': str(product.get('_id', '')),
+                    'serial_number': product.get('serial_number', ''),
+                    'name': product.get('name', f"{product.get('brand', '')} {product.get('model', '')}".strip()),
+                    'brand': product.get('brand', ''),
+                    'model': product.get('model', ''),
+                    'device_type': product.get('device_type', ''),
+                    'category': product.get('category', product.get('device_type', '')),
+                    'registration_type': product.get('registration_type', ''),
+                    'transaction_hash': product.get('transaction_hash', ''),
+                    'price': product.get('price', 0),
+                    'created_at': str(product.get('created_at', '')) if product.get('created_at') else ''
+                }
+                formatted_products.append(formatted_product)
+            except Exception as e:
+                print(f"Error formatting product {product.get('_id')}: {e}")
+                # Skip this product and continue
+
+        response_data = {
+            'success': True,
+            'products': formatted_products,
+            'total_count': len(formatted_products)
+        }
+        
+        print(f"Returning {len(formatted_products)} formatted products")
+
+        # FIXED: Correct way to handle CORS response with additional headers
+        return create_cors_response(response_data, 200)
+        
+    except Exception as e:
+        print(f"Error in get_manufacturer_products: {e}")
+        import traceback
+        traceback.print_exc()
+        return create_cors_response({'error': 'Internal server error'}, 500)
+    
+@manufacturer_bp.route('/products/<product_id>/blockchain-confirm', methods=['PUT'])
+@auth_middleware.token_required_with_roles(['manufacturer'])
+def confirm_blockchain_registration(current_user_id, current_user_role, product_id):
+    """Confirm blockchain registration for a product"""
+    try:
+        user = get_user_by_id(current_user_id)
+        if not user or user.get('role') != 'manufacturer':
+            return create_cors_response({'error': 'Unauthorized'}, 403)
+        
+        data = request.get_json()
+        
+        # Update product with blockchain confirmation
+        db = get_db_connection()
+        result = db.products.update_one(
+            {"_id": ObjectId(product_id), "manufacturer_id": current_user_id},
+            {
+                "$set": {
+                    "registration_type": "blockchain_confirmed",
+                    "transaction_hash": data.get('transactionHash'),
+                    "block_number": data.get('blockNumber'),
+                    "gas_used": data.get('gasUsed'),
+                    "gas_price": data.get('gasPrice'),
+                    "blockchain_verified": True,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        if result.matched_count == 0:
+            return create_cors_response({'error': 'Product not found or unauthorized'}, 404)
+        
+        return create_cors_response({
+            'success': True, 
+            'message': 'Blockchain registration confirmed'
+        }, 200)
+        
+    except Exception as e:
+        print(f"Blockchain confirmation error: {e}")
+        return create_cors_response({'error': 'Internal server error'}, 500)
+
+@manufacturer_bp.route('/products/<product_id>/blockchain-failed', methods=['PUT'])
+@auth_middleware.token_required_with_roles(['manufacturer'])
+def mark_blockchain_failed(current_user_id, current_user_role, product_id):
+    """Mark blockchain registration as failed"""
+    try:
+        user = get_user_by_id(current_user_id)
+        if not user:
+            return create_cors_response({'error': 'User not found'}, 404)
+        
+        data = request.get_json()
+        
+        # Update product status to failed
+        db = get_db_connection()
+        result = db.products.update_one(
+            {"_id": ObjectId(product_id), "manufacturer_wallet": user.get('primary_wallet')},
+            {
+                "$set": {
+                    "registration_type": "blockchain_failed",
+                    "error": data.get('error'),
+                    "updated_at": get_current_utc()
+                }
+            }
+        )
+        
+        if result.matched_count == 0:
+            return create_cors_response({
+                'error': 'Product not found or not owned by this manufacturer'
+            }, 404)
+        
+        return create_cors_response({
+            'success': True,
+            'message': 'Blockchain registration marked as failed'
+        }, 200)
+        
+    except Exception as e:
+        print(f"Mark blockchain failed error: {e}")
+        return create_cors_response({'error': 'Internal server error'}, 500)
+
+@manufacturer_bp.route('/products/transfer-ownership', methods=['PUT'])
+@auth_middleware.token_required_with_roles(['manufacturer', 'customer'])
+def transfer_ownership(current_user_id, current_user_role):
+    """Transfer product ownership"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['serialNumber', 'newOwnerAddress', 'transferReason']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        if missing_fields:
+            return create_cors_response({
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }, 400)
+        
+        user = get_user_by_id(current_user_id)
+        if not user:
+            return create_cors_response({'error': 'User not found'}, 404)
+        
+        db = get_db_connection()
+        
+        # Find the product
+        product = db.products.find_one({"serial_number": data['serialNumber']})
+        if not product:
+            return create_cors_response({'error': 'Product not found'}, 404)
+        
+        # Verify ownership authorization
+        current_owner_wallet = user.get('primary_wallet')
+        ownership_history = product.get("ownership_history", [])
+        
+        # Determine current owner
+        if ownership_history:
+            current_owner = ownership_history[-1]["owner_address"]
+        else:
+            current_owner = product.get("manufacturer_wallet")
+        
+        if current_owner != current_owner_wallet:
+            return create_cors_response({
+                'error': 'You are not the current owner of this product'
+            }, 403)
+        
+        # Create new ownership entry
+        new_ownership_entry = {
+            "owner_address": data['newOwnerAddress'],
+            "owner_type": "customer",
+            "owner_name": data.get('newOwnerName', 'Unknown'),
+            "previous_owner": current_owner_wallet,
+            "transfer_date": datetime.now(timezone.utc),
+            "transfer_type": data['transferReason'],
+            "transaction_hash": data.get('transactionHash'),
+            "sale_price": float(data.get('salePrice', 0)),
+            "notes": data.get('notes', '')
+        }
+        
+        # Update product with new ownership
+        updated_history = ownership_history + [new_ownership_entry]
+        
+        db.products.update_one(
+            {"serial_number": data['serialNumber']},
+            {
+                "$set": {
+                    "ownership_history": updated_history,
+                    "current_owner": data['newOwnerAddress'],
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        # Create separate transfer record for backwards compatibility
+        transfer_record = {
+            "serial_number": data['serialNumber'],
+            "previous_owner": current_owner_wallet,
+            "new_owner": data['newOwnerAddress'],
+            "transfer_reason": data['transferReason'],
+            "transaction_hash": data.get('transactionHash'),
+            "transfer_date": datetime.now(timezone.utc),
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        db.ownership_transfers.insert_one(transfer_record)
+        
+        return create_cors_response({
+            'success': True,
+            'message': 'Ownership transferred successfully'
+        }, 200)
+        
+    except Exception as e:
+        print(f"Transfer ownership error: {e}")
+        return create_cors_response({'error': 'Internal server error'}, 500)
+

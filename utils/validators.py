@@ -1,6 +1,8 @@
 import re
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from email_validator import validate_email, EmailNotValidError
+import jwt
+from bson import ObjectId
 
 def validate_manufacturer_data(data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -135,8 +137,6 @@ def validate_user_registration(data: Dict[str, Any]) -> Dict[str, Any]:
         'valid': len(errors) == 0,
         'errors': errors
     }
-import re
-from typing import Dict, Any, Optional
 
 def validate_login_data(data: Dict[str, Any]) -> Optional[str]:
     """Validate login data"""
@@ -332,7 +332,6 @@ def validate_profile_update(data: Dict[str, Any]) -> Optional[str]:
     
     return None
 
-# Helper functions
 def is_valid_email(email: str) -> bool:
     """Check if email format is valid"""
     if not email or not isinstance(email, str):
@@ -372,7 +371,30 @@ def sanitize_input(data: str) -> str:
     
     return data.strip()
 
+
+def validate_token(token, secret_key):
+    """Validate JWT token and return user info"""
+    if not token:
+        return None, None, {'message': 'Token is missing!'}, 401
+    
+    if token.startswith('Bearer '):
+        token = token[7:]
+        
+    try:
+        data = jwt.decode(token, secret_key, algorithms=['HS256'])
+        if 'sub' not in data or 'role' not in data:
+            return None, None, {'message': 'Invalid token: missing required fields'}, 401
+        return ObjectId(data['sub']), data['role'], None, None
+    except jwt.ExpiredSignatureError:
+        return None, None, {'message': 'Token has expired!'}, 401
+    except jwt.InvalidTokenError:
+        return None, None, {'message': 'Token is invalid!'}, 401
+    except Exception:
+        return None, None, {'message': 'Token validation failed'}, 401
+
+
 def validate_pagination_params(page: Any, limit: Any) -> tuple[int, int, Optional[str]]:
+
     """Validate and normalize pagination parameters"""
     try:
         page = int(page) if page else 1

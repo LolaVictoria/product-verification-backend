@@ -1,9 +1,11 @@
 from flask import request, jsonify, make_response, current_app
 from functools import wraps
+import os
 import jwt
 from datetime import datetime, timezone
 from bson import ObjectId
 import logging
+from utils.validators import validate_token
 
 class AuthMiddleware:
     @staticmethod
@@ -168,6 +170,22 @@ class AuthMiddleware:
             AuthMiddleware.validate_content_type,
             AuthMiddleware.token_required(allowed_roles)
         )
+    
+    @staticmethod
+    def token_required_with_roles(allowed_roles):
+        """Decorator for routes requiring specific roles"""
+        def decorator(f):
+            @wraps(f)
+            def decorated(*args, **kwargs):
+                token = request.headers.get('Authorization')
+                user_id, user_role, error, status = validate_token(token, os.getenv('SECRET_KEY'))
+                if error:
+                    return AuthMiddleware.create_cors_response(error, status)
+                if allowed_roles and user_role not in allowed_roles:
+                    return AuthMiddleware.create_cors_response({'message': f'Access denied: requires one of {allowed_roles}'}, 403)
+                return f(user_id, user_role, *args, **kwargs)
+            return decorated
+        return decorator
 
     @staticmethod
     def public_api_endpoint():
