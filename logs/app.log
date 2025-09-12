@@ -211,3 +211,5 @@
 2025-09-12 02:28:06,127 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/app.py', reloading
 2025-09-12 02:28:08,716 - werkzeug - INFO -  * Restarting with stat
 2025-09-12 02:28:18,742 - config.database - INFO - Connected to database: verification_system
+2025-09-12 02:28:23,215 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 02:28:23,216 - services.product_service - INFO - ProductService initialized successfully

@@ -32,7 +32,7 @@ def create_app(config_name=None):
          max_age=86400
     )
 
-    app.register_blueprint(auth_bp, url_prefix='/auth')
+   
 
     # Initialize extensions
     setup_logging()
