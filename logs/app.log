@@ -356,3 +356,8 @@
 2025-09-12 17:33:47,147 - werkzeug - INFO -  * Debugger PIN: 143-327-685
 2025-09-12 17:34:09,437 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/utils/helper_functions.py', reloading
 2025-09-12 17:34:11,443 - werkzeug - INFO -  * Restarting with stat
+2025-09-12 17:34:28,513 - config.database - INFO - Connected to database: verification_system
+2025-09-12 17:34:30,121 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 17:34:30,122 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 17:34:30,408 - werkzeug - WARNING -  * Debugger is active!
+2025-09-12 17:34:30,411 - werkzeug - INFO -  * Debugger PIN: 143-327-685
