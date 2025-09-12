@@ -778,9 +778,44 @@ def get_current_utc():
 def hash_password(password):
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-def verify_password(password_hash, password):
-    return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
 
+# Enhanced password verification with debugging
+def verify_password(self, stored_hash: str, provided_password: str) -> bool:
+    """Verify password with debugging"""
+    try:
+        print(f"🔐 Verifying password...")
+        print(f"🔐 Hash method detection...")
+        
+        # Check if it's bcrypt
+        if stored_hash.startswith('$2b$') or stored_hash.startswith('$2a$') or stored_hash.startswith('$2y$'):
+            print("🔐 Detected bcrypt hash")
+            import bcrypt
+            result = bcrypt.checkpw(provided_password.encode('utf-8'), stored_hash.encode('utf-8'))
+            print(f"🔐 bcrypt verification: {result}")
+            return result
+            
+        # Check if it's pbkdf2 (Werkzeug style)
+        elif stored_hash.startswith('pbkdf2:'):
+            print("🔐 Detected pbkdf2 hash")
+            from werkzeug.security import check_password_hash
+            result = check_password_hash(stored_hash, provided_password)
+            print(f"🔐 pbkdf2 verification: {result}")
+            return result
+            
+        # Check if it's plain text (NOT recommended for production)
+        elif len(stored_hash) < 50:  # Plain text is usually much shorter
+            print("⚠️  WARNING: Possible plain text password detected!")
+            result = stored_hash == provided_password
+            print(f"🔐 Plain text verification: {result}")
+            return result
+            
+        else:
+            print(f"❌ Unknown hash format: {stored_hash[:20]}...")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Password verification error: {e}")
+        return False
 
 def format_user_response(user):
     return {
@@ -1228,11 +1263,7 @@ def get_blockchain_product_details_enhanced(serial_number):
     # Try real blockchain first
     if blockchain_service.connected:
         return get_blockchain_product_details(serial_number)
-    
-    # Fall back to mock for development
-    print(f"Warning: Using mock blockchain verification for {serial_number}")
-    return mock_blockchain_verification(serial_number)
-
+   
 # Override the original function for development
 get_blockchain_product_details = get_blockchain_product_details_enhanced
 

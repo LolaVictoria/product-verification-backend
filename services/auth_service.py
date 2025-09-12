@@ -29,30 +29,105 @@ class AuthService:
         }
         return jwt.encode(payload, os.getenv('JWT_SECRET_KEY'), algorithm='HS256')
 
-    def authenticate_user(self, email, password):
-        try:
-            # Find user with all fields
-            user = self.db.users.find_one({'email': email})
-            if not user:
-                return {'success': False, 'message': 'Invalid credentials'}
-            
-            # Verify password
-            if not self.verify_password(password, user['password']):
-                return {'success': False, 'message': 'Invalid credentials'}
-            
-            # Generate token with user_id
-            token = self.generate_token(str(user['_id']))  # Make sure this includes user_id
-            
+    # Also add debugging to your auth_service.authenticate_user method
+def authenticate_user(self, email: str, password: str) -> dict:
+    """Enhanced authenticate_user with debugging"""
+    try:
+        print(f"🔍 Authenticating user: '{email}'")
+        
+        # Normalize email
+        normalized_email = email.lower().strip() if email else None
+        print(f"🔍 Normalized email: '{normalized_email}'")
+        
+        if not normalized_email or not password:
+            print("❌ Missing email or password")
             return {
-                'success': True,
-                'token': token,
-                'user': user,  # Return the FULL user document
-                'expires_at': self.get_token_expiry()
+                'success': False,
+                'message': 'Email and password are required'
             }
-        except Exception as e:
-            print(f"Auth error: {e}")
-            return {'success': False, 'message': 'Authentication failed'}
-    
+        
+        # Try to find user by email
+        print(f"🔍 Looking up user in database...")
+        user = self.get_user_by_email(normalized_email)
+        
+        if not user:
+            print(f"❌ User not found for email: '{normalized_email}'")
+            # Check if user exists with different casing
+            print("🔍 Checking for users with similar emails...")
+            # Add code to check for similar emails in your database
+            return {
+                'success': False,
+                'message': 'Invalid email or password'
+            }
+        
+        print(f"✅ User found: {user.get('_id')} | Email: {user.get('primary_email')}")
+        print(f"🔍 User verification status: {user.get('is_verified', False)}")
+        print(f"🔍 User active status: {user.get('is_active', True)}")
+        
+        # Check if user is active
+        if not user.get('is_active', True):
+            print("❌ User account is inactive")
+            return {
+                'success': False,
+                'message': 'Account is inactive'
+            }
+        
+        # Verify password
+        print("🔍 Verifying password...")
+        stored_hash = user.get('password_hash') or user.get('password')
+        
+        if not stored_hash:
+            print("❌ No password hash stored for user")
+            return {
+                'success': False,
+                'message': 'Account authentication error'
+            }
+        
+        print(f"🔍 Stored hash exists: {bool(stored_hash)}")
+        print(f"🔍 Stored hash preview: {stored_hash[:50]}..." if len(stored_hash) > 50 else f"🔍 Stored hash: {stored_hash}")
+        
+        is_password_valid = self.verify_password(stored_hash, password)
+        print(f"🔍 Password verification result: {is_password_valid}")
+        
+        if not is_password_valid:
+            print("❌ Password verification failed")
+            return {
+                'success': False,
+                'message': 'Invalid email or password'
+            }
+        
+        print("✅ Password verified successfully")
+        
+        # Generate token
+        print("🔍 Generating JWT token...")
+        token = self.create_jwt_token(user)
+        
+        if not token:
+            print("❌ Failed to generate token")
+            return {
+                'success': False,
+                'message': 'Failed to generate authentication token'
+            }
+        
+        print("✅ Token generated successfully")
+        
+        # Return successful result
+        return {
+            'success': True,
+            'user': user,
+            'token': token,
+            'expires_at': (datetime.utcnow() + timedelta(hours=24)).isoformat()
+        }
+        
+    except Exception as e:
+        print(f"❌ Authentication exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            'success': False,
+            'message': 'Authentication service error'
+        }
+
     def register_user(self, user_data):
         """Register new user"""
         try:
