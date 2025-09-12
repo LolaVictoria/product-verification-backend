@@ -18,6 +18,7 @@ auth_service = AuthService()
 
 # Add this debug version to your login route temporarily
 
+# Updated login route
 @auth_bp.route('/login', methods=['POST'])
 @rate_limit({'per_minute': 10, 'per_hour': 50})
 def login():
@@ -57,6 +58,7 @@ def login():
         response_data = {
             'token': result['token'],
             'user': formatted_user,
+            'refresh_token': result.get('refresh_token'),  # Add if available
             'expires_at': result['expires_at']
         }
         
@@ -65,39 +67,14 @@ def login():
         print(f"Response: {response_data}")
         print("====================")
         
-        return create_success_response(response_data, "Login successful")
+        return create_success_response(response_data, "Login successful", 200)
         
     except Exception as e:
         print(f"Login error: {e}")
+        import traceback
+        traceback.print_exc()
         return create_error_response("Authentication failed", 500)
     
-@auth_bp.route('/signup', methods=['POST'])
-@rate_limit({'per_minute': 5, 'per_hour': 20})
-def register():
-    """User registration endpoint"""
-    try:
-        data = request.get_json()
-        
-        # Validate registration data
-        validation_error = validate_user_registration(data)
-        if validation_error:
-            return create_error_response(validation_error, 400)
-        
-        # Register user
-        result = auth_service.register_user(data)
-        
-        if not result['success']:
-            return create_error_response(result['message'], 400)
-        
-        return create_success_response({
-            'user_id': result['user_id'],
-            'user': format_user_response(result['user']) if result.get('user') else None
-        }, "User registered successfully", 201)
-        
-    except Exception as e:
-        print(f"Registration error: {e}")
-        return create_error_response("Registration failed", 500)
-
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
     """Logout endpoint - blacklist token"""

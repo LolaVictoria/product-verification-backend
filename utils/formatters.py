@@ -47,53 +47,53 @@ def format_user_response(user):
         # Add all other fields your frontend expects
     }
 
-def create_success_response(data: Any = None, message: str = "Operation successful") -> Dict[str, Any]:
+from flask import jsonify
+from datetime import datetime
+from typing import Any, Dict, Tuple
+
+def create_success_response(data: Any = None, message: str = "Operation successful", status_code: int = 200) -> Tuple[Any, int]:
     """
     Create a standardized success response.
-    
     Args:
         data (Any): Response data
         message (str): Success message
-        
+        status_code (int): HTTP status code
     Returns:
-        Dict[str, Any]: Formatted success response
+        Tuple[Any, int]: Flask JSON response with status code
     """
     response = {
         'success': True,
         'message': message,
         'timestamp': datetime.utcnow().isoformat() + 'Z'
     }
-    
     if data is not None:
         response['data'] = data
     
-    return response
+    return jsonify(response), status_code
 
-def create_error_response(error: str, error_code: str = None, details: Any = None) -> Dict[str, Any]:
+def create_error_response(error: str, status_code: int = 400, error_code: str = None, details: Any = None) -> Tuple[Any, int]:
     """
     Create a standardized error response.
-    
     Args:
         error (str): Error message
+        status_code (int): HTTP status code
         error_code (str): Error code for categorization
         details (Any): Additional error details
-        
     Returns:
-        Dict[str, Any]: Formatted error response
+        Tuple[Any, int]: Flask JSON response with status code
     """
     response = {
         'success': False,
         'error': error,
         'timestamp': datetime.utcnow().isoformat() + 'Z'
     }
-    
     if error_code:
         response['error_code'] = error_code
-    
     if details is not None:
         response['details'] = details
     
-    return response
+    return jsonify(response), status_code
+
 
 def format_product_response(product_data: Dict[str, Any]) -> Dict[str, Any]:
     """
