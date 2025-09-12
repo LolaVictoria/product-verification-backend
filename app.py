@@ -3,7 +3,7 @@ from flask import Flask
 from flask_cors import CORS
 from config.settings import get_config
 from config.__init__ import DatabaseConfig
-from middleware.auth_middleware import configure_cors
+from middleware.auth_middleware import AuthMiddleware
 from middleware.logging_middleware import setup_logging
 from routes.route_registry import register_all_routes
 import os
@@ -28,7 +28,7 @@ def create_app(config_name=None):
     verification_bp = create_verification_routes(app)
     app.register_blueprint(verification_bp, url_prefix='/api/verification')
     # Initialize extensions
-    configure_cors(app)
+    AuthMiddleware.configure_cors(app)
     setup_logging()
     
     # Initialize database
