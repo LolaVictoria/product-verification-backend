@@ -361,3 +361,66 @@
 2025-09-12 17:34:30,122 - services.product_service - INFO - ProductService initialized successfully
 2025-09-12 17:34:30,408 - werkzeug - WARNING -  * Debugger is active!
 2025-09-12 17:34:30,411 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-12 17:55:26,088 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/app.py', reloading
+2025-09-12 17:55:30,540 - werkzeug - INFO -  * Restarting with stat
+2025-09-12 17:56:04,763 - config.database - INFO - Connected to database: verification_system
+2025-09-12 17:56:07,476 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 17:56:07,476 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 17:56:07,767 - werkzeug - WARNING -  * Debugger is active!
+2025-09-12 17:56:07,775 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-12 17:56:22,989 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/routes/route_registry.py', reloading
+2025-09-12 17:56:25,110 - werkzeug - INFO -  * Restarting with stat
+2025-09-12 18:05:10,548 - config.database - INFO - Connected to database: verification_system
+2025-09-12 18:05:12,275 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 18:05:12,275 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 18:05:12,846 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.43.26:5000
+2025-09-12 18:05:12,847 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-12 18:05:12,879 - werkzeug - INFO -  * Restarting with stat
+2025-09-12 18:05:24,275 - config.database - INFO - Connected to database: verification_system
+2025-09-12 18:05:26,248 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 18:05:26,255 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 18:05:27,156 - werkzeug - WARNING -  * Debugger is active!
+2025-09-12 18:05:27,193 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-12 18:05:33,865 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/routes/route_registry.py', reloading
+2025-09-12 18:05:36,916 - werkzeug - INFO -  * Restarting with stat
+2025-09-12 18:05:49,503 - config.database - INFO - Connected to database: verification_system
+2025-09-12 18:05:52,486 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 18:05:52,490 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 18:05:53,399 - werkzeug - WARNING -  * Debugger is active!
+2025-09-12 18:05:53,420 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-12 18:05:57,663 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/routes/route_registry.py', reloading
+2025-09-12 18:06:00,808 - werkzeug - INFO -  * Restarting with stat
+2025-09-12 18:06:14,902 - config.database - INFO - Connected to database: verification_system
+2025-09-12 18:06:16,818 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 18:06:16,819 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 18:06:17,481 - werkzeug - WARNING -  * Debugger is active!
+2025-09-12 18:06:17,489 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-12 18:06:34,834 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/routes/route_registry.py', reloading
+2025-09-12 18:06:39,897 - werkzeug - INFO -  * Restarting with stat
+2025-09-12 18:06:52,279 - config.database - INFO - Connected to database: verification_system
+2025-09-12 18:06:54,939 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 18:06:54,940 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 18:06:55,419 - werkzeug - WARNING -  * Debugger is active!
+2025-09-12 18:06:55,422 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-12 18:07:12,568 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/routes/route_registry.py', reloading
+2025-09-12 18:07:15,417 - werkzeug - INFO -  * Restarting with stat
+2025-09-12 18:07:27,185 - config.database - INFO - Connected to database: verification_system
+2025-09-12 18:07:30,547 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 18:07:30,557 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 18:07:51,410 - config.database - INFO - Connected to database: verification_system
+2025-09-12 18:07:53,628 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 18:07:53,629 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 18:07:53,893 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.43.26:5000
+2025-09-12 18:07:53,894 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-12 18:07:53,897 - werkzeug - INFO -  * Restarting with stat
+2025-09-12 18:08:01,474 - config.database - INFO - Connected to database: verification_system
+2025-09-12 18:08:03,267 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 18:08:03,268 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 18:08:03,605 - werkzeug - WARNING -  * Debugger is active!
+2025-09-12 18:08:03,610 - werkzeug - INFO -  * Debugger PIN: 143-327-685

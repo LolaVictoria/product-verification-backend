@@ -12,7 +12,7 @@ products_collection = db.products
 verifications_collection = db.verifications
 counterfeit_reports_collection = db.counterfeit_reports
 
-
+analytics_bp = Blueprint('analytics', __name__)
 
 # For database queries - returns just the start date
 def get_start_date(time_range: str) -> datetime:
@@ -30,7 +30,7 @@ def is_valid_time_range(time_range: str) -> bool:
     return time_range in valid_ranges
 
 # MANUFACTURER ANALYTICS ROUTES
-@analytics_bp.route('/analytics/manufacturer/overview', methods=['GET'])
+@analytics_bp.route('/manufacturer/overview', methods=['GET'])
 def get_manufacturer_overview():
     """Get manufacturer analytics overview with KPIs - FIXED VERSION"""
     try:
@@ -177,7 +177,7 @@ def get_manufacturer_overview():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-@analytics_bp.route('/analytics/manufacturer/verification-trends', methods=['GET'])
+@analytics_bp.route('/manufacturer/verification-trends', methods=['GET'])
 def get_verification_trends():
     """Get daily verification trends - FIXED VERSION"""
     try:
@@ -258,7 +258,7 @@ def get_verification_trends():
         print(f"Error in get_verification_trends: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@analytics_bp.route('/analytics/manufacturer/device-analytics', methods=['GET'])
+@analytics_bp.route('/manufacturer/device-analytics', methods=['GET'])
 def get_manufacturer_device_analytics():
     """Enhanced manufacturer device analytics - FIXED VERSION"""
     try:
@@ -403,7 +403,7 @@ def get_manufacturer_device_analytics():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
     
-@analytics_bp.route('/analytics/manufacturer/verification-logs', methods=['GET'])
+@analytics_bp.route('/manufacturer/verification-logs', methods=['GET'])
 def get_manufacturer_verification_logs():
     """Get manufacturer's verification logs with enhanced device info"""
     try:
@@ -549,7 +549,7 @@ def get_manufacturer_verification_logs():
         print(f"Error getting manufacturer verification logs: {str(e)}")
         return jsonify({'error': str(e)}), 500
     
-@analytics_bp.route('/analytics/manufacturer/detailed-device-breakdown', methods=['GET'])
+@analytics_bp.route('/manufacturer/detailed-device-breakdown', methods=['GET'])
 def get_manufacturer_detailed_device_breakdown():
     """Get detailed device breakdown including specific models for manufacturer"""
     try:
@@ -678,7 +678,7 @@ def get_manufacturer_detailed_device_breakdown():
         print(f"Error in detailed device breakdown: {str(e)}")
         return jsonify({'error': str(e)}), 500
     
-@analytics_bp.route('/analytics/manufacturer/customer-engagement', methods=['GET'])
+@analytics_bp.route('/manufacturer/customer-engagement', methods=['GET'])
 def get_manufacturer_customer_engagement():
     """Get customer engagement analytics for manufacturer"""
     try:
@@ -733,7 +733,7 @@ def get_manufacturer_customer_engagement():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@analytics_bp.route('/analytics/manufacturer/counterfeit-locations', methods=['GET'])
+@analytics_bp.route('/manufacturer/counterfeit-locations', methods=['GET'])
 def get_manufacturer_counterfeit_locations():
     """Get counterfeit detection locations for manufacturer"""
     try:
@@ -789,7 +789,7 @@ def get_manufacturer_counterfeit_locations():
 
 # CUSTOMER ANALYTICS ROUTES
 
-@analytics_bp.route('/analytics/customer/<customer_id>/overview', methods=['GET'])
+@analytics_bp.route('/customer/<customer_id>/overview', methods=['GET'])
 def get_customer_overview(customer_id):
     """Get customer's personal analytics overview"""
     try:
@@ -843,7 +843,7 @@ def get_customer_overview(customer_id):
         return jsonify({'error': str(e)}), 500
 
 
-@analytics_bp.route('/analytics/customer/<customer_id>/device-breakdown', methods=['GET'])
+@analytics_bp.route('/customer/<customer_id>/device-breakdown', methods=['GET'])
 def get_customer_device_breakdown(customer_id):
     """Enhanced customer device breakdown with better data structure"""
     try:
@@ -967,7 +967,7 @@ def get_customer_device_breakdown(customer_id):
         return jsonify({'error': str(e)}), 500
 
 # Simplified version if you want to group by category only
-@analytics_bp.route('/analytics/customer/<customer_id>/device-categories', methods=['GET'])
+@analytics_bp.route('/customer/<customer_id>/device-categories', methods=['GET'])
 def get_customer_device_categories(customer_id):
     """Get device categories from counterfeit products"""
     try:
@@ -1047,7 +1047,7 @@ def get_customer_device_categories(customer_id):
         return jsonify({'error': str(e)}), 500
     
 
-@analytics_bp.route('/analytics/customer/<customer_id>/verification-logs', methods=['GET'])
+@analytics_bp.route('/customer/<customer_id>/verification-logs', methods=['GET'])
 def get_customer_verification_logs(customer_id):
     """Get customer's recent verification logs with enhanced device info and counterfeit linking"""
     try:
@@ -1170,7 +1170,7 @@ def get_customer_verification_logs(customer_id):
         return jsonify({'error': str(e)}), 500
 
 
-@analytics_bp.route('/analytics/customer/<customer_id>/counterfeit-reports', methods=['GET'])
+@analytics_bp.route('/customer/<customer_id>/counterfeit-reports', methods=['GET'])
 def get_customer_counterfeit_reports(customer_id):
     """Get customer's counterfeit reports with verification linking"""
     try:
@@ -1241,7 +1241,7 @@ def get_customer_counterfeit_reports(customer_id):
         return jsonify({'error': str(e)}), 500
 
 
-@analytics_bp.route('/analytics/record-verification', methods=['POST'])
+@analytics_bp.route('/record-verification', methods=['POST'])
 def record_verification_attempt():
     """Enhanced record verification with device name and category"""
     try:

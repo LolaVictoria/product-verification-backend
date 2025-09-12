@@ -34,6 +34,17 @@ def register_all_routes(app):
         def product_health():
             return {'status': 'Product routes not implemented yet'}
         app.register_blueprint(product_bp, url_prefix='/products')
+    
+    try:
+        from .analytics_routes import analytics_bp
+        app.register_blueprint(analytics_bp, url_prefix='/analytics')
+    except ImportError:
+        print("Warning: analytics_routes not found, creating placeholder...")
+        analytics_bp = Blueprint('analytics', __name__)
+        @analytics_bp.route('/health')
+        def analytics_health():
+            return {'status': 'analytics routes not implemented yet'}
+        app.register_blueprint(analytics_bp, url_prefix='/analytics')
    
     try:
         from .verification_routes import create_verification_routes
