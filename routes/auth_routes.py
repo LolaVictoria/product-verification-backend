@@ -6,7 +6,7 @@ import jwt
 import os
 from bson import ObjectId
 
-from services.auth_service import AuthService
+from services.auth_service import auth_service
 from utils.validators import validate_user_registration, validate_login_data
 from utils.formatters import format_user_response, create_success_response, create_error_response
 from middleware.rate_limiting import rate_limit
@@ -14,7 +14,6 @@ from utils.helper_functions import get_db_connection, blacklist_token
 
 # Create blueprint
 auth_bp = Blueprint('auth', __name__)
-auth_service = AuthService()
 
 # Add this debug version to your login route temporarily
 
@@ -22,12 +21,13 @@ auth_service = AuthService()
 @auth_bp.route('/login', methods=['POST'])
 @rate_limit({'per_minute': 10, 'per_hour': 50})
 def login():
-    """User login endpoint"""
+    print("=== LOGIN ENDPOINT HIT ===") 
     try:
         data = request.get_json()
-        
+        print(f"Received data: {data}")
         # Validate input data
         validation_error = validate_login_data(data)
+        print(f"Validation error: {validation_error}")
         if validation_error:
             return create_error_response(validation_error, 400)
         

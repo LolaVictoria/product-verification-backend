@@ -93,7 +93,7 @@ class RequestLogger:
         # Store in database for analytics
         try:
             db = get_db_connection()
-            if db:
+            if db is not None:
                 db.request_logs.insert_one({
                     **request_data,
                     'timestamp': datetime.now(timezone.utc)
@@ -129,7 +129,7 @@ class RequestLogger:
             # Store analytics data
             try:
                 db = get_db_connection()
-                if db:
+                if db is not None:
                     # Update request log with response data
                     db.request_logs.update_one(
                         {'request_id': getattr(g, 'request_id', 'unknown')},
@@ -205,7 +205,7 @@ def log_api_call(endpoint_name):
                 # Store error in database
                 try:
                     db = get_db_connection()
-                    if db:
+                    if db is not None:
                         db.api_errors.insert_one(api_log)
                 except:
                     pass
@@ -216,7 +216,7 @@ def log_api_call(endpoint_name):
                 # Store API call log
                 try:
                     db = get_db_connection()
-                    if db:
+                    if db is not None:
                         db.api_calls.insert_one(api_log)
                 except:
                     pass
@@ -243,7 +243,7 @@ class SecurityLogger:
         
         try:
             db = get_db_connection()
-            if db:
+            if db is not None:
                 db.security_logs.insert_one(auth_log)
         except Exception as e:
             logger.error(f"Failed to store auth log: {e}")
@@ -263,7 +263,7 @@ class SecurityLogger:
         
         try:
             db = get_db_connection()
-            if db:
+            if db is not None:
                 db.security_logs.insert_one(api_usage_log)
         except Exception as e:
             logger.error(f"Failed to store API usage log: {e}")
@@ -283,7 +283,7 @@ class SecurityLogger:
         
         try:
             db = get_db_connection()
-            if db:
+            if db is not None:
                 db.security_logs.insert_one(suspicious_log)
         except Exception as e:
             logger.error(f"Failed to store suspicious activity log: {e}")

@@ -119,6 +119,8 @@ Code       backend/
 ├── .env.example                    # Environment variables template
 ├── README.md                       # Project documentation
 └── run.py                          # Application runner
-also to make things easier, from the code files i have, tell me the existing ones i still need and where to put them inn d file structure so that we don't waste response msg space. i also have a helper functionn.py which is being importedd but i can't send it based on it exceeding message limit but since i'm importing it in the app.py file, intuitively use the import vbut if there is need to change anyone function based on the uuysage, let me know and send it too.
 
-API integration handlers and webhook system
+# Search for the rate limiting code:
+grep -r "Database objects do not implement" .
+grep -r "truth value testing" .
+grep -r "rate_limit" --include="*.py" .

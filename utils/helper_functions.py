@@ -780,7 +780,7 @@ def hash_password(password):
 
 
 # Enhanced password verification with debugging
-def verify_password(self, stored_hash: str, provided_password: str) -> bool:
+def verify_password(stored_hash: str, provided_password: str) -> bool:
     """Verify password with debugging"""
     try:
         print(f"🔐 Verifying password...")
@@ -936,6 +936,7 @@ def get_user_by_email(email):
             {"emails": email}
         ]
     })
+
 def get_user_by_id(user_id):
     db = get_db_connection()
     try:
@@ -1112,7 +1113,7 @@ class BlockchainService:
             }
         ]
     
-    def is_product_verified_simple(self, serial_number):
+    def is_product_verified_simple(serial_number):
         """Simple verification check"""
         if not self.connected or not self.contract:
             return False

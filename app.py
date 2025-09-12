@@ -9,13 +9,13 @@ import os
 from dotenv import load_dotenv
 from routes.auth_routes import auth_bp
 
-# Load environment variables
 load_dotenv()
 
 def create_app(config_name=None):
     """Application factory pattern"""
     app = Flask(__name__)
     
+    print("JWT_SECRET_KEY:", os.getenv('JWT_SECRET_KEY')) 
     # Load configuration
     config_name = config_name or os.getenv('FLASK_ENV', 'development')
     config = get_config()
