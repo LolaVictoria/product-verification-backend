@@ -174,3 +174,23 @@
 2025-09-12 00:54:47,604 - werkzeug - INFO -  * Debugger PIN: 143-327-685
 2025-09-12 01:00:51,145 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/app.py', reloading
 2025-09-12 01:00:52,505 - werkzeug - INFO -  * Restarting with stat
+2025-09-12 01:39:06,604 - config.database - INFO - Connected to database: verification_system
+2025-09-12 01:39:08,333 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 01:39:08,334 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 01:45:22,884 - config.database - INFO - Connected to database: verification_system
+2025-09-12 01:45:25,441 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 01:45:25,441 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 01:53:13,139 - config.database - INFO - Connected to database: verification_system
+2025-09-12 01:53:15,897 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 01:53:15,898 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 01:53:16,162 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.43.26:5000
+2025-09-12 01:53:16,163 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-12 01:53:16,167 - werkzeug - INFO -  * Restarting with stat
+2025-09-12 01:53:23,082 - config.database - INFO - Connected to database: verification_system
+2025-09-12 01:53:25,240 - services.product_service - INFO - Database indexes created successfully
+2025-09-12 01:53:25,241 - services.product_service - INFO - ProductService initialized successfully
+2025-09-12 01:53:25,357 - werkzeug - WARNING -  * Debugger is active!
+2025-09-12 01:53:25,358 - werkzeug - INFO -  * Debugger PIN: 143-327-685

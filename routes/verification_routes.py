@@ -19,7 +19,6 @@ def create_verification_routes(app):
             verification_service = VerificationService()
             user_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
             
-            # Perform verification
             result = verification_service.verify_product(
                 serial_number=serial_number,
                 customer_id=current_user_id,
@@ -179,7 +178,6 @@ def create_verification_routes(app):
         try:
             data = request.get_json()
             
-            # Validate required fields
             required_fields = ['serial_number', 'product_name', 'purchase_date']
             missing_fields = [field for field in required_fields if not data.get(field)]
             if missing_fields:

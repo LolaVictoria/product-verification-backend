@@ -3,13 +3,11 @@ from flask import Flask
 from flask_cors import CORS
 from config.settings import get_config
 from config.__init__ import DatabaseConfig
-from middleware.auth_middleware import AuthMiddleware
 from middleware.logging_middleware import setup_logging
 from routes.route_registry import register_all_routes
 import os
 from dotenv import load_dotenv
-from routes.route_registry import register_all_routes
-from routes.verification_routes import create_verification_routes
+
 # Load environment variables
 load_dotenv()
 
@@ -24,11 +22,16 @@ def create_app(config_name=None):
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-default-secret-key')
     app.config['MONGO_URI'] = os.getenv('MONGO_URI', 'mongodb://localhost:27017/verification_system')
 
-    # Register verification routes
-    verification_bp = create_verification_routes(app)
-    app.register_blueprint(verification_bp, url_prefix='/api/verification')
+    # Configure CORS
+    CORS(app, 
+         origins=['http://localhost:3000', 'http://localhost:5173', 'https://blockchain-verification-esup.vercel.app'],
+         allow_headers=['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-Key', 'Accept', 'Origin', 'Cache-Control', 'Pragma'],
+         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+         supports_credentials=True,
+         max_age=86400
+    )
+
     # Initialize extensions
-    AuthMiddleware.configure_cors(app)
     setup_logging()
     
     # Initialize database
