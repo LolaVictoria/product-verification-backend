@@ -16,6 +16,8 @@ from utils.helper_functions import get_db_connection, blacklist_token
 auth_bp = Blueprint('auth', __name__)
 auth_service = AuthService()
 
+# Add this debug version to your login route temporarily
+
 @auth_bp.route('/login', methods=['POST'])
 @rate_limit({'per_minute': 10, 'per_hour': 50})
 def login():
@@ -34,19 +36,41 @@ def login():
             data.get('password')
         )
         
+        # DEBUG: Print what auth_service returns
+        print("=== AUTH SERVICE RESULT ===")
+        print(f"Success: {result.get('success')}")
+        print(f"User data: {result.get('user')}")
+        print(f"User ID: {result.get('user', {}).get('_id')}")
+        print("========================")
+        
         if not result['success']:
             return create_error_response(result['message'], 401)
         
-        return create_success_response({
+        # Format the user response
+        formatted_user = format_user_response(result['user'])
+        
+        # DEBUG: Print formatted user
+        print("=== FORMATTED USER ===")
+        print(f"Formatted: {formatted_user}")
+        print("=====================")
+        
+        response_data = {
             'token': result['token'],
-            'user': format_user_response(result['user']),
+            'user': formatted_user,
             'expires_at': result['expires_at']
-        }, "Login successful")
+        }
+        
+        # DEBUG: Print final response
+        print("=== FINAL RESPONSE ===")
+        print(f"Response: {response_data}")
+        print("====================")
+        
+        return create_success_response(response_data, "Login successful")
         
     except Exception as e:
         print(f"Login error: {e}")
         return create_error_response("Authentication failed", 500)
-
+    
 @auth_bp.route('/signup', methods=['POST'])
 @rate_limit({'per_minute': 5, 'per_hour': 20})
 def register():

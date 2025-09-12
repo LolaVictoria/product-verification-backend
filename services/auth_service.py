@@ -20,49 +20,37 @@ class AuthService:
         self.secret_key = os.getenv('SECRET_KEY')
         self.token_expiry_hours = int(os.getenv('TOKEN_EXPIRY_HOURS', '24'))
         self.reset_token_expiry_hours = int(os.getenv('RESET_TOKEN_EXPIRY_HOURS', '1'))
-        
+    
+    def generate_token(self, user_id):
+        payload = {
+            'user_id': str(user_id),  # Make sure this is included
+            'exp': datetime.utcnow() + timedelta(hours=24),
+            'iat': datetime.utcnow()
+        }
+        return jwt.encode(payload, os.getenv('JWT_SECRET_KEY'), algorithm='HS256')
+
     def authenticate_user(self, email, password):
-        """Authenticate user login"""
         try:
-            if not email or not password:
-                return {'success': False, 'message': 'Email and password are required'}
-            
-            # Get user from database
-            user = get_user_by_email(email.lower())
+            # Find user with all fields
+            user = self.db.users.find_one({'email': email})
             if not user:
                 return {'success': False, 'message': 'Invalid credentials'}
             
             # Verify password
-            if not verify_password(user['password_hash'], password):
+            if not self.verify_password(password, user['password']):
                 return {'success': False, 'message': 'Invalid credentials'}
             
-            # Generate JWT token
-            token_data = {
-                'sub': str(user['_id']),
-                'role': user['role'],
-                'email': user['primary_email'],
-                'iat': datetime.now(timezone.utc),
-                'exp': datetime.now(timezone.utc) + timedelta(hours=self.token_expiry_hours)
-            }
-            
-            token = jwt.encode(token_data, self.secret_key, algorithm='HS256')
-            
-            # Update last login
-            db = get_db_connection()
-            db.users.update_one(
-                {'_id': user['_id']},
-                {'$set': {'last_login': get_current_utc()}}
-            )
+            # Generate token with user_id
+            token = self.generate_token(str(user['_id']))  # Make sure this includes user_id
             
             return {
                 'success': True,
                 'token': token,
-                'user': user,
-                'expires_at': token_data['exp'].isoformat()
+                'user': user,  # Return the FULL user document
+                'expires_at': self.get_token_expiry()
             }
-            
         except Exception as e:
-            print(f"Authentication error: {e}")
+            print(f"Auth error: {e}")
             return {'success': False, 'message': 'Authentication failed'}
     
     def register_user(self, user_data):

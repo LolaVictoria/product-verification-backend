@@ -31,36 +31,21 @@ def create_cors_response(data: Any = None, status_code: int = 200, headers: Dict
         'body': json.dumps(data) if data is not None else json.dumps({})
     }
 
-def format_user_response(user_data: Dict[str, Any], include_sensitive: bool = False) -> Dict[str, Any]:
-    """
-    Format user data for API response, excluding sensitive information.
+def format_user_response(user):
+    """Format user data for API response"""
+    if not user:
+        return None
     
-    Args:
-        user_data (Dict[str, Any]): Raw user data
-        include_sensitive (bool): Whether to include sensitive data
-        
-    Returns:
-        Dict[str, Any]: Formatted user data
-    """
-    safe_fields = [
-        'id', 'username', 'email', 'first_name', 'last_name', 
-        'created_at', 'updated_at', 'is_active', 'role'
-    ]
-    
-    formatted_user = {}
-    
-    for field in safe_fields:
-        if field in user_data:
-            formatted_user[field] = user_data[field]
-    
-    # Include sensitive data only if explicitly requested
-    if include_sensitive:
-        sensitive_fields = ['last_login', 'login_count', 'api_key_hash']
-        for field in sensitive_fields:
-            if field in user_data:
-                formatted_user[field] = user_data[field]
-    
-    return formatted_user
+    return {
+        'id': str(user.get('_id')),  # Convert ObjectId to string
+        'email': user.get('email'),
+        'username': user.get('username'),
+        'role': user.get('role', 'user'),
+        'is_auth_verified': user.get('is_auth_verified', False),
+        'created_at': user.get('created_at'),
+        'updated_at': user.get('updated_at'),
+        # Add all other fields your frontend expects
+    }
 
 def create_success_response(data: Any = None, message: str = "Operation successful") -> Dict[str, Any]:
     """
