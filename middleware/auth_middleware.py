@@ -4,8 +4,22 @@ import jwt
 from datetime import datetime, timezone
 from bson import ObjectId
 import logging
+from flask_cors import CORS
+import os
 
 class AuthMiddleware:
+    @staticmethod
+    def configure_cors():
+        """Configure CORS for the Flask app"""
+        cors_origins = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://localhost:5173,https://blockchain-verification-esup.vercel.app').split(',')
+        
+        CORS(current_app, 
+             origins=cors_origins,
+             allow_headers=['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-Key', 'Accept', 'Origin'],
+             methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+             supports_credentials=True
+        )
+
     @staticmethod
     def add_cors_headers(response):
         """Add comprehensive CORS headers to any response"""
@@ -82,7 +96,6 @@ class AuthMiddleware:
                 if not api_key:
                     return AuthMiddleware.create_cors_response({'message': 'API key is required'}, 401)
                 
-                # Validate API key using manufacturer service
                 key_data = manufacturer_service.validate_api_key(api_key)
                 
                 if not key_data:
