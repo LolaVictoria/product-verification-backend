@@ -7,6 +7,7 @@ from middleware.logging_middleware import setup_logging
 from routes.route_registry import register_all_routes
 import os
 from dotenv import load_dotenv
+from routes.auth_routes import auth_bp
 
 # Load environment variables
 load_dotenv()
@@ -30,6 +31,8 @@ def create_app(config_name=None):
          supports_credentials=True,
          max_age=86400
     )
+
+    app.register_blueprint(auth_bp, url_prefix='/auth')
 
     # Initialize extensions
     setup_logging()
