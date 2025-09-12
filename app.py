@@ -8,7 +8,8 @@ from middleware.logging_middleware import setup_logging
 from routes.route_registry import register_all_routes
 import os
 from dotenv import load_dotenv
-
+from routes.route_registry import register_all_routes
+from routes.verification_routes import create_verification_routes
 # Load environment variables
 load_dotenv()
 
@@ -20,7 +21,12 @@ def create_app(config_name=None):
     config_name = config_name or os.getenv('FLASK_ENV', 'development')
     config = get_config()
     app.config.from_object(config)
-    
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-default-secret-key')
+    app.config['MONGO_URI'] = os.getenv('MONGO_URI', 'mongodb://localhost:27017/verification_system')
+
+    # Register verification routes
+    verification_bp = create_verification_routes(app)
+    app.register_blueprint(verification_bp, url_prefix='/api/verification')
     # Initialize extensions
     configure_cors(app)
     setup_logging()

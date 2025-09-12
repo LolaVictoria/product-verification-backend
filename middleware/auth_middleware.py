@@ -1,27 +1,9 @@
-from flask import request, jsonify, make_response
+from flask import request, jsonify, make_response, current_app
 from functools import wraps
 import jwt
 from datetime import datetime, timezone
 from bson import ObjectId
-from config.__init__ import DatabaseConfig
-import os
 import logging
-
-def configure_cors(app):
-    """Configure CORS for the Flask app"""
-    from flask_cors import CORS
-    
-    # CORS origins from environment or defaults
-    cors_origins = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://localhost:5173').split(',')
-    
-    CORS(app, 
-         origins=cors_origins,
-         allow_headers=['Content-Type', 'Authorization', 'X-Requested-With'],
-         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-         supports_credentials=True
-    )
-    
-    return app
 
 class AuthMiddleware:
     @staticmethod
@@ -74,56 +56,41 @@ class AuthMiddleware:
             return None, None, {'message': 'Token validation failed'}, 401
 
     @staticmethod
-    def token_required(allowed_roles=None):
-        """Decorator for routes requiring JWT authentication"""
+    def token_required(allowed_roles):
+        """Decorator for routes requiring specific roles"""
         def decorator(f):
             @wraps(f)
             def decorated(*args, **kwargs):
                 token = request.headers.get('Authorization')
-                
-                if not token:
-                    return AuthMiddleware.create_cors_response({'message': 'Token is missing'}, 401)
-                
-                # Validate token
-                user_id, user_role, error, status = AuthMiddleware.validate_jwt_token(token, os.getenv('SECRET_KEY'))
+                user_id, user_role, error, status = AuthMiddleware.validate_jwt_token(token, current_app.config['SECRET_KEY'])
                 if error:
                     return AuthMiddleware.create_cors_response(error, status)
-                
-                # Check if token is blacklisted
-                db = DatabaseConfig.get_db_connection()
-                blacklisted = db.blacklisted_tokens.find_one({"token": token})
-                if blacklisted:
-                    return AuthMiddleware.create_cors_response({'message': 'Token has been revoked'}, 401)
-                
-                # Check role authorization
                 if allowed_roles and user_role not in allowed_roles:
-                    return AuthMiddleware.create_cors_response({
-                        'message': f'Access denied: requires one of {allowed_roles}'
-                    }, 403)
-                
+                    return AuthMiddleware.create_cors_response({'message': f'Access denied: requires one of {allowed_roles}'}, 403)
                 return f(user_id, user_role, *args, **kwargs)
             return decorated
         return decorator
 
     @staticmethod
-    def api_key_required(f):
+    def api_key_required(manufacturer_service):
         """Decorator for API key authentication"""
-        @wraps(f)
-        def decorator(*args, **kwargs):
-            api_key = request.headers.get('X-API-Key') or request.headers.get('x-api-key')
-            
-            if not api_key:
-                return AuthMiddleware.create_cors_response({'message': 'API key is required'}, 401)
-            
-            # Validate API key using manufacturer service
-            manufacturer_service = manufacturer_service
-            key_data = manufacturer_service.validate_api_key(api_key)
-            
-            if not key_data:
-                return AuthMiddleware.create_cors_response({'message': 'Invalid API key'}, 401)
-            
-            request.api_key_data = key_data
-            return f(*args, **kwargs)
+        def decorator(f):
+            @wraps(f)
+            def decorated(*args, **kwargs):
+                api_key = request.headers.get('X-API-Key') or request.headers.get('x-api-key')
+                
+                if not api_key:
+                    return AuthMiddleware.create_cors_response({'message': 'API key is required'}, 401)
+                
+                # Validate API key using manufacturer service
+                key_data = manufacturer_service.validate_api_key(api_key)
+                
+                if not key_data:
+                    return AuthMiddleware.create_cors_response({'message': 'Invalid API key'}, 401)
+                
+                request.api_key_data = key_data
+                return f(*args, **kwargs)
+            return decorated
         return decorator
 
     @staticmethod
@@ -213,13 +180,13 @@ class AuthMiddleware:
         )
 
     @staticmethod
-    def integration_api_endpoint():
+    def integration_api_endpoint(manufacturer_service):
         """Common decorator for integration API endpoints"""
         return AuthMiddleware.api_endpoint(
             AuthMiddleware.log_request_response,
             AuthMiddleware.rate_limit_check,
             AuthMiddleware.validate_content_type,
-            AuthMiddleware.api_key_required
+            AuthMiddleware.api_key_required(manufacturer_service)
         )
 
 auth_middleware = AuthMiddleware()
