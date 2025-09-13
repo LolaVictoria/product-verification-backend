@@ -50,7 +50,7 @@ def format_user_response(user):
 from flask import jsonify
 from datetime import datetime
 from typing import Any, Dict, Tuple
-from middleware.auth_middleware import create_success_response, create_error_response
+from middleware.auth_middleware import auth_middleware
 
 
 def format_product_response(product_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -133,10 +133,10 @@ def format_api_response(success: bool, data: Any = None, error: str = None,
         Dict[str, Any]: Complete formatted API response
     """
     if success:
-        response_data = create_success_response(data)
+        response_data = auth_middleware.create_success_response(data)
         default_status = 200
     else:
-        response_data = create_error_response(error or "An error occurred")
+        response_data = auth_middleware.create_error_response(error or "An error occurred")
         default_status = 400
     
     return create_cors_response(
