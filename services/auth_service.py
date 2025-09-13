@@ -21,14 +21,14 @@ class AuthService:
         self.token_expiry_hours = int(os.getenv('TOKEN_EXPIRY_HOURS', '24'))
         self.reset_token_expiry_hours = int(os.getenv('RESET_TOKEN_EXPIRY_HOURS', '1'))
     
-    def generate_token(self, user_id):
+    def generate_token(self, user_id, user_role):  # Add user_role parameter
         payload = {
-            'user_id': str(user_id),  # Make sure this is included
+            'sub': str(user_id),          # Change 'user_id' to 'sub'
+            'role': user_role,            # Add role field
             'exp': datetime.utcnow() + timedelta(hours=24),
             'iat': datetime.utcnow()
         }
-        return jwt.encode(payload, os.getenv('JWT_SECRET_KEY'), algorithm='HS256')
-
+        return jwt.encode(payload, os.getenv('SECRET_KEY'), algorithm='HS256')  # Use SECRET_KEY not JWT_SECRET_KEY
     def authenticate_user(self, email: str, password: str) -> dict:
         """Enhanced authenticate_user with debugging"""
         try:
@@ -96,7 +96,7 @@ class AuthService:
             
             # Generate token using class method (keep self.)
             print("🔍 Generating JWT token...")
-            token = self.generate_token(user['_id'])  # ← Keep self. here
+            token = self.generate_token(user['_id'], user['role']) 
             
             if not token:
                 print("❌ Failed to generate token")

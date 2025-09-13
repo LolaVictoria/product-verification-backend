@@ -7,7 +7,7 @@ import hashlib
 import jwt
 import os
 from middleware.auth_middleware import auth_middleware
-from services.product_service import get_product_by_serial
+from utils.helper_functions import get_product_by_serial
 
 # Import your helper functions (keeping your existing imports)
 from utils.helper_functions import (
@@ -1031,7 +1031,7 @@ def register_manufacturer_product(current_user_id, current_user_role):
             "error": f"Internal server error: {str(e)}"
         }, 500)
 
-@manufacturer_bp.route('/dashboard-stats', methods=['GET'])
+@manufacturer_bp.route('/dashboard-stats', methods=['GET', 'OPTIONS'])
 @auth_middleware.token_required_with_roles(['manufacturer'])
 def get_manufacturer_dashboard_stats(current_user_id, current_user_role):
     """Get dashboard statistics for manufacturer"""

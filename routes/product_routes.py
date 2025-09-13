@@ -45,67 +45,67 @@ class ProductSchema:
         
         return data
 
-@product_bp.route('/register', methods=['POST', 'OPTIONS'])
-@manufacturer_required
-@auth_middleware
-def register_product():
-    """Register a new product"""
-    if request.method == 'OPTIONS':
-        return create_cors_response()
+# @product_bp.route('/register', methods=['POST', 'OPTIONS'])
+# @manufacturer_required
+# @auth_middleware
+# def register_product():
+#     """Register a new product"""
+#     if request.method == 'OPTIONS':
+#         return create_cors_response()
     
-    try:
-        data = request.get_json()
-        if not data:
-            return create_cors_response(
-                create_error_response("No data provided"), 400
-            )
+#     try:
+#         data = request.get_json()
+#         if not data:
+#             return create_cors_response(
+#                 create_error_response("No data provided"), 400
+#             )
         
-        # Validate product data
-        ProductSchema.validate_product_data(data)
+#         # Validate product data
+#         ProductSchema.validate_product_data(data)
         
-        # Add manufacturer info from authenticated user
-        data['manufacturer_id'] = ObjectId(g.current_user.get('user_id'))
-        data['manufacturer_name'] = g.current_user.get('username', '')
-        data['registered_at'] = datetime.utcnow()
-        data['created_at'] = datetime.utcnow()
-        data['updated_at'] = datetime.utcnow()
-        data['registration_type'] = 'database'
-        data['blockchain_verified'] = False
+#         # Add manufacturer info from authenticated user
+#         data['manufacturer_id'] = ObjectId(g.current_user.get('user_id'))
+#         data['manufacturer_name'] = g.current_user.get('username', '')
+#         data['registered_at'] = datetime.utcnow()
+#         data['created_at'] = datetime.utcnow()
+#         data['updated_at'] = datetime.utcnow()
+#         data['registration_type'] = 'database'
+#         data['blockchain_verified'] = False
         
-        # Initialize ownership history
-        data['ownership_history'] = [{
-            'owner_id': str(data['manufacturer_id']),
-            'owner_name': data['manufacturer_name'],
-            'action': 'registered',
-            'timestamp': datetime.utcnow().isoformat()
-        }]
+#         # Initialize ownership history
+#         data['ownership_history'] = [{
+#             'owner_id': str(data['manufacturer_id']),
+#             'owner_name': data['manufacturer_name'],
+#             'action': 'registered',
+#             'timestamp': datetime.utcnow().isoformat()
+#         }]
         
-        if product_service:
-            result = product_service.register_product(data)
-            if result['success']:
-                response_data = format_product_response(result['product'])
-                return create_cors_response(
-                    create_success_response(response_data, "Product registered successfully"), 201
-                )
-            else:
-                return create_cors_response(
-                    create_error_response(result['error']), 400
-                )
-        else:
-            # Fallback response when service is not available
-            return create_cors_response(
-                create_success_response(data, "Product registration received (service unavailable)"), 201
-            )
+#         if product_service:
+#             result = product_service.register_product(data)
+#             if result['success']:
+#                 response_data = format_product_response(result['product'])
+#                 return create_cors_response(
+#                     create_success_response(response_data, "Product registered successfully"), 201
+#                 )
+#             else:
+#                 return create_cors_response(
+#                     create_error_response(result['error']), 400
+#                 )
+#         else:
+#             # Fallback response when service is not available
+#             return create_cors_response(
+#                 create_success_response(data, "Product registration received (service unavailable)"), 201
+#             )
     
-    except ValueError as e:
-        return create_cors_response(
-            create_error_response(str(e), "VALIDATION_ERROR"), 400
-        )
-    except Exception as e:
-        logger.error(f"Product registration error: {e}")
-        return create_cors_response(
-            create_error_response("Internal server error"), 500
-        )
+#     except ValueError as e:
+#         return create_cors_response(
+#             create_error_response(str(e), "VALIDATION_ERROR"), 400
+#         )
+#     except Exception as e:
+#         logger.error(f"Product registration error: {e}")
+#         return create_cors_response(
+#             create_error_response("Internal server error"), 500
+#         )
 
 @product_bp.route('/<product_id>', methods=['GET', 'OPTIONS'])
 @optional_auth_middleware
@@ -194,10 +194,10 @@ def get_product_by_serial(serial_number):
             create_error_response("Internal server error"), 500
         )
 
-@product_bp.route('/manufacturer', methods=['GET', 'OPTIONS'])
-@manufacturer_required
-@auth_middleware
-def get_manufacturer_products():
+# @product_bp.route('/manufacturer', methods=['GET', 'OPTIONS'])
+# @manufacturer_required
+# @auth_middleware
+# def get_manufacturer_products():
     """Get all products for authenticated manufacturer"""
     if request.method == 'OPTIONS':
         return create_cors_response()
@@ -252,53 +252,53 @@ def get_manufacturer_products():
             create_error_response("Internal server error"), 500
         )
 
-@product_bp.route('/<product_id>/update', methods=['PUT', 'OPTIONS'])
-@manufacturer_required
-@auth_middleware
-def update_product(product_id):
-    """Update product information"""
-    if request.method == 'OPTIONS':
-        return create_cors_response()
+# @product_bp.route('/<product_id>/update', methods=['PUT', 'OPTIONS'])
+# @manufacturer_required
+# @auth_middleware
+# def update_product(product_id):
+#     """Update product information"""
+#     if request.method == 'OPTIONS':
+#         return create_cors_response()
     
-    try:
-        if not ObjectId.is_valid(product_id):
-            return create_cors_response(
-                create_error_response("Invalid product ID format"), 400
-            )
+#     try:
+#         if not ObjectId.is_valid(product_id):
+#             return create_cors_response(
+#                 create_error_response("Invalid product ID format"), 400
+#             )
         
-        data = request.get_json()
-        if not data:
-            return create_cors_response(
-                create_error_response("No data provided"), 400
-            )
+#         data = request.get_json()
+#         if not data:
+#             return create_cors_response(
+#                 create_error_response("No data provided"), 400
+#             )
         
-        # Add update metadata
-        data['updated_at'] = datetime.utcnow()
-        manufacturer_id = ObjectId(g.current_user.get('user_id'))
+#         # Add update metadata
+#         data['updated_at'] = datetime.utcnow()
+#         manufacturer_id = ObjectId(g.current_user.get('user_id'))
         
-        if product_service:
-            result = product_service.update_product(ObjectId(product_id), data, manufacturer_id)
-            if result['success']:
-                response_data = format_product_response(result['product'])
-                return create_cors_response(
-                    create_success_response(response_data, "Product updated successfully")
-                )
-            else:
-                return create_cors_response(
-                    create_error_response(result['error']), 400
-                )
-        else:
-            # Fallback response
-            data['id'] = product_id
-            return create_cors_response(
-                create_success_response(data, "Product update received (service unavailable)")
-            )
+#         if product_service:
+#             result = product_service.update_product(ObjectId(product_id), data, manufacturer_id)
+#             if result['success']:
+#                 response_data = format_product_response(result['product'])
+#                 return create_cors_response(
+#                     create_success_response(response_data, "Product updated successfully")
+#                 )
+#             else:
+#                 return create_cors_response(
+#                     create_error_response(result['error']), 400
+#                 )
+#         else:
+#             # Fallback response
+#             data['id'] = product_id
+#             return create_cors_response(
+#                 create_success_response(data, "Product update received (service unavailable)")
+#             )
     
-    except Exception as e:
-        logger.error(f"Product update error: {e}")
-        return create_cors_response(
-            create_error_response("Internal server error"), 500
-        )
+#     except Exception as e:
+#         logger.error(f"Product update error: {e}")
+#         return create_cors_response(
+#             create_error_response("Internal server error"), 500
+#         )
 
 @product_bp.route('/<product_id>/verify', methods=['POST', 'OPTIONS'])
 @optional_auth_middleware

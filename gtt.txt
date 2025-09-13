@@ -119,8 +119,18 @@ Code       backend/
 ├── .env.example                    # Environment variables template
 ├── README.md                       # Project documentation
 └── run.py                          # Application runner
+curl -X POST http://localhost:5000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"damilolaoniyide11@gmail.com","password":"Damilola11264"}'
 
-# Search for the rate limiting code:
-grep -r "Database objects do not implement" .
-grep -r "truth value testing" .
-grep -r "rate_limit" --include="*.py" .
+curl -X GET http://localhost:5000/auth/manufacturer/profile \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGE3OGRjNDhmYWZiMDJiOTI2ZTNkMjkiLCJyb2xlIjoibWFudWZhY3R1cmVyIiwiZXhwIjoxNzU3ODE3Mzg2LCJpYXQiOjE3NTc3MzA5ODZ9.HJMzaIIUR08ojxG3nfVyHt7MJNJMC3HGFPigmgSYKDc"
+
+curl -X GET http://localhost:5000/manufacturer/dashboard-stats \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGE3OGRjNDhmYWZiMDJiOTI2ZTNkMjkiLCJyb2xlIjoibWFudWZhY3R1cmVyIiwiZXhwIjoxNzU3ODE3Mzg2LCJpYXQiOjE3NTc3MzA5ODZ9.HJMzaIIUR08ojxG3nfVyHt7MJNJMC3HGFPigmgSYKDc"
+
+curl -X GET http://localhost:5000/manufacturer/products \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGE3OGRjNDhmYWZiMDJiOTI2ZTNkMjkiLCJyb2xlIjoibWFudWZhY3R1cmVyIiwiZXhwIjoxNzU3ODE3Mzg2LCJpYXQiOjE3NTc3MzA5ODZ9.HJMzaIIUR08ojxG3nfVyHt7MJNJMC3HGFPigmgSYKDc"

@@ -647,3 +647,101 @@
 2025-09-13 02:42:42,417 - werkzeug - INFO -  * Debugger PIN: 143-327-685
 2025-09-13 02:46:45,511 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/middleware/auth_middleware.py', reloading
 2025-09-13 02:46:47,241 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 03:18:09,314 - config.database - INFO - Connected to database: verification_system
+2025-09-13 03:18:15,431 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 03:18:15,432 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 03:18:15,772 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.43.26:5000
+2025-09-13 03:18:15,773 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-13 03:18:15,780 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 03:18:27,237 - config.database - INFO - Connected to database: verification_system
+2025-09-13 03:18:29,524 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 03:18:29,528 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 03:18:30,080 - werkzeug - WARNING -  * Debugger is active!
+2025-09-13 03:18:30,082 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-13 03:18:32,734 - werkzeug - INFO - 127.0.0.1 - - [13/Sep/2025 03:18:32] "POST /auth/login HTTP/1.1" 200 -
+2025-09-13 03:19:51,945 - werkzeug - INFO - 127.0.0.1 - - [13/Sep/2025 03:19:51] "[31m[1mGET /auth/manufacturer/profile HTTP/1.1[0m" 401 -
+2025-09-13 03:20:46,534 - werkzeug - INFO - 127.0.0.1 - - [13/Sep/2025 03:20:46] "[31m[1mGET /auth/manufacturer/profile HTTP/1.1[0m" 401 -
+2025-09-13 03:22:26,818 - werkzeug - INFO - 127.0.0.1 - - [13/Sep/2025 03:22:26] "[31m[1mGET /auth/manufacturer/profile HTTP/1.1[0m" 401 -
+2025-09-13 03:28:47,690 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/services/auth_service.py', reloading
+2025-09-13 03:28:49,877 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 03:29:02,847 - config.database - INFO - Connected to database: verification_system
+2025-09-13 03:29:06,584 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 03:29:06,585 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 03:29:06,898 - werkzeug - WARNING -  * Debugger is active!
+2025-09-13 03:29:06,902 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-13 03:29:20,877 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/services/auth_service.py', reloading
+2025-09-13 03:29:24,307 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 03:29:36,419 - config.database - INFO - Connected to database: verification_system
+2025-09-13 03:29:38,481 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 03:29:38,482 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 03:29:38,791 - werkzeug - WARNING -  * Debugger is active!
+2025-09-13 03:29:38,794 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-13 03:29:43,113 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/services/auth_service.py', reloading
+2025-09-13 03:29:45,982 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 03:29:55,350 - config.database - INFO - Connected to database: verification_system
+2025-09-13 03:29:57,575 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 03:29:57,576 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 03:29:58,003 - werkzeug - WARNING -  * Debugger is active!
+2025-09-13 03:29:58,006 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-13 03:30:31,386 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/services/auth_service.py', reloading
+2025-09-13 03:30:34,272 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 03:30:44,743 - config.database - INFO - Connected to database: verification_system
+2025-09-13 03:31:11,931 - config.database - INFO - Connected to database: verification_system
+2025-09-13 03:31:14,212 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 03:31:14,212 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 03:31:14,691 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.43.26:5000
+2025-09-13 03:31:14,694 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-13 03:31:14,711 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 03:31:22,691 - config.database - INFO - Connected to database: verification_system
+2025-09-13 03:31:24,895 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 03:31:24,896 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 03:31:25,286 - werkzeug - WARNING -  * Debugger is active!
+2025-09-13 03:31:25,290 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-13 03:31:40,702 - werkzeug - INFO - 127.0.0.1 - - [13/Sep/2025 03:31:40] "[31m[1mGET /auth/manufacturer/profile HTTP/1.1[0m" 401 -
+2025-09-13 03:32:25,086 - werkzeug - INFO - 127.0.0.1 - - [13/Sep/2025 03:32:25] "[31m[1mGET /auth/manufacturer/profile HTTP/1.1[0m" 401 -
+2025-09-13 03:33:48,898 - werkzeug - INFO - 127.0.0.1 - - [13/Sep/2025 03:33:48] "[31m[1mPOST /auth/login HTTP/1.1[0m" 401 -
+2025-09-13 03:36:00,410 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/services/auth_service.py', reloading
+2025-09-13 03:36:03,037 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 03:36:14,170 - config.database - INFO - Connected to database: verification_system
+2025-09-13 03:36:16,589 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 03:36:16,593 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 03:36:16,937 - werkzeug - WARNING -  * Debugger is active!
+2025-09-13 03:36:16,945 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-13 03:36:26,096 - werkzeug - INFO - 127.0.0.1 - - [13/Sep/2025 03:36:26] "POST /auth/login HTTP/1.1" 200 -
+2025-09-13 03:37:09,509 - werkzeug - INFO - 127.0.0.1 - - [13/Sep/2025 03:37:09] "GET /auth/manufacturer/profile HTTP/1.1" 200 -
+2025-09-13 03:46:20,545 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/routes/manufacturer_routes.py', reloading
+2025-09-13 03:46:25,058 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 03:46:36,735 - config.database - INFO - Connected to database: verification_system
+2025-09-13 03:46:38,744 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 03:46:38,745 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 03:46:39,062 - werkzeug - WARNING -  * Debugger is active!
+2025-09-13 03:46:39,065 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-13 03:59:08,638 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/routes/product_routes.py', reloading
+2025-09-13 03:59:10,650 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 03:59:20,939 - config.database - INFO - Connected to database: verification_system
+2025-09-13 03:59:23,366 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 03:59:23,367 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 03:59:23,851 - werkzeug - WARNING -  * Debugger is active!
+2025-09-13 03:59:23,862 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-13 03:59:31,528 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/routes/product_routes.py', reloading
+2025-09-13 03:59:34,007 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 03:59:41,570 - config.database - INFO - Connected to database: verification_system
+2025-09-13 03:59:43,616 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 03:59:43,617 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 03:59:44,061 - werkzeug - WARNING -  * Debugger is active!
+2025-09-13 03:59:44,063 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-13 04:00:17,733 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/routes/manufacturer_routes.py', reloading
+2025-09-13 04:00:20,516 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 04:00:32,119 - config.database - INFO - Connected to database: verification_system
+2025-09-13 04:00:34,695 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 04:00:34,696 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 04:00:35,122 - werkzeug - WARNING -  * Debugger is active!
+2025-09-13 04:00:35,126 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-13 04:04:51,692 - werkzeug - INFO - 127.0.0.1 - - [13/Sep/2025 04:04:51] "GET /manufacturer/products HTTP/1.1" 200 -
+2025-09-13 04:05:18,239 - werkzeug - INFO - 127.0.0.1 - - [13/Sep/2025 04:05:18] "GET /manufacturer/dashboard-stats HTTP/1.1" 200 -
