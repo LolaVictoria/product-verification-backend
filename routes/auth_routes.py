@@ -7,7 +7,7 @@ import os
 from bson import ObjectId
 from services.__init__ import auth_service, ProfileUpdateHandler
 from utils.validators import validate_user_registration, validate_login_data
-from utils.formatters import format_user_response, create_success_response, create_error_response
+from utils.formatters import format_user_response
 from middleware.rate_limiting import rate_limit
 from middleware.auth_middleware import auth_middleware
 from utils.helper_functions import get_db_connection, blacklist_token, get_user_by_id, format_user_profile
@@ -28,7 +28,7 @@ def login():
         validation_error = validate_login_data(data)
         print(f"Validation error: {validation_error}")
         if validation_error:
-            return create_error_response(validation_error, 400)
+            return auth_middleware.create_error_response(validation_error, 400)
         
         # Attempt login
         result = auth_service.authenticate_user(
@@ -44,7 +44,7 @@ def login():
         print("========================")
         
         if not result['success']:
-            return create_error_response(result['message'], 401)
+            return auth_middleware.create_error_response(result['message'], 401)
         
         # Format the user response
         formatted_user = format_user_response(result['user'])
@@ -66,13 +66,13 @@ def login():
         print(f"Response: {response_data}")
         print("====================")
         
-        return create_success_response(response_data, "Login successful", 200)
+        return auth_middleware.create_success_response(response_data, "Login successful", 200)
         
     except Exception as e:
         print(f"Login error: {e}")
         import traceback
         traceback.print_exc()
-        return create_error_response("Authentication failed", 500)
+        return auth_middleware.create_error_response("Authentication failed", 500)
     
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
@@ -80,20 +80,20 @@ def logout():
     try:
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
-            return create_error_response("No token provided", 400)
+            return auth_middleware.create_error_response("No token provided", 400)
         
         token = auth_header.split(' ')[1]
         
         # Blacklist the token
         blacklist_result = blacklist_token(token)
         if not blacklist_result:
-            return create_error_response("Token blacklisting failed", 500)
+            return auth_middleware.create_error_response("Token blacklisting failed", 500)
         
-        return create_success_response({}, "Logged out successfully")
+        return auth_middleware.create_success_response({}, "Logged out successfully")
         
     except Exception as e:
         print(f"Logout error: {e}")
-        return create_error_response("Logout failed", 500)
+        return auth_middleware.create_error_response("Logout failed", 500)
 
 @auth_bp.route('/refresh', methods=['POST'])
 def refresh_token():
@@ -101,7 +101,7 @@ def refresh_token():
     try:
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
-            return create_error_response("No token provided", 400)
+            return auth_middleware.create_error_response("No token provided", 400)
         
         token = auth_header.split(' ')[1]
         
@@ -109,16 +109,16 @@ def refresh_token():
         result = auth_service.refresh_token(token)
         
         if not result['success']:
-            return create_error_response(result['message'], 401)
+            return auth_middleware.create_error_response(result['message'], 401)
         
-        return create_success_response({
+        return auth_middleware.create_success_response({
             'token': result['token'],
             'expires_at': result['expires_at']
         }, "Token refreshed successfully")
         
     except Exception as e:
         print(f"Token refresh error: {e}")
-        return create_error_response("Token refresh failed", 500)
+        return auth_middleware.create_error_response("Token refresh failed", 500)
 
 @auth_bp.route('/verify-token', methods=['GET'])
 def verify_token():
@@ -126,7 +126,7 @@ def verify_token():
     try:
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
-            return create_error_response("No token provided", 400)
+            return auth_middleware.create_error_response("No token provided", 400)
         
         token = auth_header.split(' ')[1]
         
@@ -134,9 +134,9 @@ def verify_token():
         result = auth_service.verify_token(token)
         
         if not result['valid']:
-            return create_error_response(result['message'], 401)
+            return auth_middleware.create_error_response(result['message'], 401)
         
-        return create_success_response({
+        return auth_middleware.create_success_response({
             'valid': True,
             'user': format_user_response(result['user']),
             'expires_at': result['expires_at']
@@ -144,7 +144,7 @@ def verify_token():
         
     except Exception as e:
         print(f"Token verification error: {e}")
-        return create_error_response("Token verification failed", 500)
+        return auth_middleware.create_error_response("Token verification failed", 500)
 
 @auth_bp.route('/change-password', methods=['PUT'])
 def change_password():
@@ -152,14 +152,14 @@ def change_password():
     try:
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
-            return create_error_response("Authentication required", 401)
+            return auth_middleware.create_error_response("Authentication required", 401)
         
         token = auth_header.split(' ')[1]
         data = request.get_json()
         
         # Validate input
         if not data.get('current_password') or not data.get('new_password'):
-            return create_error_response("Current and new passwords required", 400)
+            return auth_middleware.create_error_response("Current and new passwords required", 400)
         
         # Change password
         result = auth_service.change_password(
@@ -169,13 +169,13 @@ def change_password():
         )
         
         if not result['success']:
-            return create_error_response(result['message'], 400)
+            return auth_middleware.create_error_response(result['message'], 400)
         
-        return create_success_response({}, "Password changed successfully")
+        return auth_middleware.create_success_response({}, "Password changed successfully")
         
     except Exception as e:
         print(f"Password change error: {e}")
-        return create_error_response("Password change failed", 500)
+        return auth_middleware.create_error_response("Password change failed", 500)
 
 @auth_bp.route('/forgot-password', methods=['POST'])
 @rate_limit({'per_minute': 3, 'per_hour': 10})
@@ -186,18 +186,18 @@ def forgot_password():
         email = data.get('email')
         
         if not email:
-            return create_error_response("Email is required", 400)
+            return auth_middleware.create_error_response("Email is required", 400)
         
         # Initiate password reset
         result = auth_service.initiate_password_reset(email)
         
         # Always return success for security (don't reveal if email exists)
-        return create_success_response({}, 
+        return auth_middleware.create_success_response({}, 
             "If the email exists, you will receive password reset instructions")
         
     except Exception as e:
         print(f"Password reset initiation error: {e}")
-        return create_error_response("Password reset request failed", 500)
+        return auth_middleware.create_error_response("Password reset request failed", 500)
 
 @auth_bp.route('/reset-password', methods=['POST'])
 @rate_limit({'per_minute': 5, 'per_hour': 20})
@@ -210,19 +210,19 @@ def reset_password():
         new_password = data.get('new_password')
         
         if not reset_token or not new_password:
-            return create_error_response("Reset token and new password required", 400)
+            return auth_middleware.create_error_response("Reset token and new password required", 400)
         
         # Reset password
         result = auth_service.reset_password(reset_token, new_password)
         
         if not result['success']:
-            return create_error_response(result['message'], 400)
+            return auth_middleware.create_error_response(result['message'], 400)
         
-        return create_success_response({}, "Password reset successfully")
+        return auth_middleware.create_success_response({}, "Password reset successfully")
         
     except Exception as e:
         print(f"Password reset error: {e}")
-        return create_error_response("Password reset failed", 500)
+        return auth_middleware.create_error_response("Password reset failed", 500)
 
 @auth_bp.route('/validate-reset-token', methods=['GET'])
 def validate_reset_token():
@@ -231,22 +231,22 @@ def validate_reset_token():
         reset_token = request.args.get('token')
         
         if not reset_token:
-            return create_error_response("Reset token is required", 400)
+            return auth_middleware.create_error_response("Reset token is required", 400)
         
         # Validate token
         result = auth_service.validate_reset_token(reset_token)
         
         if not result['valid']:
-            return create_error_response(result['message'], 400)
+            return auth_middleware.create_error_response(result['message'], 400)
         
-        return create_success_response({
+        return auth_middleware.create_success_response({
             'valid': True,
             'email': result['email']
         }, "Reset token is valid")
         
     except Exception as e:
         print(f"Reset token validation error: {e}")
-        return create_error_response("Token validation failed", 500)
+        return auth_middleware.create_error_response("Token validation failed", 500)
 
 # Manufacturer-specific authentication
 @auth_bp.route('/manufacturer/verify-wallet', methods=['POST'])
@@ -256,7 +256,7 @@ def verify_manufacturer_wallet():
     try:
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
-            return create_error_response("Authentication required", 401)
+            return auth_middleware.create_error_response("Authentication required", 401)
         
         token = auth_header.split(' ')[1]
         data = request.get_json()
@@ -266,7 +266,7 @@ def verify_manufacturer_wallet():
         message = data.get('message')
         
         if not all([wallet_address, signature, message]):
-            return create_error_response("Wallet address, signature, and message required", 400)
+            return auth_middleware.create_error_response("Wallet address, signature, and message required", 400)
         
         # Verify wallet
         result = auth_service.verify_manufacturer_wallet(
@@ -274,16 +274,16 @@ def verify_manufacturer_wallet():
         )
         
         if not result['success']:
-            return create_error_response(result['message'], 400)
+            return auth_middleware.create_error_response(result['message'], 400)
         
-        return create_success_response({
+        return auth_middleware.create_success_response({
             'wallet_verified': True,
             'user': format_user_response(result['user'])
         }, "Wallet verified successfully")
         
     except Exception as e:
         print(f"Wallet verification error: {e}")
-        return create_error_response("Wallet verification failed", 500)
+        return auth_middleware.create_error_response("Wallet verification failed", 500)
 
 @auth_bp.route('/manufacturer/request-verification', methods=['POST'])
 @rate_limit({'per_minute': 2, 'per_hour': 10})
@@ -292,7 +292,7 @@ def request_manufacturer_verification():
     try:
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
-            return create_error_response("Authentication required", 401)
+            return auth_middleware.create_error_response("Authentication required", 401)
         
         token = auth_header.split(' ')[1]
         data = request.get_json()
@@ -301,15 +301,15 @@ def request_manufacturer_verification():
         result = auth_service.request_manufacturer_verification(token, data)
         
         if not result['success']:
-            return create_error_response(result['message'], 400)
+            return auth_middleware.create_error_response(result['message'], 400)
         
-        return create_success_response({
+        return auth_middleware.create_success_response({
             'verification_request_id': result['request_id']
         }, "Verification request submitted successfully")
         
     except Exception as e:
         print(f"Verification request error: {e}")
-        return create_error_response("Verification request failed", 500)
+        return auth_middleware.create_error_response("Verification request failed", 500)
     
 
 # ===============================

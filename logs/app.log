@@ -594,3 +594,23 @@
 2025-09-13 01:34:40,714 - config.database - INFO - Connected to database: verification_system
 2025-09-13 01:34:42,734 - services.product_service - INFO - Database indexes created successfully
 2025-09-13 01:34:42,735 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 01:56:39,784 - config.database - INFO - Connected to database: verification_system
+2025-09-13 01:56:42,609 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 01:56:42,610 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 02:03:10,289 - config.database - INFO - Connected to database: verification_system
+2025-09-13 02:03:12,513 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 02:03:12,513 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 02:11:22,290 - config.database - INFO - Connected to database: verification_system
+2025-09-13 02:11:24,786 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 02:11:24,787 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 02:11:25,170 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.43.26:5000
+2025-09-13 02:11:25,171 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-13 02:11:25,175 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 02:11:33,463 - config.database - INFO - Connected to database: verification_system
+2025-09-13 02:11:36,740 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 02:11:36,742 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 02:11:37,057 - werkzeug - WARNING -  * Debugger is active!
+2025-09-13 02:11:37,059 - werkzeug - INFO -  * Debugger PIN: 143-327-685

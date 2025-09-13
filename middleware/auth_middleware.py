@@ -73,8 +73,8 @@ class AuthMiddleware:
         response = make_response(jsonify(response_data), status_code)
         return AuthMiddleware.add_cors_headers(response)
 
-        @staticmethod
-        def validate_jwt_token(token, secret_key):
+    @staticmethod
+    def validate_jwt_token(token, secret_key):
             """Validate JWT token and return user info"""
             if not token:
                 return None, None, {'message': 'Token is missing!'}, 401
@@ -94,8 +94,8 @@ class AuthMiddleware:
             except Exception:
                 return None, None, {'message': 'Token validation failed'}, 401
 
-        @staticmethod
-        def token_required(allowed_roles):
+    @staticmethod
+    def token_required(allowed_roles):
             """Decorator for routes requiring specific roles"""
             def decorator(f):
                 @wraps(f)
@@ -110,8 +110,8 @@ class AuthMiddleware:
                 return decorated
             return decorator
 
-        @staticmethod
-        def api_key_required(manufacturer_service):
+    @staticmethod
+    def api_key_required(manufacturer_service):
             """Decorator for API key authentication"""
             def decorator(f):
                 @wraps(f)
@@ -131,8 +131,8 @@ class AuthMiddleware:
                 return decorated
             return decorator
 
-        @staticmethod
-        def rate_limit_check(f):
+    @staticmethod
+    def rate_limit_check(f):
             """Basic rate limiting decorator"""
             @wraps(f)
             def decorator(*args, **kwargs):
@@ -147,8 +147,8 @@ class AuthMiddleware:
                 return f(*args, **kwargs)
             return decorator
 
-        @staticmethod
-        def log_request_response(f):
+    @staticmethod
+    def log_request_response(f):
             """Middleware to log requests and responses"""
             @wraps(f)
             def decorator(*args, **kwargs):
@@ -175,8 +175,8 @@ class AuthMiddleware:
                     return AuthMiddleware.create_cors_response({'message': 'Internal server error'}, 500)
             return decorator
 
-        @staticmethod
-        def validate_content_type(f):
+    @staticmethod
+    def validate_content_type(f):
             """Ensure requests have proper content type for POST/PUT requests"""
             @wraps(f)
             def decorator(*args, **kwargs):
@@ -189,8 +189,8 @@ class AuthMiddleware:
                 return f(*args, **kwargs)
             return decorator
 
-        @staticmethod
-        def api_endpoint(*decorators):
+    @staticmethod
+    def api_endpoint(*decorators):
             """Combine multiple decorators for API endpoints"""
             def decorator(f):
                 for d in reversed(decorators):
@@ -198,8 +198,8 @@ class AuthMiddleware:
                 return f
             return decorator
 
-        @staticmethod
-        def authenticated_api_endpoint(allowed_roles=None):
+    @staticmethod
+    def authenticated_api_endpoint(allowed_roles=None):
             """Common decorator for authenticated API endpoints"""
             return AuthMiddleware.api_endpoint(
                 AuthMiddleware.log_request_response,
@@ -208,8 +208,8 @@ class AuthMiddleware:
                 AuthMiddleware.token_required(allowed_roles)
             )
         
-        @staticmethod
-        def token_required_with_roles(allowed_roles):
+    @staticmethod
+    def token_required_with_roles(allowed_roles):
             """Decorator for routes requiring specific roles"""
             def decorator(f):
                 @wraps(f)
@@ -224,8 +224,8 @@ class AuthMiddleware:
                 return decorated
             return decorator
 
-        @staticmethod
-        def public_api_endpoint():
+    @staticmethod
+    def public_api_endpoint():
             """Common decorator for public API endpoints"""
             return AuthMiddleware.api_endpoint(
                 AuthMiddleware.log_request_response,
@@ -233,8 +233,8 @@ class AuthMiddleware:
                 AuthMiddleware.validate_content_type
             )
 
-        @staticmethod
-        def integration_api_endpoint(manufacturer_service):
+    @staticmethod
+    def integration_api_endpoint(manufacturer_service):
             """Common decorator for integration API endpoints"""
             return AuthMiddleware.api_endpoint(
                 AuthMiddleware.log_request_response,
@@ -242,5 +242,33 @@ class AuthMiddleware:
                 AuthMiddleware.validate_content_type,
                 AuthMiddleware.api_key_required(manufacturer_service)
             )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 auth_middleware = AuthMiddleware()

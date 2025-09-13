@@ -1,6 +1,11 @@
 from typing import Dict, Any, List, Optional
 import json
 from datetime import datetime
+from flask import jsonify
+from datetime import datetime
+from typing import Any, Dict, Tuple
+from middleware.auth_middleware import auth_middleware
+
 
 def create_cors_response(data: Any = None, status_code: int = 200, headers: Dict[str, str] = None) -> Dict[str, Any]:
     """
@@ -46,12 +51,6 @@ def format_user_response(user):
         'updated_at': user.get('updated_at'),
         # Add all other fields your frontend expects
     }
-
-from flask import jsonify
-from datetime import datetime
-from typing import Any, Dict, Tuple
-from middleware.auth_middleware import auth_middleware
-
 
 def format_product_response(product_data: Dict[str, Any]) -> Dict[str, Any]:
     """

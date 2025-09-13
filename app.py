@@ -7,7 +7,6 @@ from middleware.logging_middleware import setup_logging
 from routes.route_registry import register_all_routes
 import os
 from dotenv import load_dotenv
-from routes.auth_routes import auth_bp
 
 load_dotenv()
 
