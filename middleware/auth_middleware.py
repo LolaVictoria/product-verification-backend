@@ -36,7 +36,7 @@ class AuthMiddleware:
         response = make_response(jsonify(data), status_code)
         return AuthMiddleware.add_cors_headers(response)
     
-
+    @staticmethod
     def create_success_response(data: Any = None, message: str = "Operation successful", status_code: int = 200) -> Any:
         """
         Create a standardized success response with CORS headers.
@@ -53,7 +53,8 @@ class AuthMiddleware:
         # Create response with CORS headers
         response = make_response(jsonify(response_data), status_code)
         return AuthMiddleware.add_cors_headers(response)
-
+   
+    @staticmethod
     def create_error_response(error: str, status_code: int = 400, error_code: str = None, details: Any = None) -> Any:
         """
         Create a standardized error response with CORS headers.

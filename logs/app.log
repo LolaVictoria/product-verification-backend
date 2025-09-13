@@ -614,3 +614,26 @@
 2025-09-13 02:11:36,742 - services.product_service - INFO - ProductService initialized successfully
 2025-09-13 02:11:37,057 - werkzeug - WARNING -  * Debugger is active!
 2025-09-13 02:11:37,059 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-13 02:16:40,678 - werkzeug - INFO - 127.0.0.1 - - [13/Sep/2025 02:16:40] "[35m[1mPOST /auth/login HTTP/1.1[0m" 500 -
+2025-09-13 02:24:07,881 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/middleware/auth_middleware.py', reloading
+2025-09-13 02:24:10,923 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 02:24:22,568 - config.database - INFO - Connected to database: verification_system
+2025-09-13 02:24:24,651 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 02:24:24,652 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 02:24:24,893 - werkzeug - WARNING -  * Debugger is active!
+2025-09-13 02:24:24,895 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-13 02:25:03,331 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/middleware/auth_middleware.py', reloading
+2025-09-13 02:25:06,089 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 02:25:16,123 - config.database - INFO - Connected to database: verification_system
+2025-09-13 02:25:18,340 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 02:25:18,341 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 02:25:18,587 - werkzeug - WARNING -  * Debugger is active!
+2025-09-13 02:25:18,588 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-13 02:25:35,686 - werkzeug - INFO -  * Detected change in '/home/damilola/Desktop/product-verification-backend/middleware/auth_middleware.py', reloading
+2025-09-13 02:25:38,385 - werkzeug - INFO -  * Restarting with stat
+2025-09-13 02:25:50,572 - config.database - INFO - Connected to database: verification_system
+2025-09-13 02:25:52,774 - services.product_service - INFO - Database indexes created successfully
+2025-09-13 02:25:52,775 - services.product_service - INFO - ProductService initialized successfully
+2025-09-13 02:25:53,032 - werkzeug - WARNING -  * Debugger is active!
+2025-09-13 02:25:53,034 - werkzeug - INFO -  * Debugger PIN: 143-327-685
+2025-09-13 02:25:55,967 - werkzeug - INFO - 127.0.0.1 - - [13/Sep/2025 02:25:55] "POST /auth/login HTTP/1.1" 200 -
