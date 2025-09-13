@@ -102,7 +102,7 @@ class AuthMiddleware:
                 @wraps(f)
                 def decorated(*args, **kwargs):
                     token = request.headers.get('Authorization')
-                    user_id, user_role, error, status = AuthMiddleware.validate_jwt_token(token, current_app.config['SECRET_KEY'])
+                    user_id, user_role, error, status = AuthMiddleware.validate_jwt_token(token, os.getenv('SECRET_KEY'))
                     if error:
                         return AuthMiddleware.create_cors_response(error, status)
                     if allowed_roles and user_role not in allowed_roles:
@@ -216,7 +216,7 @@ class AuthMiddleware:
                 @wraps(f)
                 def decorated(*args, **kwargs):
                     token = request.headers.get('Authorization')
-                    user_id, user_role, error, status = validate_token(token, os.getenv('SECRET_KEY'))
+                    user_id, user_role, error, status = AuthMiddleware.validate_jwt_token(token, current_app.config['SECRET_KEY'])
                     if error:
                         return AuthMiddleware.create_cors_response(error, status)
                     if allowed_roles and user_role not in allowed_roles:
