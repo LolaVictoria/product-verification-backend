@@ -6,6 +6,7 @@
 .env.production
 .env.test
 *.env
+crypto_master.key
 
 gtt.txt
 app-prev.py
