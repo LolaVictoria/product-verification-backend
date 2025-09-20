@@ -6,7 +6,7 @@ from services.analytics_service import AnalyticsService
 from services.verification_service import VerificationService
 from services.manufacturer_service import ManufacturerService
 from middleware.auth_middleware import api_key_required, validate_manufacturer_access
-from utils.formatters import create_cors_response
+# from utils.formatters import create_cors_response
 from utils.validators import validate_integration_request
 import hashlib
 import hmac

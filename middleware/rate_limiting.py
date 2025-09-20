@@ -6,7 +6,7 @@ from flask import request, jsonify, g
 from functools import wraps
 import hashlib
 import json
-from utils.helper_functions import get_db_connection
+from utils.database import get_db_connection
 
 class RateLimiter:
     """Advanced rate limiting with multiple strategies"""

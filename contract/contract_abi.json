@@ -5,68 +5,40 @@
     "type": "constructor"
   },
   {
-    "anonymous": false,
+    "inputs": [],
+    "name": "AccessControlBadConfirmation",
+    "type": "error"
+  },
+  {
     "inputs": [
       {
-        "indexed": true,
-        "internalType": "string",
-        "name": "serialNumber",
-        "type": "string"
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
       },
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "manufacturer",
-        "type": "address"
+        "internalType": "bytes32",
+        "name": "neededRole",
+        "type": "bytes32"
       }
     ],
-    "name": "DeviceRegistered",
-    "type": "event"
+    "name": "AccessControlUnauthorizedAccount",
+    "type": "error"
   },
   {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "string",
-        "name": "serialNumber",
-        "type": "string"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "isAuthentic",
-        "type": "bool"
-      }
-    ],
-    "name": "DeviceVerified",
-    "type": "event"
+    "inputs": [],
+    "name": "EnforcedPause",
+    "type": "error"
   },
   {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "manufacturer",
-        "type": "address"
-      }
-    ],
-    "name": "ManufacturerAuthorized",
-    "type": "event"
+    "inputs": [],
+    "name": "ExpectedPause",
+    "type": "error"
   },
   {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "manufacturer",
-        "type": "address"
-      }
-    ],
-    "name": "ManufacturerRevoked",
-    "type": "event"
+    "inputs": [],
+    "name": "ReentrancyGuardReentrantCall",
+    "type": "error"
   },
   {
     "anonymous": false,
@@ -82,9 +54,59 @@
         "internalType": "string",
         "name": "companyName",
         "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "publicKey",
+        "type": "string"
       }
     ],
-    "name": "ManufacturerVerified",
+    "name": "ManufacturerAdded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "Paused",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "serialNumber",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "productName",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "manufacturer",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "manufacturerName",
+        "type": "string"
+      }
+    ],
+    "name": "ProductRegistered",
     "type": "event"
   },
   {
@@ -99,33 +121,266 @@
       {
         "indexed": true,
         "internalType": "address",
-        "name": "from",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "to",
+        "name": "verifier",
         "type": "address"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "price",
+        "name": "timestamp",
         "type": "uint256"
       }
     ],
-    "name": "OwnershipTransferred",
+    "name": "ProductVerified",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "manufacturer",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "count",
+        "type": "uint256"
+      }
+    ],
+    "name": "ProductsRegisteredBatch",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "previousAdminRole",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "newAdminRole",
+        "type": "bytes32"
+      }
+    ],
+    "name": "RoleAdminChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      }
+    ],
+    "name": "RoleGranted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      }
+    ],
+    "name": "RoleRevoked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "transferId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "serialNumber",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
+    ],
+    "name": "TransferCancelled",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "transferId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "serialNumber",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "fromEmail",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "toEmail",
+        "type": "string"
+      }
+    ],
+    "name": "TransferExecuted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "transferId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "serialNumber",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "fromEmail",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "toEmail",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "executesAt",
+        "type": "uint256"
+      }
+    ],
+    "name": "TransferInitiated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "Unpaused",
     "type": "event"
   },
   {
     "inputs": [],
-    "name": "admin",
+    "name": "ADMIN_ROLE",
     "outputs": [
       {
-        "internalType": "address",
+        "internalType": "bytes32",
         "name": "",
-        "type": "address"
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "DEFAULT_ADMIN_ROLE",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MANUFACTURER_ROLE",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "TRANSFER_DELAY",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -134,12 +389,22 @@
   {
     "inputs": [
       {
-        "internalType": "address[]",
-        "name": "_manufacturers",
-        "type": "address[]"
+        "internalType": "address",
+        "name": "manufacturer",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "companyName",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "publicKey",
+        "type": "string"
       }
     ],
-    "name": "batchAuthorizeManufacturers",
+    "name": "addManufacturer",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -148,12 +413,347 @@
     "inputs": [
       {
         "internalType": "string",
-        "name": "",
+        "name": "serialNumber",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "reason",
         "type": "string"
       }
     ],
-    "name": "devices",
+    "name": "cancelTransfer",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "serialNumber",
+        "type": "string"
+      }
+    ],
+    "name": "deactivateProduct",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "serialNumber",
+        "type": "string"
+      }
+    ],
+    "name": "executeTransfer",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "serialNumber",
+        "type": "string"
+      }
+    ],
+    "name": "flagTransferAsDuress",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getContractStats",
     "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "totalManufacturerCount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalProducts",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "activePendingTransfers",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "manufacturerAddress",
+        "type": "address"
+      }
+    ],
+    "name": "getManufacturer",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "companyName",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "publicKey",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "isVerified",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "registeredAt",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ProductAuthentication.Manufacturer",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "manufacturer",
+        "type": "address"
+      }
+    ],
+    "name": "getManufacturerProducts",
+    "outputs": [
+      {
+        "internalType": "string[]",
+        "name": "",
+        "type": "string[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "serialNumber",
+        "type": "string"
+      }
+    ],
+    "name": "getPendingTransfer",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "transferId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "serialNumber",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "fromEmail",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "toEmail",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "initiatedAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "executesAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "isActive",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isDuressDetected",
+            "type": "bool"
+          },
+          {
+            "internalType": "string",
+            "name": "transferHash",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct ProductAuthentication.PendingTransfer",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "serialNumber",
+        "type": "string"
+      }
+    ],
+    "name": "getProduct",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "serialNumber",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "productName",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "manufacturerName",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "manufacturerWallet",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "digitalSignature",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "manufacturingDate",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "currentOwnerEmail",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "isAuthentic",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "verificationCount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "isActive",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct ProductAuthentication.Product",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getRoleAdmin",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "grantRole",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "hasRole",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
       {
         "internalType": "string",
         "name": "serialNumber",
@@ -161,226 +761,50 @@
       },
       {
         "internalType": "string",
-        "name": "brand",
+        "name": "fromEmail",
         "type": "string"
       },
       {
         "internalType": "string",
-        "name": "model",
+        "name": "toEmail",
         "type": "string"
       },
       {
         "internalType": "string",
-        "name": "deviceType",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "storageData",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "color",
-        "type": "string"
-      },
-      {
-        "internalType": "address",
-        "name": "manufacturer",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "currentOwner",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "manufacturingDate",
-        "type": "uint256"
-      },
-      {
-        "internalType": "string",
-        "name": "batchNumber",
-        "type": "string"
-      },
-      {
-        "internalType": "bool",
-        "name": "isAuthentic",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint256",
-        "name": "registrationTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "string",
-        "name": "specificationHash",
+        "name": "transferHash",
         "type": "string"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getAllAuthorizedManufacturers",
+    "name": "initiateTransfer",
     "outputs": [
       {
-        "internalType": "address[]",
-        "name": "",
-        "type": "address[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_serialNumber",
-        "type": "string"
-      }
-    ],
-    "name": "getDeviceDetails",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "brand",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "model",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "deviceType",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "storageData",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "color",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "manufacturerName",
-        "type": "string"
-      },
-      {
-        "internalType": "address",
-        "name": "currentOwner",
-        "type": "address"
-      },
-      {
         "internalType": "uint256",
-        "name": "manufacturingDate",
+        "name": "transferId",
         "type": "uint256"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "inputs": [
       {
         "internalType": "address",
-        "name": "_owner",
-        "type": "address"
-      }
-    ],
-    "name": "getOwnerDevices",
-    "outputs": [
-      {
-        "internalType": "string[]",
         "name": "",
-        "type": "string[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_serialNumber",
-        "type": "string"
-      }
-    ],
-    "name": "getOwnershipHistory",
-    "outputs": [
-      {
-        "internalType": "address[]",
-        "name": "previousOwners",
-        "type": "address[]"
-      },
-      {
-        "internalType": "address[]",
-        "name": "newOwners",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "transferDates",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "string[]",
-        "name": "transferReasons",
-        "type": "string[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "salePrices",
-        "type": "uint256[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_manufacturer",
         "type": "address"
-      }
-    ],
-    "name": "isManufacturerAuthorized",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
+      },
       {
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
       }
     ],
-    "name": "manufacturerList",
+    "name": "manufacturerProducts",
     "outputs": [
       {
-        "internalType": "address",
+        "internalType": "string",
         "name": "",
-        "type": "address"
+        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -402,9 +826,9 @@
         "type": "string"
       },
       {
-        "internalType": "address",
-        "name": "walletAddress",
-        "type": "address"
+        "internalType": "string",
+        "name": "publicKey",
+        "type": "string"
       },
       {
         "internalType": "bool",
@@ -413,7 +837,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "registrationTime",
+        "name": "registeredAt",
         "type": "uint256"
       }
     ],
@@ -421,156 +845,15 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "ownerDevices",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "ownershipHistory",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "previousOwner",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "newOwner",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "transferDate",
-        "type": "uint256"
-      },
-      {
-        "internalType": "string",
-        "name": "transferReason",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "salePrice",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_serialNumber",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_brand",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_model",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_deviceType",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_storage",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_color",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_batchNumber",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_specHash",
-        "type": "string"
-      }
-    ],
-    "name": "registerDevice",
+    "inputs": [],
+    "name": "pause",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_serialNumber",
-        "type": "string"
-      }
-    ],
-    "name": "revokeDeviceAuthenticity",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_manufacturer",
-        "type": "address"
-      }
-    ],
-    "name": "revokeManufacturer",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_serialNumber",
-        "type": "string"
-      }
-    ],
-    "name": "serialExists",
+    "inputs": [],
+    "name": "paused",
     "outputs": [
       {
         "internalType": "bool",
@@ -585,44 +868,56 @@
     "inputs": [
       {
         "internalType": "string",
-        "name": "_serialNumber",
+        "name": "",
         "type": "string"
-      },
+      }
+    ],
+    "name": "pendingTransfers",
+    "outputs": [
       {
-        "internalType": "address",
-        "name": "_newOwner",
-        "type": "address"
+        "internalType": "uint256",
+        "name": "transferId",
+        "type": "uint256"
       },
       {
         "internalType": "string",
-        "name": "_transferReason",
+        "name": "serialNumber",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "fromEmail",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "toEmail",
         "type": "string"
       },
       {
         "internalType": "uint256",
-        "name": "_salePrice",
+        "name": "initiatedAt",
         "type": "uint256"
-      }
-    ],
-    "name": "transferOwnership",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
+      },
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "verifiedManufacturers",
-    "outputs": [
+        "internalType": "uint256",
+        "name": "executesAt",
+        "type": "uint256"
+      },
       {
         "internalType": "bool",
-        "name": "",
+        "name": "isActive",
         "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "isDuressDetected",
+        "type": "bool"
+      },
+      {
+        "internalType": "string",
+        "name": "transferHash",
+        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -632,35 +927,20 @@
     "inputs": [
       {
         "internalType": "string",
-        "name": "_serialNumber",
+        "name": "",
         "type": "string"
       }
     ],
-    "name": "verifyDevice",
+    "name": "products",
     "outputs": [
       {
-        "internalType": "bool",
-        "name": "exists",
-        "type": "bool"
-      },
-      {
-        "internalType": "bool",
-        "name": "isAuthentic",
-        "type": "bool"
-      },
-      {
         "internalType": "string",
-        "name": "brand",
+        "name": "serialNumber",
         "type": "string"
       },
       {
         "internalType": "string",
-        "name": "model",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "deviceType",
+        "name": "productName",
         "type": "string"
       },
       {
@@ -670,8 +950,43 @@
       },
       {
         "internalType": "address",
-        "name": "currentOwner",
+        "name": "manufacturerWallet",
         "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "digitalSignature",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "manufacturingDate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "currentOwnerEmail",
+        "type": "string"
+      },
+      {
+        "internalType": "bool",
+        "name": "isAuthentic",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "createdAt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "verificationCount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "isActive",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -680,35 +995,290 @@
   {
     "inputs": [
       {
+        "internalType": "string",
+        "name": "serialNumber",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "productName",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "manufacturerName",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "digitalSignature",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "manufacturingDate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "initialOwnerEmail",
+        "type": "string"
+      }
+    ],
+    "name": "registerProduct",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "string[]",
-        "name": "_serialNumbers",
+        "name": "serialNumbers",
+        "type": "string[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "productNames",
+        "type": "string[]"
+      },
+      {
+        "internalType": "string",
+        "name": "manufacturerName",
+        "type": "string"
+      },
+      {
+        "internalType": "string[]",
+        "name": "digitalSignatures",
+        "type": "string[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "manufacturingDates",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "initialOwnerEmails",
         "type": "string[]"
       }
     ],
-    "name": "verifyMultipleDevices",
+    "name": "registerProductsBatch",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "callerConfirmation",
+        "type": "address"
+      }
+    ],
+    "name": "renounceRole",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "revokeRole",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "serialNumberExists",
     "outputs": [
       {
-        "internalType": "bool[]",
-        "name": "exists",
-        "type": "bool[]"
-      },
-      {
-        "internalType": "bool[]",
-        "name": "isAuthentic",
-        "type": "bool[]"
-      },
-      {
-        "internalType": "string[]",
-        "name": "brands",
-        "type": "string[]"
-      },
-      {
-        "internalType": "string[]",
-        "name": "models",
-        "type": "string[]"
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes4",
+        "name": "interfaceId",
+        "type": "bytes4"
+      }
+    ],
+    "name": "supportsInterface",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "totalManufacturers",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "transferIdToSerial",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "unpause",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "verificationCounts",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "serialNumber",
+        "type": "string"
+      }
+    ],
+    "name": "verifyProduct",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "isValid",
+        "type": "bool"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "serialNumber",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "productName",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "manufacturerName",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "manufacturerWallet",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "digitalSignature",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "manufacturingDate",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "currentOwnerEmail",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "isAuthentic",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "verificationCount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "isActive",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct ProductAuthentication.Product",
+        "name": "product",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "nonpayable",
     "type": "function"
   }
 ]

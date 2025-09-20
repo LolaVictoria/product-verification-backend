@@ -1,0 +1,57 @@
+Create a complete email-based ownership transfer system with uniform 24-hour delay and duress pin protection:
+
+USER MANAGEMENT SYSTEM:
+1. User registration/login with email as primary identifier
+2. Two-pin system: normal pin + duress pin
+3. User profile with: email, hashedNormalPin, hashedDuressPin, recoveryEmail, isVerified
+4. Optional wallet address linking for advanced users
+
+TRANSFER SYSTEM REQUIREMENTS:
+1. Transfer initiation:
+   - Current owner enters: new owner email + their pin
+   - System creates pending transfer record
+   - Uniform 24-hour delay for ALL transfers (no exceptions)
+   - Identical UI response regardless of pin type
+
+2. Transfer states and logic:
+   - PENDING: 24-hour countdown active
+   - CONFIRMED: Normal pin → transfer executes after 24 hours
+   - CANCELLED: Duress pin → auto-cancelled after 24 hours
+   - EXPIRED: User cancellation or timeout
+
+DURESS PIN SECURITY:
+1. Silent detection system:
+   - Recognize duress pin without indicating to user
+   - Log all actions as suspicious
+   - Send silent alerts to security team
+   - Start evidence collection process
+
+2. Security actions during duress:
+   - All transfers appear normal but flagged internally
+   - Geo-location tracking
+   - Device fingerprinting
+   - Session recording
+   - Automatic cancellation after 24 hours
+
+EMAIL CONFIRMATION SYSTEM:
+1. Transfer notifications:
+   - Immediate: "Transfer initiated, processing in 24 hours"
+   - 12 hours: "Transfer completing in 12 hours - cancel if unauthorized"
+   - 30 minutes: "Final warning - transfer completing soon"
+   - Completion: Success/failure notification
+
+2. Cancellation system:
+   - Email links to cancel transfer
+   - Dashboard cancel button
+   - SMS confirmation (optional)
+   - Customer service override
+
+BACKEND IMPLEMENTATION:
+1. Pending transfer management
+2. Pin validation and duress detection
+3. Automated 24-hour delay system
+4. Email notification service
+5. Security monitoring and alerting
+6. Evidence collection for law enforcement
+
+Include complete code for user management, transfer logic, email system, and security features.

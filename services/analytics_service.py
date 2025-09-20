@@ -1,582 +1,366 @@
-# services/analytics_service.py
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone, timedelta
+import logging
+from typing import Dict, Any, List
 from bson import ObjectId
-from typing import Dict
-from utils.date_utils import get_date_range, get_time_range_label
-from config.__init__ import DatabaseConfig
+
+from utils.database import get_db_connection
+from utils.date_helpers import get_date_range, format_analytics_response
+
+logger = logging.getLogger(__name__)
 
 class AnalyticsService:
-    """Service for handling analytics calculations and data aggregation"""
-    
     def __init__(self):
-        self.db = DatabaseConfig.get_db_connection()
-        self.users_collection = self.db.users
-        self.products_collection = self.db.products
-        self.verifications_collection = self.db.verifications
-        self.counterfeit_reports_collection = self.db.counterfeit_reports
+        self.db = get_db_connection()
     
-    def get_manufacturer_overview(self, manufacturer_id: str, time_range: str = '30d') -> Dict:
-        """Get comprehensive manufacturer analytics overview"""
+    def get_system_overview(self, time_range='7d'):
+        """Get system-wide analytics overview"""
         try:
             start_date, end_date = get_date_range(time_range)
             
-            # Get manufacturer products first
-            manufacturer_products = list(self.products_collection.find(
-                {'manufacturer_id': ObjectId(manufacturer_id)}, 
-                {'_id': 1}
-            ))
-            product_ids = [p['_id'] for p in manufacturer_products]
+            # Total counts
+            total_products = self.db.products.count_documents({})
+            total_manufacturers = self.db.users.count_documents({'role': 'manufacturer'})
+            total_verifications = self.db.verifications.count_documents({})
             
-            # Build match criteria for verifications
-            match_criteria = {
-                'created_at': {'$gte': start_date, '$lte': end_date}
+            # Recent activity
+            recent_products = self.db.products.count_documents({
+                'created_at': {'$gte': start_date}
+            })
+            
+            recent_verifications = self.db.verifications.count_documents({
+                'timestamp': {'$gte': start_date}
+            })
+            
+            recent_manufacturers = self.db.users.count_documents({
+                'role': 'manufacturer',
+                'created_at': {'$gte': start_date}
+            })
+            
+            # Blockchain vs database products
+            blockchain_products = self.db.products.count_documents({
+                'registration_type': 'blockchain_confirmed'
+            })
+            
+            database_products = total_products - blockchain_products
+            
+            # Success rates
+            successful_verifications = self.db.verifications.count_documents({
+                'result': 'authentic',
+                'timestamp': {'$gte': start_date}
+            })
+            
+            verification_success_rate = 0
+            if recent_verifications > 0:
+                verification_success_rate = (successful_verifications / recent_verifications) * 100
+            
+            overview = {
+                'totals': {
+                    'products': total_products,
+                    'manufacturers': total_manufacturers,
+                    'verifications': total_verifications
+                },
+                'recent_activity': {
+                    'products': recent_products,
+                    'manufacturers': recent_manufacturers,
+                    'verifications': recent_verifications
+                },
+                'product_distribution': {
+                    'blockchain': blockchain_products,
+                    'database': database_products
+                },
+                'performance': {
+                    'verification_success_rate': round(verification_success_rate, 1)
+                }
             }
             
-            if product_ids:
-                match_criteria['$or'] = [
-                    {'product_id': {'$in': product_ids}},
-                    {'manufacturer_id': ObjectId(manufacturer_id)}
-                ]
-            else:
-                match_criteria['manufacturer_id'] = ObjectId(manufacturer_id)
+            return format_analytics_response([overview], time_range)
             
-            # Aggregation pipeline for verification statistics
+        except Exception as e:
+            logger.error(f"Error getting system overview: {e}")
+            raise
+    
+    def get_verification_analytics(self, time_range='7d', manufacturer_id=None):
+        """Get verification analytics"""
+        try:
+            start_date, end_date = get_date_range(time_range)
+            
+            # Base query
+            base_query = {'timestamp': {'$gte': start_date, '$lte': end_date}}
+            
+            # Filter by manufacturer if specified
+            if manufacturer_id:
+                manufacturer_products = list(self.db.products.find(
+                    {'manufacturer_id': manufacturer_id},
+                    {'serial_number': 1}
+                ))
+                serial_numbers = [p['serial_number'] for p in manufacturer_products]
+                base_query['serial_number'] = {'$in': serial_numbers}
+            
+            # Verification statistics
             pipeline = [
-                {'$match': match_criteria},
-                {
-                    '$group': {
-                        '_id': None,
-                        'total_attempts': {'$sum': 1},
-                        'successful_verifications': {
-                            '$sum': {'$cond': [{'$eq': ['$is_authentic', True]}, 1, 0]}
-                        },
-                        'total_counterfeit': {
-                            '$sum': {'$cond': [{'$eq': ['$is_authentic', False]}, 1, 0]}
-                        },
-                        'avg_response_time': {'$avg': '$response_time'},
-                        'successful_transactions': {
-                            '$sum': {'$cond': [{'$eq': ['$transaction_success', True]}, 1, 0]}
-                        },
-                        'avg_confidence': {'$avg': '$confidence_score'},
-                        'unique_customers': {'$addToSet': '$customer_id'}
-                    }
-                }
+                {'$match': base_query},
+                {'$group': {
+                    '_id': '$result',
+                    'count': {'$sum': 1}
+                }}
             ]
             
-            result = list(self.verifications_collection.aggregate(pipeline))
+            verification_results = list(self.db.verifications.aggregate(pipeline))
             
-            if result:
-                stats = result[0]
-                total_attempts = stats['total_attempts']
-                successful_verifications = stats['successful_verifications']
-                total_counterfeit = stats['total_counterfeit']
+            # Process results
+            authentic_count = 0
+            counterfeit_count = 0
+            total_verifications = 0
+            
+            for result in verification_results:
+                count = result['count']
+                total_verifications += count
                 
-                # Calculate KPIs with safe division
-                verification_accuracy = (successful_verifications / total_attempts * 100) if total_attempts > 0 else 0
-                counterfeit_rate = (total_counterfeit / total_attempts * 100) if total_attempts > 0 else 0
-                transaction_efficiency = (stats['successful_transactions'] / total_attempts * 100) if total_attempts > 0 else 0
-                
-                return {
-                    'kpis': {
-                        'totalAttempts': total_attempts,
-                        'successfulVerifications': successful_verifications,
-                        'totalCounterfeit': total_counterfeit,
-                        'verificationAccuracy': round(verification_accuracy, 1),
-                        'counterfeitRate': round(counterfeit_rate, 1),
-                        'avgResponseTime': round(stats['avg_response_time'] or 0, 2),
-                        'transactionEfficiency': round(transaction_efficiency, 1),
-                        'avgConfidenceScore': round(stats['avg_confidence'] or 0, 1),
-                        'uniqueCustomers': len(stats['unique_customers'])
+                if result['_id'] == 'authentic':
+                    authentic_count = count
+                elif result['_id'] == 'counterfeit':
+                    counterfeit_count = count
+            
+            # Calculate rates
+            authenticity_rate = (authentic_count / total_verifications * 100) if total_verifications > 0 else 0
+            counterfeit_rate = (counterfeit_count / total_verifications * 100) if total_verifications > 0 else 0
+            
+            # Daily verification trends
+            daily_pipeline = [
+                {'$match': base_query},
+                {'$group': {
+                    '_id': {
+                        'date': {'$dateToString': {'format': '%Y-%m-%d', 'date': '$timestamp'}},
+                        'result': '$result'
                     },
-                    'dateRange': {
-                        'start': start_date.isoformat(),
-                        'end': end_date.isoformat(),
-                        'label': get_time_range_label(time_range)
-                    }
-                }
-            else:
-                # Return empty stats if no data found
-                return {
-                    'kpis': {
-                        'totalAttempts': 0,
-                        'successfulVerifications': 0,
-                        'totalCounterfeit': 0,
-                        'verificationAccuracy': 0,
-                        'counterfeitRate': 0,
-                        'avgResponseTime': 0,
-                        'transactionEfficiency': 0,
-                        'avgConfidenceScore': 0,
-                        'uniqueCustomers': 0
-                    },
-                    'dateRange': {
-                        'start': start_date.isoformat(),
-                        'end': end_date.isoformat(),
-                        'label': get_time_range_label(time_range)
-                    }
-                }
+                    'count': {'$sum': 1}
+                }},
+                {'$sort': {'_id.date': 1}}
+            ]
+            
+            daily_data = list(self.db.verifications.aggregate(daily_pipeline))
+            
+            analytics = {
+                'summary': {
+                    'total_verifications': total_verifications,
+                    'authentic_count': authentic_count,
+                    'counterfeit_count': counterfeit_count,
+                    'authenticity_rate': round(authenticity_rate, 1),
+                    'counterfeit_rate': round(counterfeit_rate, 1)
+                },
+                'daily_trends': self._format_daily_trends(daily_data)
+            }
+            
+            return format_analytics_response([analytics], time_range)
+            
+        except Exception as e:
+            logger.error(f"Error getting verification analytics: {e}")
+            raise
+    
+    def get_manufacturer_analytics(self, manufacturer_id, time_range='7d'):
+        """Get analytics for specific manufacturer"""
+        try:
+            start_date, end_date = get_date_range(time_range)
+            
+            # Get manufacturer info
+            manufacturer = self.db.users.find_one({'_id': ObjectId(manufacturer_id)})
+            if not manufacturer:
+                raise ValueError("Manufacturer not found")
+            
+            # Product statistics
+            total_products = self.db.products.count_documents({
+                'manufacturer_id': manufacturer_id
+            })
+            
+            recent_products = self.db.products.count_documents({
+                'manufacturer_id': manufacturer_id,
+                'created_at': {'$gte': start_date}
+            })
+            
+            # Get product serial numbers for verification lookup
+            manufacturer_products = list(self.db.products.find(
+                {'manufacturer_id': manufacturer_id},
+                {'serial_number': 1}
+            ))
+            serial_numbers = [p['serial_number'] for p in manufacturer_products]
+            
+            # Verification statistics
+            if serial_numbers:
+                total_verifications = self.db.verifications.count_documents({
+                    'serial_number': {'$in': serial_numbers}
+                })
                 
-        except Exception as e:
-            raise Exception(f"Error getting manufacturer overview: {str(e)}")
-    
-    def get_verification_trends(self, manufacturer_id: str, time_range: str = '30d') -> Dict:
-        """Get daily verification trends for manufacturer"""
-        try:
-            start_date, end_date = get_date_range(time_range)
-            
-            # Get manufacturer products
-            manufacturer_products = list(self.products_collection.find(
-                {'manufacturer_id': ObjectId(manufacturer_id)}, 
-                {'_id': 1}
-            ))
-            product_ids = [p['_id'] for p in manufacturer_products]
-            
-            # Build match criteria
-            match_criteria = {
-                'created_at': {'$gte': start_date, '$lte': end_date}
-            }
-            
-            if product_ids:
-                match_criteria['$or'] = [
-                    {'product_id': {'$in': product_ids}},
-                    {'manufacturer_id': ObjectId(manufacturer_id)}
-                ]
+                recent_verifications = self.db.verifications.count_documents({
+                    'serial_number': {'$in': serial_numbers},
+                    'timestamp': {'$gte': start_date}
+                })
+                
+                authentic_verifications = self.db.verifications.count_documents({
+                    'serial_number': {'$in': serial_numbers},
+                    'result': 'authentic',
+                    'timestamp': {'$gte': start_date}
+                })
             else:
-                match_criteria['manufacturer_id'] = ObjectId(manufacturer_id)
+                total_verifications = recent_verifications = authentic_verifications = 0
             
-            # Daily aggregation pipeline
-            pipeline = [
-                {'$match': match_criteria},
-                {
-                    '$group': {
-                        '_id': {
-                            '$dateToString': {
-                                'format': '%Y-%m-%d',
-                                'date': '$created_at'
-                            }
-                        },
-                        'total_attempts': {'$sum': 1},
-                        'successful': {
-                            '$sum': {'$cond': [{'$eq': ['$is_authentic', True]}, 1, 0]}
-                        },
-                        'counterfeit': {
-                            '$sum': {'$cond': [{'$eq': ['$is_authentic', False]}, 1, 0]}
-                        },
-                        'avg_response_time': {'$avg': '$response_time'},
-                        'avg_confidence': {'$avg': '$confidence_score'}
-                    }
-                },
-                {'$sort': {'_id': 1}}
+            # Registration type breakdown
+            registration_pipeline = [
+                {'$match': {'manufacturer_id': manufacturer_id}},
+                {'$group': {
+                    '_id': '$registration_type',
+                    'count': {'$sum': 1}
+                }}
             ]
             
-            daily_stats = list(self.verifications_collection.aggregate(pipeline))
+            registration_breakdown = list(self.db.products.aggregate(registration_pipeline))
             
-            verification_trends = []
-            for stat in daily_stats:
-                verification_trends.append({
-                    'date': stat['_id'],
-                    'totalAttempts': stat['total_attempts'],
-                    'successful': stat['successful'],
-                    'counterfeit': stat['counterfeit'],
-                    'responseTime': round(stat['avg_response_time'] or 0, 2),
-                    'confidence': round(stat['avg_confidence'] or 0, 1)
-                })
+            # Device type breakdown
+            device_pipeline = [
+                {'$match': {'manufacturer_id': manufacturer_id}},
+                {'$group': {
+                    '_id': '$device_type',
+                    'count': {'$sum': 1}
+                }},
+                {'$sort': {'count': -1}},
+                {'$limit': 10}
+            ]
             
-            return {'verificationTrends': verification_trends}
+            device_breakdown = list(self.db.products.aggregate(device_pipeline))
             
-        except Exception as e:
-            raise Exception(f"Error getting verification trends: {str(e)}")
-    
-    def get_device_analytics(self, manufacturer_id: str, time_range: str = '30d') -> Dict:
-        """Get device analytics for manufacturer"""
-        try:
-            start_date, end_date = get_date_range(time_range)
-            recent_threshold = datetime.now(timezone.utc) - timedelta(days=7)
-            
-            # Get manufacturer products
-            manufacturer_products = list(self.products_collection.find(
-                {'manufacturer_id': ObjectId(manufacturer_id)}, 
-                {'_id': 1, 'device_type': 1, 'brand': 1, 'model': 1}
-            ))
-            product_ids = [p['_id'] for p in manufacturer_products]
-            
-            if not product_ids:
-                return {'deviceVerifications': []}
-            
-            # Build match criteria
-            match_criteria = {
-                'created_at': {'$gte': start_date, '$lte': end_date},
-                '$or': [
-                    {'product_id': {'$in': product_ids}},
-                    {'manufacturer_id': ObjectId(manufacturer_id)}
-                ]
+            analytics = {
+                'manufacturer_info': {
+                    'id': manufacturer_id,
+                    'company_name': manufacturer.get('current_company_name'),
+                    'verification_status': manufacturer.get('verification_status')
+                },
+                'products': {
+                    'total': total_products,
+                    'recent': recent_products,
+                    'registration_breakdown': registration_breakdown,
+                    'device_breakdown': device_breakdown
+                },
+                'verifications': {
+                    'total': total_verifications,
+                    'recent': recent_verifications,
+                    'authentic': authentic_verifications,
+                    'success_rate': round((authentic_verifications / recent_verifications * 100) if recent_verifications > 0 else 0, 1)
+                }
             }
             
-            # Device analytics pipeline
-            pipeline = [
-                {'$match': match_criteria},
-                {
-                    '$lookup': {
-                        'from': 'products',
-                        'localField': 'product_id',
-                        'foreignField': '_id',
-                        'as': 'product'
-                    }
-                },
-                {
-                    '$lookup': {
-                        'from': 'counterfeit_reports',
-                        'localField': '_id',
-                        'foreignField': 'verification_id',
-                        'as': 'counterfeit_report'
-                    }
-                },
-                {
-                    '$addFields': {
-                        'product_data': {'$arrayElemAt': ['$product', 0]},
-                        'counterfeit_report_data': {'$arrayElemAt': ['$counterfeit_report', 0]},
-                        'final_device_category': {
-                            '$switch': {
-                                'branches': [
-                                    {
-                                        'case': {'$ne': ['$device_category', None]},
-                                        'then': '$device_category'
-                                    },
-                                    {
-                                        'case': {'$ne': ['$product_data.device_type', None]},
-                                        'then': '$product_data.device_type'
-                                    },
-                                    {
-                                        'case': {'$ne': ['$counterfeit_report_data.device_category', None]},
-                                        'then': '$counterfeit_report_data.device_category'
-                                    }
-                                ],
-                                'default': 'Unknown'
-                            }
-                        }
-                    }
-                },
-                {
-                    '$group': {
-                        '_id': '$final_device_category',
-                        'total_verifications': {'$sum': 1},
-                        'authentic': {
-                            '$sum': {'$cond': [{'$eq': ['$is_authentic', True]}, 1, 0]}
-                        },
-                        'counterfeit': {
-                            '$sum': {'$cond': [{'$eq': ['$is_authentic', False]}, 1, 0]}
-                        },
-                        'unique_customers': {'$addToSet': '$customer_id'},
-                        'avg_confidence': {'$avg': '$confidence_score'},
-                        'recent_verifications': {
-                            '$sum': {
-                                '$cond': [
-                                    {'$gte': ['$created_at', recent_threshold]},
-                                    1,
-                                    0
-                                ]
-                            }
-                        }
-                    }
-                },
-                {
-                    '$addFields': {
-                        'customer_count': {'$size': '$unique_customers'},
-                        'authenticity_rate': {
-                            '$multiply': [
-                                {'$divide': ['$authentic', '$total_verifications']},
-                                100
-                            ]
-                        }
-                    }
-                },
-                {'$sort': {'total_verifications': -1}}
-            ]
-            
-            device_stats = list(self.verifications_collection.aggregate(pipeline))
-            
-            colors = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6B7280']
-            
-            device_verifications = []
-            for i, stat in enumerate(device_stats):
-                device_name = stat['_id'] if stat['_id'] and stat['_id'] != 'Unknown' else 'Unknown Device'
-                device_verifications.append({
-                    'name': device_name,
-                    'verifications': stat['total_verifications'],
-                    'authentic': stat['authentic'],
-                    'counterfeit': stat['counterfeit'],
-                    'color': colors[i % len(colors)],
-                    'customerCount': stat['customer_count'],
-                    'authenticityRate': round(stat['authenticity_rate'], 1),
-                    'avgConfidence': round(stat['avg_confidence'] or 0, 1),
-                    'recentVerifications': stat['recent_verifications']
-                })
-            
-            return {'deviceVerifications': device_verifications}
+            return format_analytics_response([analytics], time_range)
             
         except Exception as e:
-            raise Exception(f"Error getting device analytics: {str(e)}")
+            logger.error(f"Error getting manufacturer analytics: {e}")
+            raise
     
-    def get_verification_logs(self, manufacturer_id: str, limit: int = 50, time_range: str = '30d') -> Dict:
-        """Get manufacturer's verification logs"""
+    def get_product_performance(self, time_range='30d', limit=20):
+        """Get top performing products by verification count"""
         try:
             start_date, end_date = get_date_range(time_range)
             
-            # Enhanced pipeline to get verification logs for manufacturer
+            # Get verification counts per product
             pipeline = [
-                {
-                    '$match': {
-                        'manufacturer_id': ObjectId(manufacturer_id),
-                        'created_at': {'$gte': start_date}
+                {'$match': {'timestamp': {'$gte': start_date, '$lte': end_date}}},
+                {'$group': {
+                    '_id': '$serial_number',
+                    'verification_count': {'$sum': 1},
+                    'authentic_count': {
+                        '$sum': {'$cond': [{'$eq': ['$result', 'authentic']}, 1, 0]}
+                    },
+                    'counterfeit_count': {
+                        '$sum': {'$cond': [{'$eq': ['$result', 'counterfeit']}, 1, 0]}
                     }
-                },
-                {
-                    '$lookup': {
-                        'from': 'counterfeit_reports',
-                        'localField': '_id',
-                        'foreignField': 'verification_id',
-                        'as': 'counterfeit_report'
-                    }
-                },
-                {
-                    '$lookup': {
-                        'from': 'products',
-                        'localField': 'product_id',
-                        'foreignField': '_id',
-                        'as': 'product'
-                    }
-                },
-                {
-                    '$lookup': {
-                        'from': 'users',
-                        'localField': 'customer_id',
-                        'foreignField': '_id',
-                        'as': 'customer'
-                    }
-                },
-                {
-                    '$addFields': {
-                        'counterfeit_report_data': {'$arrayElemAt': ['$counterfeit_report', 0]},
-                        'product_data': {'$arrayElemAt': ['$product', 0]},
-                        'customer_data': {'$arrayElemAt': ['$customer', 0]}
-                    }
-                },
-                {
-                    '$addFields': {
-                        'final_device_name': {
-                            '$switch': {
-                                'branches': [
-                                    {
-                                        'case': {'$ne': ['$device_name', None]},
-                                        'then': '$device_name'
-                                    },
-                                    {
-                                        'case': {'$ne': ['$counterfeit_report_data.product_name', None]},
-                                        'then': '$counterfeit_report_data.product_name'
-                                    },
-                                    {
-                                        'case': {'$ne': ['$product_data', None]},
-                                        'then': {
-                                            '$concat': [
-                                                {'$ifNull': ['$product_data.brand', '']},
-                                                ' ',
-                                                {'$ifNull': ['$product_data.model', '']}
-                                            ]
-                                        }
-                                    }
-                                ],
-                                'default': 'Unknown Product'
-                            }
-                        },
-                        'final_device_category': {
-                            '$switch': {
-                                'branches': [
-                                    {
-                                        'case': {'$ne': ['$device_category', None]},
-                                        'then': '$device_category'
-                                    },
-                                    {
-                                        'case': {'$ne': ['$counterfeit_report_data.device_category', None]},
-                                        'then': '$counterfeit_report_data.device_category'
-                                    },
-                                    {
-                                        'case': {'$ne': ['$product_data.device_type', None]},
-                                        'then': '$product_data.device_type'
-                                    }
-                                ],
-                                'default': 'Unknown Category'
-                            }
-                        }
-                    }
-                },
-                {'$sort': {'created_at': -1}},
+                }},
+                {'$sort': {'verification_count': -1}},
                 {'$limit': limit}
             ]
             
-            verifications = list(self.verifications_collection.aggregate(pipeline))
+            verification_stats = list(self.db.verifications.aggregate(pipeline))
             
-            verification_logs = []
-            for verification in verifications:
-                # Clean up device name if it's just spaces
-                device_name = verification.get('final_device_name', 'Unknown Product').strip()
-                if not device_name or device_name == ' ':
-                    device_name = 'Unknown Product'
+            # Enhance with product details
+            performance_data = []
+            for stat in verification_stats:
+                product = self.db.products.find_one({
+                    'serial_number': stat['_id']
+                })
                 
-                # Get customer info
-                customer_data = verification.get('customer_data', {})
-                customer_name = customer_data.get('name', 'Unknown Customer')
-                customer_email = customer_data.get('primary_email', 'Unknown Email')
-                
-                log_entry = {
-                    'serialNumber': verification['serial_number'],
-                    'deviceName': device_name,
-                    'deviceCategory': verification.get('final_device_category', 'Unknown Category'),
-                    'status': 'Authentic' if verification['is_authentic'] else 'Counterfeit',
-                    'date': verification['created_at'].strftime('%Y-%m-%d'),
-                    'time': f"{verification.get('response_time', 0):.2f}s",
-                    'confidence': round(verification.get('confidence_score', 0), 1),
-                    'verificationMethod': verification.get('verification_method', 'manual'),
-                    'customerId': str(verification['customer_id']) if verification.get('customer_id') else None,
-                    'customerName': customer_name,
-                    'customerEmail': customer_email,
-                    'verificationId': str(verification['_id'])
-                }
-                
-                # Add counterfeit ID if this verification has a counterfeit report
-                if verification.get('counterfeit_report_data'):
-                    log_entry['counterfeitId'] = str(verification['counterfeit_report_data']['_id'])
-                
-                verification_logs.append(log_entry)
+                if product:
+                    manufacturer = self.db.users.find_one({
+                        '_id': ObjectId(product['manufacturer_id'])
+                    })
+                    
+                    performance_data.append({
+                        'serial_number': stat['_id'],
+                        'product_name': f"{product.get('brand', '')} {product.get('model', '')}".strip(),
+                        'manufacturer_name': manufacturer.get('current_company_name') if manufacturer else 'Unknown',
+                        'verification_count': stat['verification_count'],
+                        'authentic_count': stat['authentic_count'],
+                        'counterfeit_count': stat['counterfeit_count'],
+                        'authenticity_rate': round((stat['authentic_count'] / stat['verification_count'] * 100), 1)
+                    })
             
-            return {'verificationLogs': verification_logs}
+            return format_analytics_response(performance_data, time_range)
             
         except Exception as e:
-            raise Exception(f"Error getting verification logs: {str(e)}")
+            logger.error(f"Error getting product performance: {e}")
+            raise
     
-    def get_customer_analytics(self, customer_id: str, time_range: str = '30d') -> Dict:
-        """Get customer's personal analytics"""
+    def get_geographic_analytics(self, time_range='30d'):
+        """Get geographic distribution of verifications"""
         try:
             start_date, end_date = get_date_range(time_range)
             
-            # Customer verification history
-            history_pipeline = [
-                {
-                    '$match': {
-                        'customer_id': ObjectId(customer_id),
-                        'created_at': {'$gte': start_date}
-                    }
-                },
-                {
-                    '$group': {
-                        '_id': {
-                            '$dateToString': {
-                                'format': '%Y-%m-%d',
-                                'date': '$created_at'
-                            }
-                        },
-                        'verifications': {'$sum': 1},
-                        'authentic': {
-                            '$sum': {'$cond': [{'$eq': ['$is_authentic', True]}, 1, 0]}
-                        },
-                        'counterfeit': {
-                            '$sum': {'$cond': [{'$eq': ['$is_authentic', False]}, 1, 0]}
-                        },
-                        'avg_time': {'$avg': '$response_time'}
-                    }
-                },
-                {'$sort': {'_id': 1}}
+            # Group by country/region (based on IP if available)
+            pipeline = [
+                {'$match': {'timestamp': {'$gte': start_date, '$lte': end_date}}},
+                {'$group': {
+                    '_id': '$country',  # Assuming you store country from IP
+                    'verification_count': {'$sum': 1},
+                    'unique_ips': {'$addToSet': '$ip_address'}
+                }},
+                {'$project': {
+                    'country': '$_id',
+                    'verification_count': 1,
+                    'unique_users': {'$size': '$unique_ips'}
+                }},
+                {'$sort': {'verification_count': -1}},
+                {'$limit': 20}
             ]
             
-            verification_history = list(self.verifications_collection.aggregate(history_pipeline))
+            geographic_data = list(self.db.verifications.aggregate(pipeline))
             
-            customer_history = []
-            for history in verification_history:
-                customer_history.append({
-                    'date': history['_id'],
-                    'verifications': history['verifications'],
-                    'authentic': history['authentic'],
-                    'counterfeit': history['counterfeit'],
-                    'avgTime': round(history['avg_time'] or 0, 2)
-                })
-            
-            return {'customerHistory': customer_history}
+            return format_analytics_response(geographic_data, time_range)
             
         except Exception as e:
-            raise Exception(f"Error getting customer analytics: {str(e)}")
+            logger.error(f"Error getting geographic analytics: {e}")
+            raise
     
-    def get_system_stats(self) -> Dict:
-        """Get system-wide verification statistics"""
-        try:
-            # Count total products
-            total_devices = self.products_collection.count_documents({})
-            blockchain_devices = self.products_collection.count_documents({"blockchain_verified": True})
+    def _format_daily_trends(self, daily_data):
+        """Format daily trend data"""
+        trends = {}
+        
+        for entry in daily_data:
+            date = entry['_id']['date']
+            result = entry['_id']['result']
+            count = entry['count']
             
-            # Count verification logs
-            total_verifications = self.verifications_collection.count_documents({})
+            if date not in trends:
+                trends[date] = {'authentic': 0, 'counterfeit': 0, 'total': 0}
             
-            # Calculate authenticity rate
-            authentic_verifications = self.verifications_collection.count_documents({"is_authentic": True})
-            authenticity_rate = int((authentic_verifications / total_verifications * 100)) if total_verifications > 0 else 0
-            
-            return {
-                "total_devices": total_devices,
-                "blockchain_devices": blockchain_devices,
-                "total_verifications": total_verifications,
-                "authenticity_rate": authenticity_rate
-            }
-            
-        except Exception as e:
-            return {
-                "total_devices": 0,
-                "blockchain_devices": 0,
-                "total_verifications": 0,
-                "authenticity_rate": 0
-            }
-    
-    def record_verification_attempt(self, verification_data: Dict) -> str:
-        """Record a verification attempt"""
-        try:
-            serial_number = verification_data.get('serialNumber')
-            customer_id = verification_data.get('customerId')
-            is_authentic = verification_data.get('isAuthentic', False)
-            response_time = verification_data.get('responseTime', 0)
-            confidence_score = verification_data.get('confidenceScore', 0)
-            verification_method = verification_data.get('verificationMethod', 'manual')
-            
-            # Enhanced device information
-            device_name = verification_data.get('deviceName', 'Unknown Product')
-            device_category = verification_data.get('deviceCategory', 'Unknown Category')
-            brand = verification_data.get('brand', 'Unknown Brand')
-            
-            # Find product if it exists
-            product = None
-            if is_authentic:
-                product = self.products_collection.find_one({'serial_number': serial_number})
-            
-            verification_doc = {
-                'serial_number': serial_number,
-                'product_id': product['_id'] if product else None,
-                'customer_id': ObjectId(customer_id) if customer_id else None,
-                'manufacturer_id': product['manufacturer_id'] if product else None,
-                'is_authentic': is_authentic,
-                'confidence_score': confidence_score,
-                'response_time': response_time,
-                'transaction_success': is_authentic,
-                'customer_satisfaction_rating': 5 if is_authentic else 2,
-                'verification_method': verification_method,
-                
-                # Enhanced device information fields
-                'device_name': device_name,
-                'device_category': device_category,
-                'brand': brand,
-                
-                'created_at': datetime.now(timezone.utc),
-                'updated_at': datetime.now(timezone.utc)
-            }
-            
-            result = self.verifications_collection.insert_one(verification_doc)
-            return str(result.inserted_id)
-            
-        except Exception as e:
-            raise Exception(f"Error recording verification attempt: {str(e)}")
+            trends[date][result] = count
+            trends[date]['total'] += count
+        
+        # Convert to list format
+        formatted_trends = []
+        for date, data in sorted(trends.items()):
+            formatted_trends.append({
+                'date': date,
+                'authentic': data['authentic'],
+                'counterfeit': data['counterfeit'],
+                'total': data['total']
+            })
+        
+        return formatted_trends
 
-analytic_service = AnalyticsService
+
+analytics_service = AnalyticsService()

@@ -1,467 +1,433 @@
-from datetime import datetime
-from bson import ObjectId
-from pymongo import MongoClient
-from pymongo.errors import DuplicateKeyError, PyMongoError
+# services/product_service.py
 import logging
-import os
-from typing import Dict, List, Optional, Any
+import secrets
+import string
+from datetime import datetime, timezone, timedelta
+from bson import ObjectId
+from typing import Dict, Any, List, Optional
+
+from utils.database import get_db_connection
 
 logger = logging.getLogger(__name__)
 
 class ProductService:
-    """Service class for handling product-related database operations"""
+    def __init__(self):
+        self.db = get_db_connection()
     
-    def __init__(self, db_connection=None):
-        """Initialize the ProductService with database connection"""
-        if db_connection:
-            self.db = db_connection
+    def generate_serial_number(self, manufacturer_prefix: str = None) -> str:
+        """Generate a unique serial number"""
+        if manufacturer_prefix:
+            prefix = manufacturer_prefix[:3].upper()
         else:
-            # Initialize MongoDB connection
-            mongo_uri = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/')
-            db_name = os.getenv('DATABASE_NAME', 'product_registry')
-            
-            try:
-                self.client = MongoClient(mongo_uri)
-                self.db = self.client[db_name]
-                self.products = self.db.products
-                
-                # Create indexes for better performance
-                self._create_indexes()
-                
-                logger.info("ProductService initialized successfully")
-            except Exception as e:
-                logger.error(f"Failed to initialize ProductService: {e}")
-                raise
+            prefix = "PRD"
+        
+        # Generate random alphanumeric string
+        random_part = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(12))
+        
+        return f"{prefix}-{random_part}"
     
-    def _create_indexes(self):
-        """Create necessary indexes for the products collection"""
+    def get_manufacturer_products(self, manufacturer_id: str, page: int = 1, limit: int = 20, filter_type: str = 'all') -> Dict[str, Any]:
+        """Get manufacturer's products with pagination and filtering"""
         try:
-            # Create unique index on serial_number
-            self.products.create_index("serial_number", unique=True)
+            if not ObjectId.is_valid(manufacturer_id):
+                return {'success': False, 'message': 'Invalid manufacturer ID'}
             
-            # Create indexes for common queries
-            self.products.create_index("manufacturer_id")
-            self.products.create_index("brand")
-            self.products.create_index("device_type")
-            self.products.create_index("created_at")
-            
-            # Create text index for search functionality
-            self.products.create_index([
-                ("serial_number", "text"),
-                ("brand", "text"),
-                ("model", "text"),
-                ("device_type", "text")
-            ])
-            
-            logger.info("Database indexes created successfully")
-        except Exception as e:
-            logger.warning(f"Error creating indexes: {e}")
-    
-    def register_product(self, product_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Register a new product in the database"""
-        try:
-            # Check if product with serial number already exists
-            existing_product = self.products.find_one({
-                'serial_number': product_data['serial_number']
-            })
-            
-            if existing_product:
-                return {
-                    'success': False,
-                    'error': 'Product with this serial number already exists',
-                    'error_code': 'DUPLICATE_SERIAL'
-                }
-            
-            # Insert the product
-            result = self.products.insert_one(product_data)
-            
-            if result.inserted_id:
-                # Retrieve the inserted product
-                product = self.products.find_one({'_id': result.inserted_id})
-                
-                logger.info(f"Product registered successfully: {product_data['serial_number']}")
-                return {
-                    'success': True,
-                    'product': product,
-                    'product_id': str(result.inserted_id)
-                }
-            else:
-                return {
-                    'success': False,
-                    'error': 'Failed to register product'
-                }
-                
-        except DuplicateKeyError:
-            return {
-                'success': False,
-                'error': 'Product with this serial number already exists',
-                'error_code': 'DUPLICATE_SERIAL'
-            }
-        except Exception as e:
-            logger.error(f"Error registering product: {e}")
-            return {
-                'success': False,
-                'error': 'Database error occurred while registering product'
-            }
-    
-    def get_product_by_id(self, product_id: ObjectId) -> Dict[str, Any]:
-        """Get a product by its ID"""
-        try:
-            product = self.products.find_one({'_id': product_id})
-            
-            if product:
-                return {
-                    'success': True,
-                    'product': product
-                }
-            else:
-                return {
-                    'success': False,
-                    'error': 'Product not found'
-                }
-                
-        except Exception as e:
-            logger.error(f"Error getting product by ID: {e}")
-            return {
-                'success': False,
-                'error': 'Database error occurred while fetching product'
-            }
-    
-    def get_product_by_serial(self, serial_number: str) -> Dict[str, Any]:
-        """Get a product by its serial number"""
-        try:
-            product = self.products.find_one({'serial_number': serial_number})
-            
-            if product:
-                return {
-                    'success': True,
-                    'product': product
-                }
-            else:
-                return {
-                    'success': False,
-                    'error': 'Product not found'
-                }
-                
-        except Exception as e:
-            logger.error(f"Error getting product by serial: {e}")
-            return {
-                'success': False,
-                'error': 'Database error occurred while fetching product'
-            }
-    
-    def get_products_by_manufacturer(self, manufacturer_id: ObjectId, page: int = 1, limit: int = 10) -> Dict[str, Any]:
-        """Get all products for a specific manufacturer with pagination"""
-        try:
+            manufacturer_obj_id = ObjectId(manufacturer_id)
             skip = (page - 1) * limit
             
-            # Get products with pagination
-            products = list(self.products.find(
-                {'manufacturer_id': manufacturer_id}
+            # Build filter
+            filter_dict = {'manufacturer_id': manufacturer_obj_id}
+            
+            if filter_type == 'verified':
+                filter_dict['blockchain_status'] = 'confirmed'
+            elif filter_type == 'pending':
+                filter_dict['blockchain_status'] = 'pending'
+            elif filter_type == 'failed':
+                filter_dict['blockchain_status'] = 'failed'
+            
+            # Get products
+            products = list(self.db.products.find(
+                filter_dict,
+                {
+                    'serial_number': 1,
+                    'brand': 1,
+                    'model': 1,
+                    'product_type': 1,
+                    'blockchain_status': 1,
+                    'created_at': 1,
+                    'blockchain_hash': 1
+                }
             ).sort('created_at', -1).skip(skip).limit(limit))
             
             # Get total count
-            total = self.products.count_documents({'manufacturer_id': manufacturer_id})
+            total = self.db.products.count_documents(filter_dict)
+            
+            # Convert ObjectIds to strings
+            for product in products:
+                product['_id'] = str(product['_id'])
             
             return {
                 'success': True,
-                'products': products,
-                'total': total,
-                'page': page,
-                'limit': limit,
-                'has_more': (skip + limit) < total
+                'data': {
+                    'products': products,
+                    'total': total,
+                    'page': page,
+                    'limit': limit,
+                    'pages': (total + limit - 1) // limit
+                }
             }
             
         except Exception as e:
             logger.error(f"Error getting manufacturer products: {e}")
-            return {
-                'success': False,
-                'error': 'Database error occurred while fetching products'
-            }
+            return {'success': False, 'message': 'Failed to get products'}
     
-    def update_product(self, product_id: ObjectId, update_data: Dict[str, Any], manufacturer_id: ObjectId) -> Dict[str, Any]:
-        """Update a product (only by its manufacturer)"""
+    def register_product(self, manufacturer_id: str, product_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Register a new product"""
         try:
-            # First check if product exists and belongs to manufacturer
-            existing_product = self.products.find_one({
-                '_id': product_id,
-                'manufacturer_id': manufacturer_id
+            if not ObjectId.is_valid(manufacturer_id):
+                return {'success': False, 'message': 'Invalid manufacturer ID'}
+            
+            manufacturer_obj_id = ObjectId(manufacturer_id)
+            
+            # Check if manufacturer exists and is verified
+            manufacturer = self.db.users.find_one({
+                '_id': manufacturer_obj_id,
+                'role': 'manufacturer',
+                'verification_status': 'verified'
             })
             
-            if not existing_product:
-                return {
-                    'success': False,
-                    'error': 'Product not found or you do not have permission to update it'
+            if not manufacturer:
+                return {'success': False, 'message': 'Manufacturer not found or not verified'}
+            
+            # Generate serial number if not provided
+            serial_number = product_data.get('serial_number')
+            if not serial_number:
+                company_name = manufacturer.get('current_company_name', '')
+                prefix = company_name[:3].upper() if company_name else None
+                serial_number = self.generate_serial_number(prefix)
+            
+            # Check if serial number already exists
+            existing_product = self.db.products.find_one({'serial_number': serial_number})
+            if existing_product:
+                return {'success': False, 'message': 'Serial number already exists'}
+            
+            # Create product document
+            product_doc = {
+                'manufacturer_id': manufacturer_obj_id,
+                'serial_number': serial_number,
+                'brand': product_data['brand'],
+                'model': product_data['model'],
+                'product_type': product_data.get('product_type', 'general'),
+                'description': product_data.get('description', ''),
+                'specifications': product_data.get('specifications', {}),
+                'manufacturing_date': product_data.get('manufacturing_date'),
+                'batch_number': product_data.get('batch_number'),
+                'blockchain_status': 'pending',
+                'created_at': datetime.now(timezone.utc),
+                'updated_at': datetime.now(timezone.utc)
+            }
+            
+            # Insert product
+            result = self.db.products.insert_one(product_doc)
+            product_id = str(result.inserted_id)
+            
+            return {
+                'success': True,
+                'message': 'Product registered successfully',
+                'product_id': product_id,
+                'serial_number': serial_number
+            }
+            
+        except Exception as e:
+            logger.error(f"Error registering product: {e}")
+            return {'success': False, 'message': 'Failed to register product'}
+    
+    def confirm_blockchain_registration(self, manufacturer_id: str, product_id: str, blockchain_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Confirm blockchain registration for a product"""
+        try:
+            if not ObjectId.is_valid(manufacturer_id) or not ObjectId.is_valid(product_id):
+                return {'success': False, 'message': 'Invalid ID format'}
+            
+            manufacturer_obj_id = ObjectId(manufacturer_id)
+            product_obj_id = ObjectId(product_id)
+            
+            # Update product with blockchain confirmation
+            result = self.db.products.update_one(
+                {
+                    '_id': product_obj_id,
+                    'manufacturer_id': manufacturer_obj_id,
+                    'blockchain_status': 'pending'
+                },
+                {
+                    '$set': {
+                        'blockchain_status': 'confirmed',
+                        'blockchain_hash': blockchain_data.get('transaction_hash'),
+                        'blockchain_block': blockchain_data.get('block_number'),
+                        'blockchain_network': blockchain_data.get('network', 'ethereum'),
+                        'confirmed_at': datetime.now(timezone.utc),
+                        'updated_at': datetime.now(timezone.utc)
+                    }
                 }
-            
-            # Remove fields that shouldn't be updated directly
-            restricted_fields = ['_id', 'manufacturer_id', 'created_at', 'registered_at', 'ownership_history']
-            for field in restricted_fields:
-                update_data.pop(field, None)
-            
-            # Update the product
-            result = self.products.update_one(
-                {'_id': product_id, 'manufacturer_id': manufacturer_id},
-                {'$set': update_data}
             )
             
-            if result.modified_count > 0:
-                # Return updated product
-                updated_product = self.products.find_one({'_id': product_id})
-                logger.info(f"Product updated successfully: {product_id}")
-                return {
-                    'success': True,
-                    'product': updated_product
-                }
-            else:
-                return {
-                    'success': False,
-                    'error': 'No changes were made to the product'
-                }
-                
-        except Exception as e:
-            logger.error(f"Error updating product: {e}")
+            if result.matched_count == 0:
+                return {'success': False, 'message': 'Product not found or not pending'}
+            
             return {
-                'success': False,
-                'error': 'Database error occurred while updating product'
+                'success': True,
+                'message': 'Blockchain registration confirmed successfully'
             }
+            
+        except Exception as e:
+            logger.error(f"Error confirming blockchain registration: {e}")
+            return {'success': False, 'message': 'Failed to confirm blockchain registration'}
     
-    def verify_product(self, product_id: ObjectId) -> Dict[str, Any]:
-        """Verify product authenticity"""
+    def mark_blockchain_failed(self, manufacturer_id: str, product_id: str, error_message: str = None) -> Dict[str, Any]:
+        """Mark blockchain registration as failed"""
         try:
-            product = self.products.find_one({'_id': product_id})
+            if not ObjectId.is_valid(manufacturer_id) or not ObjectId.is_valid(product_id):
+                return {'success': False, 'message': 'Invalid ID format'}
+            
+            manufacturer_obj_id = ObjectId(manufacturer_id)
+            product_obj_id = ObjectId(product_id)
+            
+            # Update product with failure status
+            result = self.db.products.update_one(
+                {
+                    '_id': product_obj_id,
+                    'manufacturer_id': manufacturer_obj_id,
+                    'blockchain_status': 'pending'
+                },
+                {
+                    '$set': {
+                        'blockchain_status': 'failed',
+                        'blockchain_error': error_message or 'Blockchain registration failed',
+                        'failed_at': datetime.now(timezone.utc),
+                        'updated_at': datetime.now(timezone.utc)
+                    }
+                }
+            )
+            
+            if result.matched_count == 0:
+                return {'success': False, 'message': 'Product not found or not pending'}
+            
+            return {
+                'success': True,
+                'message': 'Blockchain registration marked as failed'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error marking blockchain failed: {e}")
+            return {'success': False, 'message': 'Failed to mark blockchain registration as failed'}
+    
+    def transfer_ownership(self, manufacturer_id: str, transfer_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Transfer product ownership to another manufacturer"""
+        try:
+            if not ObjectId.is_valid(manufacturer_id):
+                return {'success': False, 'message': 'Invalid manufacturer ID'}
+            
+            manufacturer_obj_id = ObjectId(manufacturer_id)
+            product_id = transfer_data.get('product_id')
+            new_owner_id = transfer_data.get('new_owner_id')
+            
+            if not ObjectId.is_valid(product_id) or not ObjectId.is_valid(new_owner_id):
+                return {'success': False, 'message': 'Invalid product or new owner ID'}
+            
+            product_obj_id = ObjectId(product_id)
+            new_owner_obj_id = ObjectId(new_owner_id)
+            
+            # Verify current ownership
+            product = self.db.products.find_one({
+                '_id': product_obj_id,
+                'manufacturer_id': manufacturer_obj_id
+            })
             
             if not product:
-                return {
-                    'success': False,
-                    'error': 'Product not found'
-                }
+                return {'success': False, 'message': 'Product not found or not owned by you'}
             
-            # Create verification data
-            verification_data = {
-                'product_id': str(product_id),
-                'serial_number': product['serial_number'],
-                'verified': True,
-                'verification_method': 'database',
-                'verified_at': datetime.utcnow().isoformat(),
-                'status': 'authentic',
-                'manufacturer': {
-                    'id': str(product['manufacturer_id']),
-                    'name': product.get('manufacturer_name', '')
-                },
-                'product_details': {
-                    'brand': product['brand'],
-                    'model': product['model'],
-                    'device_type': product['device_type'],
-                    'registered_at': product['registered_at'].isoformat() if product.get('registered_at') else None
-                },
-                'blockchain_verified': product.get('blockchain_verified', False)
-            }
-            
-            # Update verification timestamp
-            self.products.update_one(
-                {'_id': product_id},
-                {'$set': {'last_verified_at': datetime.utcnow()}}
-            )
-            
-            return {
-                'success': True,
-                'verification': verification_data
-            }
-            
-        except Exception as e:
-            logger.error(f"Error verifying product: {e}")
-            return {
-                'success': False,
-                'error': 'Database error occurred while verifying product'
-            }
-    
-    def search_products(self, search_params: Dict[str, Any]) -> Dict[str, Any]:
-        """Search products based on various criteria"""
-        try:
-            query = search_params.get('query', '').strip()
-            brand = search_params.get('brand', '').strip()
-            device_type = search_params.get('device_type', '').strip()
-            page = search_params.get('page', 1)
-            limit = search_params.get('limit', 10)
-            
-            skip = (page - 1) * limit
-            
-            # Build search filter
-            search_filter = {}
-            
-            # Text search across multiple fields
-            if query:
-                search_filter['$text'] = {'$search': query}
-            
-            # Specific field filters
-            if brand:
-                search_filter['brand'] = {'$regex': brand, '$options': 'i'}
-            
-            if device_type:
-                search_filter['device_type'] = {'$regex': device_type, '$options': 'i'}
-            
-            # Execute search with pagination
-            if query and not brand and not device_type:
-                # Use text search scoring when only using text query
-                products = list(self.products.find(
-                    search_filter,
-                    {'score': {'$meta': 'textScore'}}
-                ).sort([('score', {'$meta': 'textScore'})]).skip(skip).limit(limit))
-            else:
-                products = list(self.products.find(search_filter)
-                              .sort('created_at', -1)
-                              .skip(skip)
-                              .limit(limit))
-            
-            # Get total count
-            total = self.products.count_documents(search_filter)
-            
-            return {
-                'success': True,
-                'products': products,
-                'total': total,
-                'page': page,
-                'limit': limit,
-                'has_more': (skip + limit) < total,
-                'search_params': search_params
-            }
-            
-        except Exception as e:
-            logger.error(f"Error searching products: {e}")
-            return {
-                'success': False,
-                'error': 'Database error occurred while searching products'
-            }
-    
-    def delete_product(self, product_id: ObjectId, manufacturer_id: ObjectId) -> Dict[str, Any]:
-        """Delete a product (only by its manufacturer)"""
-        try:
-            result = self.products.delete_one({
-                '_id': product_id,
-                'manufacturer_id': manufacturer_id
+            # Verify new owner exists and is verified manufacturer
+            new_owner = self.db.users.find_one({
+                '_id': new_owner_obj_id,
+                'role': 'manufacturer',
+                'verification_status': 'verified'
             })
             
-            if result.deleted_count > 0:
-                logger.info(f"Product deleted successfully: {product_id}")
-                return {
-                    'success': True,
-                    'message': 'Product deleted successfully'
-                }
-            else:
-                return {
-                    'success': False,
-                    'error': 'Product not found or you do not have permission to delete it'
-                }
-                
-        except Exception as e:
-            logger.error(f"Error deleting product: {e}")
-            return {
-                'success': False,
-                'error': 'Database error occurred while deleting product'
+            if not new_owner:
+                return {'success': False, 'message': 'New owner not found or not verified'}
+            
+            # Create ownership transfer record
+            transfer_record = {
+                'product_id': product_obj_id,
+                'from_manufacturer_id': manufacturer_obj_id,
+                'to_manufacturer_id': new_owner_obj_id,
+                'transfer_reason': transfer_data.get('reason', 'Ownership transfer'),
+                'transfer_date': datetime.now(timezone.utc),
+                'notes': transfer_data.get('notes', '')
             }
-    
-    def get_product_stats(self, manufacturer_id: Optional[ObjectId] = None) -> Dict[str, Any]:
-        """Get product statistics"""
-        try:
-            pipeline = []
             
-            # Filter by manufacturer if provided
-            if manufacturer_id:
-                pipeline.append({'$match': {'manufacturer_id': manufacturer_id}})
+            # Insert transfer record
+            self.db.ownership_transfers.insert_one(transfer_record)
             
-            # Aggregation pipeline for statistics
-            pipeline.extend([
+            # Update product ownership
+            result = self.db.products.update_one(
+                {'_id': product_obj_id},
                 {
-                    '$group': {
-                        '_id': None,
-                        'total_products': {'$sum': 1},
-                        'brands': {'$addToSet': '$brand'},
-                        'device_types': {'$addToSet': '$device_type'},
-                        'verified_products': {
-                            '$sum': {'$cond': [{'$eq': ['$blockchain_verified', True]}, 1, 0]}
+                    '$set': {
+                        'manufacturer_id': new_owner_obj_id,
+                        'updated_at': datetime.now(timezone.utc)
+                    },
+                    '$push': {
+                        'ownership_history': {
+                            'from_manufacturer_id': manufacturer_obj_id,
+                            'to_manufacturer_id': new_owner_obj_id,
+                            'transfer_date': datetime.now(timezone.utc),
+                            'reason': transfer_data.get('reason', 'Ownership transfer')
                         }
                     }
-                },
-                {
-                    '$project': {
-                        '_id': 0,
-                        'total_products': 1,
-                        'total_brands': {'$size': '$brands'},
-                        'total_device_types': {'$size': '$device_types'},
-                        'verified_products': 1,
-                        'verification_rate': {
-                            '$multiply': [
-                                {'$divide': ['$verified_products', '$total_products']},
-                                100
-                            ]
-                        }
-                    }
-                }
-            ])
-            
-            result = list(self.products.aggregate(pipeline))
-            
-            if result:
-                stats = result[0]
-            else:
-                stats = {
-                    'total_products': 0,
-                    'total_brands': 0,
-                    'total_device_types': 0,
-                    'verified_products': 0,
-                    'verification_rate': 0
-                }
-            
-            return {
-                'success': True,
-                'stats': stats
-            }
-            
-        except Exception as e:
-            logger.error(f"Error getting product stats: {e}")
-            return {
-                'success': False,
-                'error': 'Database error occurred while getting statistics'
-            }
-    
-    def update_ownership_history(self, product_id: ObjectId, ownership_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Update product ownership history"""
-        try:
-            # Add timestamp to ownership data
-            ownership_data['timestamp'] = datetime.utcnow().isoformat()
-            
-            result = self.products.update_one(
-                {'_id': product_id},
-                {
-                    '$push': {'ownership_history': ownership_data},
-                    '$set': {'updated_at': datetime.utcnow()}
                 }
             )
             
-            if result.modified_count > 0:
-                return {
-                    'success': True,
-                    'message': 'Ownership history updated successfully'
-                }
-            else:
-                return {
-                    'success': False,
-                    'error': 'Product not found'
-                }
-                
-        except Exception as e:
-            logger.error(f"Error updating ownership history: {e}")
+            if result.modified_count == 0:
+                return {'success': False, 'message': 'Failed to transfer ownership'}
+            
             return {
-                'success': False,
-                'error': 'Database error occurred while updating ownership history'
+                'success': True,
+                'message': 'Product ownership transferred successfully'
             }
+            
+        except Exception as e:
+            logger.error(f"Error transferring ownership: {e}")
+            return {'success': False, 'message': 'Failed to transfer ownership'}
+    
+    def get_product_details(self, product_id: str, manufacturer_id: str = None) -> Dict[str, Any]:
+        """Get detailed product information"""
+        try:
+            if not ObjectId.is_valid(product_id):
+                return {'success': False, 'message': 'Invalid product ID'}
+            
+            product_obj_id = ObjectId(product_id)
+            
+            # Build query
+            query = {'_id': product_obj_id}
+            if manufacturer_id and ObjectId.is_valid(manufacturer_id):
+                query['manufacturer_id'] = ObjectId(manufacturer_id)
+            
+            # Get product
+            product = self.db.products.find_one(query)
+            if not product:
+                return {'success': False, 'message': 'Product not found'}
+            
+            # Get manufacturer info
+            manufacturer = self.db.users.find_one(
+                {'_id': product['manufacturer_id']},
+                {'current_company_name': 1, 'primary_email': 1, 'verification_status': 1}
+            )
+            
+            # Get verification history
+            verification_history = list(self.db.verification_logs.find(
+                {'serial_number': product['serial_number']},
+                {'timestamp': 1, 'result': 1, 'ip_address': 1, 'source': 1}
+            ).sort('timestamp', -1).limit(10))
+            
+            # Convert ObjectIds to strings
+            product['_id'] = str(product['_id'])
+            product['manufacturer_id'] = str(product['manufacturer_id'])
+            
+            for verification in verification_history:
+                verification['_id'] = str(verification['_id'])
+            
+            return {
+                'success': True,
+                'data': {
+                    'product': product,
+                    'manufacturer': manufacturer,
+                    'verification_history': verification_history
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting product details: {e}")
+            return {'success': False, 'message': 'Failed to get product details'}
+    
+    def update_product(self, manufacturer_id: str, product_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Update product information"""
+        try:
+            if not ObjectId.is_valid(manufacturer_id) or not ObjectId.is_valid(product_id):
+                return {'success': False, 'message': 'Invalid ID format'}
+            
+            manufacturer_obj_id = ObjectId(manufacturer_id)
+            product_obj_id = ObjectId(product_id)
+            
+            # Prepare update fields (only allow certain fields to be updated)
+            allowed_fields = ['description', 'specifications', 'batch_number', 'manufacturing_date']
+            update_fields = {}
+            
+            for field in allowed_fields:
+                if field in update_data:
+                    update_fields[field] = update_data[field]
+            
+            if not update_fields:
+                return {'success': False, 'message': 'No valid fields to update'}
+            
+            update_fields['updated_at'] = datetime.now(timezone.utc)
+            
+            # Update product
+            result = self.db.products.update_one(
+                {
+                    '_id': product_obj_id,
+                    'manufacturer_id': manufacturer_obj_id
+                },
+                {'$set': update_fields}
+            )
+            
+            if result.matched_count == 0:
+                return {'success': False, 'message': 'Product not found or not owned by you'}
+            
+            return {
+                'success': True,
+                'message': 'Product updated successfully'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error updating product: {e}")
+            return {'success': False, 'message': 'Failed to update product'}
+    
+    def delete_product(self, manufacturer_id: str, product_id: str) -> Dict[str, Any]:
+        """Delete a product (only if not verified on blockchain)"""
+        try:
+            if not ObjectId.is_valid(manufacturer_id) or not ObjectId.is_valid(product_id):
+                return {'success': False, 'message': 'Invalid ID format'}
+            
+            manufacturer_obj_id = ObjectId(manufacturer_id)
+            product_obj_id = ObjectId(product_id)
+            
+            # Check if product exists and is owned by manufacturer
+            product = self.db.products.find_one({
+                '_id': product_obj_id,
+                'manufacturer_id': manufacturer_obj_id
+            })
+            
+            if not product:
+                return {'success': False, 'message': 'Product not found or not owned by you'}
+            
+            # Don't allow deletion if product is confirmed on blockchain
+            if product.get('blockchain_status') == 'confirmed':
+                return {'success': False, 'message': 'Cannot delete product that is confirmed on blockchain'}
+            
+            # Delete the product
+            result = self.db.products.delete_one({'_id': product_obj_id})
+            
+            if result.deleted_count == 0:
+                return {'success': False, 'message': 'Failed to delete product'}
+            
+            return {
+                'success': True,
+                'message': 'Product deleted successfully'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error deleting product: {e}")
+            return {'success': False, 'message': 'Failed to delete product'}
 
-# Create a singleton instance
-try:
-    product_service = ProductService()
-except Exception as e:
-    logger.error(f"Failed to create ProductService instance: {e}")
-    product_service = None
 
-product_service = ProductService
+product_service = ProductService()

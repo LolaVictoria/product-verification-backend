@@ -11,7 +11,8 @@ import hmac
 import json
 import traceback
 import os
-from utils.helper_functions import get_db_connection, get_current_utc
+from utils.database import get_db_connection
+from utils.date_helpers import get_current_utc
 
 webhook_bp = Blueprint('webhook_handlers', __name__)
 

@@ -6,7 +6,7 @@ import os
 from datetime import datetime, timezone
 from flask import request, g, jsonify
 from functools import wraps
-from utils.helper_functions import get_db_connection
+from utils.database import get_db_connection
 
 # Configure logging
 logging.basicConfig(

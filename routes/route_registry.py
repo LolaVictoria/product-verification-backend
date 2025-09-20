@@ -16,6 +16,46 @@ def register_all_routes(app):
             return {'status': 'Auth routes not implemented yet'}
         app.register_blueprint(auth_bp, url_prefix='/auth')
    
+     
+    # Admin routes
+    try:
+        from routes.admin_routes import admin_bp
+        app.register_blueprint(admin_bp, url_prefix='/admin')
+        print("✓ Admin routes registered successfully")
+    except ImportError as e:
+        print(f"Warning: admin_routes not found ({e}), creating placeholder...")
+        admin_bp = Blueprint('admin', __name__)
+        @admin_bp.route('/health')
+        def admin_health():
+            return {'status': 'Admin routes not implemented yet'}
+        app.register_blueprint(admin_bp, url_prefix='/admin')
+    
+    # Analytics routes
+    try:
+        from routes.analytics_routes import analytics_bp
+        app.register_blueprint(analytics_bp, url_prefix='/analytics')
+        print("✓ Analytics routes registered successfully")
+    except ImportError as e:
+        print(f"Warning: analytics_routes not found ({e}), creating placeholder...")
+        analytics_bp = Blueprint('analytics', __name__)
+        @analytics_bp.route('/health')
+        def analytics_health():
+            return {'status': 'Analytics routes not implemented yet'}
+        app.register_blueprint(analytics_bp, url_prefix='/analytics')
+
+    # crypto routes
+    try:
+        from routes.crypto_routes import crypto_bp
+        app.register_blueprint(crypto_bp, url_prefix='/crypto')
+        print("✓ crypto routes registered successfully")
+    except ImportError as e:
+        print(f"Warning: crypto_routes not found ({e}), creating placeholder...")
+        crypto_bp = Blueprint('crypto', __name__)
+        @crypto_bp.route('/health')
+        def crypto_health():
+            return {'status': 'crypto routes not implemented yet'}
+        app.register_blueprint(crypto_bp, url_prefix='/crypto')
+    
     # Manufacturer routes
     try:
         from routes.manufacturer_routes import manufacturer_bp
@@ -29,19 +69,6 @@ def register_all_routes(app):
             return {'status': 'Manufacturer routes not implemented yet'}
         app.register_blueprint(manufacturer_bp, url_prefix='/manufacturer')
    
-    # Analytics routes
-    try:
-        from routes.analytics_routes import analytics_bp
-        app.register_blueprint(analytics_bp, url_prefix='/analytics')
-        print("✓ Analytics routes registered successfully")
-    except ImportError as e:
-        print(f"Warning: analytics_routes not found ({e}), creating placeholder...")
-        analytics_bp = Blueprint('analytics', __name__)
-        @analytics_bp.route('/health')
-        def analytics_health():
-            return {'status': 'Analytics routes not implemented yet'}
-        app.register_blueprint(analytics_bp, url_prefix='/analytics')
-    
     # Product routes
     try:
         from routes.product_routes import product_bp
@@ -57,8 +84,7 @@ def register_all_routes(app):
 
     # Verification routes
     try:
-        from routes.verification_routes import create_verification_routes
-        verification_bp = create_verification_routes(app)
+        from routes.verification_routes import verification_bp
         app.register_blueprint(verification_bp, url_prefix='/verification')
         print("✓ Verification routes registered successfully")
     except ImportError as e:
@@ -71,16 +97,16 @@ def register_all_routes(app):
    
     # Integration routes
     try:
-        from routes.integration_routes import integration_bp
-        app.register_blueprint(integration_bp, url_prefix='/integration')
-        print("✓ Integration routes registered successfully")
+        from routes.api_routes import api_bp
+        app.register_blueprint(api_bp, url_prefix='/api')
+        print("✓ api routes registered successfully")
     except ImportError as e:
-        print(f"Warning: integration_routes not found ({e}), creating placeholder...")
-        integration_bp = Blueprint('integration', __name__)
-        @integration_bp.route('/health')
-        def integration_health():
-            return {'status': 'Integration routes not implemented yet'}
-        app.register_blueprint(integration_bp, url_prefix='/integration')
+        print(f"Warning: api_routes not found ({e}), creating placeholder...")
+        api_bp = Blueprint('api', __name__)
+        @api_bp.route('/health')
+        def api_health():
+            return {'status': 'api routes not implemented yet'}
+        app.register_blueprint(api_bp, url_prefix='/api')
    
     # Main health check
     @app.route('/health')

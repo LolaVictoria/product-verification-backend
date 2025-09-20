@@ -1,201 +1,377 @@
-from utils.helper_functions import (
-     is_valid_email, get_primary_email, email_exists_globally, 
-     is_valid_email, wallet_exists_globally, is_valid_wallet_address, get_current_company_name
-)
+"""
+Profile service for user profile management
+"""
+import logging
+from datetime import datetime, timezone
+from bson import ObjectId
+from typing import Dict, Any, Optional
 
-class ProfileUpdateValidator:
-    """Centralized validation for profile updates"""
-    
-    @staticmethod
-    def validate_email_operation(operation, email, user, current_user_id):
-        """Validate email operations"""
-        if not email or not email.strip():
-            return "Email address is required"
-        
-        email = email.strip().lower()
-        
-        if not is_valid_email(email):
-            return "Invalid email format"
-        
-        current_emails = user.get('emails', [])
-        primary_email = get_primary_email(user)
-        
-        if operation == 'add':
-            if email in current_emails:
-                return "Email already exists"
-            if email_exists_globally(email, current_user_id):
-                return "Email is already registered to another account"
-                
-        elif operation == 'remove':
-            if email == primary_email:
-                return "Cannot remove primary email"
-            if email not in current_emails:
-                return "Email not found"
-                
-        elif operation == 'set_primary':
-            if email not in current_emails:
-                return "Email not found in your account"
-        
-        return None
-    
-    @staticmethod
-    def validate_wallet_operation(operation, wallet_address, user, current_user_id):
-        """Validate wallet operations"""
-        if not wallet_address or not wallet_address.strip():
-            return "Wallet address is required"
-        
-        wallet_address = wallet_address.strip()
-        
-        if not is_valid_wallet_address(wallet_address):
-            return "Invalid wallet address format"
-        
-        current_wallets = user.get('wallet_addresses', [])
-        verified_wallets = user.get('verified_wallets', [])
-        
-        if operation == 'add':
-            if wallet_address in current_wallets:
-                return "Wallet already exists"
-            if wallet_exists_globally(wallet_address, current_user_id):
-                return "Wallet is already registered to another account"
-                
-        elif operation == 'remove':
-            if wallet_address not in current_wallets:
-                return "Wallet not found"
-                
-        elif operation == 'set_primary':
-            if wallet_address not in current_wallets:
-                return "Wallet not found in your account"
-            if wallet_address not in verified_wallets:
-                return "Wallet must be verified before setting as primary"
-        
-        return None
-    
-    @staticmethod
-    def validate_company_update(company_name, user):
-        """Validate company name update"""
-        if not company_name or not company_name.strip():
-            return "Company name is required"
-        
-        company_name = company_name.strip()
-        
-        if len(company_name) < 2:
-            return "Company name must be at least 2 characters"
-        
-        if len(company_name) > 100:
-            return "Company name must be less than 100 characters"
-        
-        current_company = get_current_company_name(user)
-        if company_name == current_company:
-            return "New company name must be different from current name"
-        
-        return None
+from utils.database import get_db_connection
+from utils.validators import validate_manufacturer_data
 
-class ProfileUpdateHandler:
-    """Handle different types of profile updates"""
+logger = logging.getLogger(__name__)
+
+class ProfileService:
+    def __init__(self):
+        self.db = get_db_connection()
     
-    @staticmethod
-    def handle_email_operations(operations, user, current_user_id):
-        """Process all email operations"""
-        updates = {}
-        current_emails = user.get('emails', [])
-        primary_email = user.get('primary_email')
+    def get_user_profile(self, user_id: str) -> Dict[str, Any]:
+        """
+        Get user profile by user ID
         
-        for op in operations:
-            operation = op.get('operation')
-            email = op.get('email', '').strip().lower()
+        Args:
+            user_id (str): User ID
             
-            # Validate operation
-            error = ProfileUpdateValidator.validate_email_operation(
-                operation, email, user, current_user_id
+        Returns:
+            Dict[str, Any]: Profile data with success status
+        """
+        try:
+            if not ObjectId.is_valid(user_id):
+                return {'success': False, 'message': 'Invalid user ID format'}
+            
+            user_obj_id = ObjectId(user_id)
+            
+            # Find user in database
+            user = self.db.users.find_one({'_id': user_obj_id})
+            
+            if not user:
+                return {'success': False, 'message': 'User not found'}
+            
+            # Build profile response based on user role
+            profile = self._build_profile_response(user)
+            
+            return {
+                'success': True,
+                'profile': profile
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting user profile: {e}")
+            return {'success': False, 'message': 'Failed to get user profile'}
+    
+    def update_user_profile(self, user_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Update user profile
+        
+        Args:
+            user_id (str): User ID
+            update_data (Dict[str, Any]): Data to update
+            
+        Returns:
+            Dict[str, Any]: Update result with success status
+        """
+        try:
+            if not ObjectId.is_valid(user_id):
+                return {'success': False, 'message': 'Invalid user ID format'}
+            
+            user_obj_id = ObjectId(user_id)
+            
+            # Check if user exists
+            user = self.db.users.find_one({'_id': user_obj_id})
+            if not user:
+                return {'success': False, 'message': 'User not found'}
+            
+            # Validate update data based on user role
+            validation_result = self._validate_profile_update(user['role'], update_data)
+            if not validation_result['valid']:
+                return {'success': False, 'message': validation_result['errors']}
+            
+            # Prepare update document
+            update_doc = self._prepare_update_document(user['role'], update_data)
+            update_doc['updated_at'] = datetime.now(timezone.utc)
+            
+            # Update user in database
+            result = self.db.users.update_one(
+                {'_id': user_obj_id},
+                {'$set': update_doc}
             )
-            if error:
-                raise ValueError(f"Email {operation}: {error}")
             
-            # Apply operation
-            if operation == 'add':
-                if email not in current_emails:
-                    current_emails.append(email)
-                    
-            elif operation == 'remove':
-                current_emails = [e for e in current_emails if e != email]
-                # If removing primary, set new primary
-                if email == primary_email and current_emails:
-                    primary_email = current_emails[0]
-                    
-            elif operation == 'set_primary':
-                primary_email = email
-        
-        updates['emails'] = current_emails
-        if primary_email:
-            updates['primary_email'] = primary_email
-        
-        return updates
+            if result.matched_count == 0:
+                return {'success': False, 'message': 'User not found'}
+            
+            # Get updated profile
+            updated_user = self.db.users.find_one({'_id': user_obj_id})
+            profile = self._build_profile_response(updated_user)
+            
+            return {
+                'success': True,
+                'message': 'Profile updated successfully',
+                'profile': profile
+            }
+            
+        except Exception as e:
+            logger.error(f"Error updating user profile: {e}")
+            return {'success': False, 'message': 'Failed to update user profile'}
     
-    @staticmethod
-    def handle_wallet_operations(operations, user, current_user_id):
-        """Process all wallet operations"""
-        updates = {}
-        current_wallets = user.get('wallet_addresses', [])
-        primary_wallet = user.get('primary_wallet')
+    def _build_profile_response(self, user: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Build profile response based on user role
         
-        for op in operations:
-            operation = op.get('operation')
-            wallet_address = op.get('wallet_address', '').strip()
+        Args:
+            user (Dict[str, Any]): User document from database
             
-            # Validate operation
-            error = ProfileUpdateValidator.validate_wallet_operation(
-                operation, wallet_address, user, current_user_id
-            )
-            if error:
-                raise ValueError(f"Wallet {operation}: {error}")
-            
-            # Apply operation
-            if operation == 'add':
-                if wallet_address not in current_wallets:
-                    current_wallets.append(wallet_address)
-                    # Set as primary if first wallet
-                    if not primary_wallet:
-                        primary_wallet = wallet_address
-                        
-            elif operation == 'remove':
-                current_wallets = [w for w in current_wallets if w != wallet_address]
-                # If removing primary, set new primary
-                if wallet_address == primary_wallet and current_wallets:
-                    # Find first verified wallet or just first wallet
-                    verified_wallets = user.get('verified_wallets', [])
-                    for wallet in current_wallets:
-                        if wallet in verified_wallets:
-                            primary_wallet = wallet
-                            break
-                    else:
-                        primary_wallet = current_wallets[0] if current_wallets else None
-                        
-            elif operation == 'set_primary':
-                primary_wallet = wallet_address
+        Returns:
+            Dict[str, Any]: Formatted profile data
+        """
+        # Base profile data
+        profile = {
+            'id': str(user['_id']),
+            'role': user.get('role'),
+            'primary_email': user.get('primary_email'),
+            'name': user.get('name'),
+            'account_status': user.get('account_status', 'active'),
+            'created_at': user.get('created_at'),
+            'updated_at': user.get('updated_at')
+        }
         
-        updates['wallet_addresses'] = current_wallets
-        if primary_wallet:
-            updates['primary_wallet'] = primary_wallet
+        # Role-specific profile data
+        if user.get('role') == 'manufacturer':
+            profile.update({
+                'current_company_name': user.get('current_company_name'),
+                'company_names': user.get('company_names', []),
+                'verification_status': user.get('verification_status', 'pending'),
+                'wallet_addresses': user.get('wallet_addresses', []),
+                'emails': user.get('emails', []),
+                'registration_date': user.get('registration_date'),
+                'business_info': {
+                    'business_type': user.get('business_type'),
+                    'business_registration_number': user.get('business_registration_number'),
+                    'tax_id': user.get('tax_id'),
+                    'address': user.get('business_address'),
+                    'phone': user.get('business_phone'),
+                    'website': user.get('website')
+                },
+                'contact_info': {
+                    'contact_person': user.get('contact_person'),
+                    'contact_phone': user.get('contact_phone'),
+                    'support_email': user.get('support_email')
+                }
+            })
         
-        return updates
+        elif user.get('role') == 'customer':
+            profile.update({
+                'first_name': user.get('first_name'),
+                'last_name': user.get('last_name'),
+                'phone': user.get('phone'),
+                'address': user.get('address'),
+                'date_of_birth': user.get('date_of_birth'),
+                'preferences': user.get('preferences', {})
+            })
+        
+        elif user.get('role') == 'admin':
+            profile.update({
+                'admin_level': user.get('admin_level', 'basic'),
+                'permissions': user.get('permissions', []),
+                'last_login': user.get('last_login')
+            })
+        
+        return profile
     
-    @staticmethod
-    def handle_company_update(company_name, user):
-        """Process company name update"""
-        error = ProfileUpdateValidator.validate_company_update(company_name, user)
-        if error:
-            raise ValueError(f"Company update: {error}")
+    def _validate_profile_update(self, user_role: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Validate profile update data based on user role
         
-        company_name = company_name.strip()
-        current_company_names = user.get('company_names', [])
+        Args:
+            user_role (str): User role
+            update_data (Dict[str, Any]): Data to validate
+            
+        Returns:
+            Dict[str, Any]: Validation result
+        """
+        errors = []
         
-        # Add to history if not already present
-        updated_company_names = current_company_names
-        if company_name not in current_company_names:
-            updated_company_names = current_company_names + [company_name]
+        # Common validations
+        if 'name' in update_data:
+            name = update_data['name']
+            if name and (len(name) < 2 or len(name) > 100):
+                errors.append("Name must be between 2 and 100 characters")
+        
+        if 'phone' in update_data:
+            phone = update_data['phone']
+            if phone and len(phone) > 20:
+                errors.append("Phone number cannot exceed 20 characters")
+        
+        # Role-specific validations
+        if user_role == 'manufacturer':
+            if 'current_company_name' in update_data:
+                company_name = update_data['current_company_name']
+                if company_name and (len(company_name) < 2 or len(company_name) > 200):
+                    errors.append("Company name must be between 2 and 200 characters")
+            
+            if 'wallet_address' in update_data:
+                import re
+                wallet_address = update_data['wallet_address']
+                if wallet_address and not re.match(r'^0x[a-fA-F0-9]{40}$', wallet_address):
+                    errors.append("Invalid wallet address format")
+            
+            if 'website' in update_data:
+                website = update_data['website']
+                if website and not website.startswith(('http://', 'https://')):
+                    errors.append("Website must start with http:// or https://")
+        
+        elif user_role == 'customer':
+            if 'first_name' in update_data:
+                first_name = update_data['first_name']
+                if first_name and (len(first_name) < 1 or len(first_name) > 50):
+                    errors.append("First name must be between 1 and 50 characters")
+            
+            if 'last_name' in update_data:
+                last_name = update_data['last_name']
+                if last_name and (len(last_name) < 1 or len(last_name) > 50):
+                    errors.append("Last name must be between 1 and 50 characters")
         
         return {
-            'company_names': updated_company_names,
-            'current_company_name': company_name
+            'valid': len(errors) == 0,
+            'errors': errors
+        }
+    
+    def _prepare_update_document(self, user_role: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Prepare update document for database
+        
+        Args:
+            user_role (str): User role
+            update_data (Dict[str, Any]): Update data
+            
+        Returns:
+            Dict[str, Any]: Prepared update document
+        """
+        # Fields that are safe to update directly
+        safe_fields = {
+            'manufacturer': [
+                'name', 'current_company_name', 'business_type', 
+                'business_registration_number', 'tax_id', 'business_address',
+                'business_phone', 'website', 'contact_person', 
+                'contact_phone', 'support_email'
+            ],
+            'customer': [
+                'name', 'first_name', 'last_name', 'phone', 
+                'address', 'date_of_birth', 'preferences'
+            ],
+            'admin': [
+                'name', 'phone'
+            ]
+        }
+        
+        allowed_fields = safe_fields.get(user_role, [])
+        update_doc = {}
+        
+        for field in allowed_fields:
+            if field in update_data:
+                update_doc[field] = update_data[field]
+        
+        # Handle special cases
+        if user_role == 'manufacturer':
+            # Handle wallet address updates
+            if 'wallet_address' in update_data:
+                wallet_address = update_data['wallet_address']
+                # Add new wallet address to the list
+                update_doc['$push'] = {
+                    'wallet_addresses': {
+                        'address': wallet_address,
+                        'is_primary': True,
+                        'verified': False,
+                        'added_at': datetime.now(timezone.utc)
+                    }
+                }
+            
+            # Handle company name history
+            if 'current_company_name' in update_data:
+                company_name = update_data['current_company_name']
+                update_doc['$push'] = update_doc.get('$push', {})
+                update_doc['$push']['company_names'] = {
+                    'name': company_name,
+                    'is_current': True,
+                    'changed_at': datetime.now(timezone.utc)
+                }
+        
+        return update_doc
+    
+    def get_profile_completion_status(self, user_id: str) -> Dict[str, Any]:
+        """
+        Get profile completion status for user
+        
+        Args:
+            user_id (str): User ID
+            
+        Returns:
+            Dict[str, Any]: Profile completion status
+        """
+        try:
+            if not ObjectId.is_valid(user_id):
+                return {'success': False, 'message': 'Invalid user ID format'}
+            
+            user_obj_id = ObjectId(user_id)
+            user = self.db.users.find_one({'_id': user_obj_id})
+            
+            if not user:
+                return {'success': False, 'message': 'User not found'}
+            
+            completion_data = self._calculate_profile_completion(user)
+            
+            return {
+                'success': True,
+                'completion': completion_data
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting profile completion status: {e}")
+            return {'success': False, 'message': 'Failed to get completion status'}
+    
+    def _calculate_profile_completion(self, user: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Calculate profile completion percentage
+        
+        Args:
+            user (Dict[str, Any]): User document
+            
+        Returns:
+            Dict[str, Any]: Completion data
+        """
+        role = user.get('role')
+        
+        if role == 'manufacturer':
+            required_fields = [
+                'name', 'primary_email', 'current_company_name',
+                'business_type', 'business_phone', 'wallet_addresses'
+            ]
+            optional_fields = [
+                'business_registration_number', 'tax_id', 'business_address',
+                'website', 'contact_person', 'support_email'
+            ]
+        elif role == 'customer':
+            required_fields = [
+                'name', 'primary_email', 'first_name', 'last_name'
+            ]
+            optional_fields = [
+                'phone', 'address', 'date_of_birth'
+            ]
+        else:
+            required_fields = ['name', 'primary_email']
+            optional_fields = ['phone']
+        
+        # Calculate completion
+        completed_required = sum(1 for field in required_fields if user.get(field))
+        completed_optional = sum(1 for field in optional_fields if user.get(field))
+        
+        total_fields = len(required_fields) + len(optional_fields)
+        completed_fields = completed_required + completed_optional
+        
+        completion_percentage = (completed_fields / total_fields * 100) if total_fields > 0 else 100
+        
+        missing_required = [field for field in required_fields if not user.get(field)]
+        missing_optional = [field for field in optional_fields if not user.get(field)]
+        
+        return {
+            'percentage': round(completion_percentage, 1),
+            'completed_fields': completed_fields,
+            'total_fields': total_fields,
+            'required_completed': completed_required,
+            'required_total': len(required_fields),
+            'missing_required': missing_required,
+            'missing_optional': missing_optional,
+            'is_complete': len(missing_required) == 0
         }
 
+
+profile_service = ProfileService()

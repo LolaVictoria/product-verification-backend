@@ -1,0 +1,499 @@
+Create a complete cryptographic signature system for product authentication with the following requirements:
+
+SMART CONTRACT REQUIREMENTS:
+1. Solidity smart contract with these functions:
+   - registerProduct() - only verified manufacturers
+   - verifyProduct() - public verification
+   - transferOwnership() - with email-based system
+   - Struct for Product with fields: serialNumber, productName, manufacturerName, manufacturerWallet, digitalSignature, manufacturingDate, currentOwnerEmail, isAuthentic
+
+2. Manufacturer verification system:
+   - Whitelist of verified manufacturer wallet addresses
+   - Only whitelisted addresses can register products
+   - Each manufacturer has a verified public key stored on-chain
+
+BACKEND API REQUIREMENTS:
+1. Product registration endpoint that:
+   - Validates manufacturer signature using their private key
+   - Creates signature from: serialNumber + productName + manufacturingDate + manufacturerWallet
+   - Stores product on blockchain with rich metadata
+   - Returns transaction hash and product details
+
+2. Product verification endpoint that:
+   - Takes serial number as input
+   - Retrieves product data from blockchain
+   - Verifies cryptographic signature using manufacturer's public key
+   - Returns formatted verification result with full product details
+
+CRYPTOGRAPHIC IMPLEMENTATION:
+1. Use ECDSA (secp256k1) for digital signatures
+2. Signature creation process:
+   - Hash product data: keccak256(serialNumber + productName + date + manufacturerWallet)
+   - Sign hash with manufacturer's private key
+   - Store signature with product
+
+3. Verification process:
+   - Retrieve signature and product data
+   - Recreate hash from stored product data
+   - Verify signature using manufacturer's public key
+   - Return boolean verification result
+
+SECURITY FEATURES:
+- Prevent duplicate serial numbers
+- Validate manufacturer authorization before registration
+- Cryptographic proof of authenticity
+- Tamper-proof product records
+
+Include complete code for smart contract, API endpoints, and cryptographic functions.
+
+Create a complete email-based ownership transfer system with uniform 24-hour delay and duress pin protection:
+
+USER MANAGEMENT SYSTEM:
+1. User registration/login with email as primary identifier
+2. Two-pin system: normal pin + duress pin
+3. User profile with: email, hashedNormalPin, hashedDuressPin, recoveryEmail, isVerified
+4. Optional wallet address linking for advanced users
+
+TRANSFER SYSTEM REQUIREMENTS:
+1. Transfer initiation:
+   - Current owner enters: new owner email + their pin
+   - System creates pending transfer record
+   - Uniform 24-hour delay for ALL transfers (no exceptions)
+   - Identical UI response regardless of pin type
+
+2. Transfer states and logic:
+   - PENDING: 24-hour countdown active
+   - CONFIRMED: Normal pin → transfer executes after 24 hours
+   - CANCELLED: Duress pin → auto-cancelled after 24 hours
+   - EXPIRED: User cancellation or timeout
+
+DURESS PIN SECURITY:
+1. Silent detection system:
+   - Recognize duress pin without indicating to user
+   - Log all actions as suspicious
+   - Send silent alerts to security team
+   - Start evidence collection process
+
+2. Security actions during duress:
+   - All transfers appear normal but flagged internally
+   - Geo-location tracking
+   - Device fingerprinting
+   - Session recording
+   - Automatic cancellation after 24 hours
+
+EMAIL CONFIRMATION SYSTEM:
+1. Transfer notifications:
+   - Immediate: "Transfer initiated, processing in 24 hours"
+   - 12 hours: "Transfer completing in 12 hours - cancel if unauthorized"
+   - 30 minutes: "Final warning - transfer completing soon"
+   - Completion: Success/failure notification
+
+2. Cancellation system:
+   - Email links to cancel transfer
+   - Dashboard cancel button
+   - SMS confirmation (optional)
+   - Customer service override
+
+BACKEND IMPLEMENTATION:
+1. Pending transfer management
+2. Pin validation and duress detection
+3. Automated 24-hour delay system
+4. Email notification service
+5. Security monitoring and alerting
+6. Evidence collection for law enforcement
+
+Include complete code for user management, transfer logic, email system, and security features.
+
+
+Create a comprehensive B2B SaaS manufacturer onboarding and account management system with permanent test accounts for development and client demos:
+
+ACCOUNT TYPES SYSTEM:
+1. Production manufacturer accounts:
+   - Full onboarding process with business verification
+   - Real billing and payment processing
+   - Complete security features enabled
+   - SLA guarantees and dedicated support
+
+2. Permanent test accounts (exist in both dev and production):
+   - Pre-configured demo manufacturers (Apple Test, Samsung Test, etc.)
+   - Full feature access for testing and demos
+   - Clearly labeled as "Demo/Test" accounts
+   - No billing charges but usage tracking enabled
+   - Same API endpoints as production accounts
+
+MANUFACTURER ONBOARDING WORKFLOW:
+1. Account type selection:
+   - "Production Account" - Full business verification required
+   - "Test/Demo Account" - Instant access with limitations
+   - "Development Account" - For integration testing
+
+2. Pre-integration verification (Production accounts only):
+   - Business document upload and validation
+   - Manual approval workflow for administrators
+   - Security audit checklist completion
+   - Legal agreement digital signing
+   - Executive background verification tracking
+
+3. Test account instant setup:
+   - Select from pre-configured test companies
+   - Immediate API key generation
+   - Access to sandbox and limited production features
+   - Upgrade path to full production account
+
+TECHNICAL ACCOUNT SETUP:
+1. Infrastructure provisioning (based on account type):
+   - Production Tier 3: Dedicated VPC per manufacturer
+   - Production Tier 1-2: Shared secure VPC with isolation
+   - Test accounts: Shared development infrastructure with rate limits
+
+2. MongoDB integration (no database switching required):
+   - Keep existing MongoDB setup
+   - Add tenant isolation through collection prefixes or separate databases
+   - Implement connection pooling for multiple manufacturers
+   - Add indexing strategy for multi-tenant queries
+
+3. Security credential generation:
+   - Production: HSM-backed key generation
+   - Test accounts: Mock HSM with same API interface
+   - Multi-signature wallet setup (simplified for test accounts)
+   - API key generation with appropriate rate limits
+
+DEVELOPMENT-FRIENDLY FEATURES:
+1. Environment configuration:
+   - Single codebase works for dev, staging, production
+   - Environment variables control feature flags
+   - Test accounts available in all environments
+   - Easy switching between test manufacturers
+
+2. Mock services for development:
+   - Mock HSM service (same interface as production)
+   - Local blockchain simulation (Ganache)
+   - Email service simulation
+   - Payment processing simulation
+
+MANUFACTURER DASHBOARD:
+1. Account-type-aware interface:
+   - Different UI for test vs production accounts
+   - Feature limitations clearly displayed for test accounts
+   - Upgrade prompts for test account users
+   - Usage analytics for both account types
+
+2. Universal features:
+   - Product registration (single and batch upload)
+   - API documentation and testing tools
+   - Real-time verification testing
+   - Integration examples and code samples
+
+BILLING SYSTEM:
+1. Production accounts: Full billing with setup fees and monthly charges
+2. Test accounts: Usage tracking only, no charges
+3. Upgrade path: Convert test account to production with proper onboarding
+
+SECURITY CONSIDERATIONS:
+1. Test account limitations:
+   - Rate limiting to prevent abuse
+   - Data retention policies (auto-cleanup)
+   - No access to other manufacturers' data
+   - Clear labeling in all interfaces
+
+2. Production account security:
+   - Full security stack as previously defined
+   - Isolation from test accounts
+   - Complete audit trails
+
+LEARNING-CURVE-FRIENDLY IMPLEMENTATION:
+1. Start simple, scale up:
+   - Begin with basic MongoDB multi-tenancy
+   - Add VPC isolation later for enterprise clients
+   - Implement HSM integration incrementally
+   - Use managed services initially (MongoDB Atlas, AWS managed services)
+
+2. Development workflow:
+   - Docker containerization for consistent environments
+   - Environment-specific configuration files
+   - Automated test data seeding
+   - CI/CD pipeline support
+
+Include complete code for account management system, MongoDB multi-tenancy setup, test account provisioning, environment configuration, and development-friendly tooling that doesn't require immediate AWS/VPC expertise.
+
+prompt 2
+Create an enterprise-grade multi-tenant infrastructure with Hardware Security Module integration for the product authentication SaaS:
+
+INFRASTRUCTURE ARCHITECTURE:
+1. Multi-tenant VPC setup:
+   - Isolated VPCs per major client (Tier 3)
+   - Shared secure VPC for smaller clients (Tier 1-2) with strict tenant isolation
+   - Private subnets with custom routing tables
+   - Dedicated load balancers and auto-scaling groups
+   - Client-specific firewall rules and security groups
+
+2. Database isolation strategy:
+   - Separate RDS instances for Tier 3 clients
+   - Schema-level isolation for lower tiers
+   - Encrypted storage with client-specific keys
+   - Automated backup with geographic replication
+   - Point-in-time recovery capabilities
+
+HSM INTEGRATION:
+1. Hardware Security Module setup:
+   - AWS CloudHSM or Azure Dedicated HSM integration
+   - FIPS 140-2 Level 3 compliance implementation
+   - Secure key generation and storage
+   - Cryptographic operation endpoints
+
+2. Key management system:
+   - Manufacturer signing key generation in HSM
+   - Multi-signature wallet key management
+   - SSL/TLS certificate management
+   - API authentication token generation
+   - Secure key rotation procedures
+
+MULTI-SIGNATURE WALLET SYSTEM:
+1. Wallet architecture (3-of-5 setup):
+   - Company keys: CEO and CTO hardware wallets
+   - Client keys: Manufacturer security team wallets
+   - Escrow key: Third-party independent validator
+   - Emergency recovery procedures
+
+2. Transaction approval workflow:
+   - Product registration: 2 signatures required
+   - Critical operations: 3 signatures required
+   - Emergency operations: 4+ signatures required
+   - Automated notification system for signature requests
+
+SECURITY MONITORING:
+1. 24/7 Security Operations Center (SOC):
+   - Real-time threat monitoring
+   - Automated incident detection
+   - Escalation procedures (Tier 1, 2, 3 response)
+   - Client notification protocols
+
+2. Compliance and auditing:
+   - SOC 2 Type II compliance automation
+   - Regular penetration testing scheduling
+   - Audit trail generation and storage
+   - Regulatory reporting automation
+
+DISASTER RECOVERY:
+1. Multi-region deployment:
+   - Active-active configuration for critical clients
+   - Automated failover mechanisms
+   - RTO: 15 minutes, RPO: 5 minutes
+   - Regular disaster recovery testing
+
+2. Backup and recovery:
+   - Real-time data replication
+   - Encrypted backup storage
+   - Cross-region backup verification
+   - Automated recovery procedures
+
+Include complete infrastructure-as-code templates (Terraform/CloudFormation), HSM integration code, multi-signature wallet implementation, and security monitoring setup.
+
+prompt 3   Create a comprehensive enterprise-grade API and smart contract system for the B2B product authentication platform:
+
+SMART CONTRACT ARCHITECTURE:
+1. Multi-manufacturer contract system:
+   - Factory pattern for manufacturer-specific contracts
+   - Upgradeable proxy pattern for future enhancements
+   - Access control with manufacturer whitelisting
+   - Emergency pause functionality
+
+2. Product registration with enhanced security:
+   - Struct: serialNumber, productName, manufacturerName, manufacturerWallet, hsm_signature, manufacturingDate, currentOwnerEmail, isAuthentic, registrationTimestamp
+   - Manufacturer signature verification using HSM-generated keys
+   - Duplicate serial number prevention
+   - Batch registration support
+
+3. Ownership transfer with 24-hour delay:
+   - Uniform 24-hour delay for all transfers
+   - Duress pin detection (silent flagging)
+   - Pending transfer state management
+   - Automatic cancellation for duress-initiated transfers
+   - Transfer history tracking
+
+ENTERPRISE API SYSTEM:
+1. Multi-tenant API architecture:
+   - Manufacturer-specific endpoints with custom rate limits
+   - Tiered access based on subscription level
+   - Webhook support for real-time notifications
+   - GraphQL and REST API support
+
+2. Core endpoints:
+   - POST /api/v1/manufacturers/{id}/products (register single product)
+   - POST /api/v1/manufacturers/{id}/products/batch (bulk registration)
+   - GET /api/v1/verify/{serialNumber} (public verification)
+   - POST /api/v1/products/{id}/transfer (initiate ownership transfer)
+   - GET /api/v1/manufacturers/{id}/analytics (usage statistics)
+
+3. Authentication and authorization:
+   - HSM-backed API key generation
+   - JWT tokens with manufacturer claims
+   - Rate limiting based on subscription tier
+   - IP whitelisting for high-security clients
+
+TRANSFER SYSTEM WITH DURESS PROTECTION:
+1. Email-based user management:
+   - User registration with email verification
+   - Two-pin system: normal pin + duress pin (hashed separately)
+   - Optional wallet address linking
+   - Recovery email configuration
+
+2. Transfer workflow:
+   - 24-hour delay for ALL transfers (no exceptions)
+   - Email notifications: initiation, 12-hour warning, 30-minute final warning
+   - Cancellation options: email link, dashboard, customer service
+   - Silent duress detection with security team alerts
+
+3. Security monitoring during transfers:
+   - Geo-location tracking
+   - Device fingerprinting
+   - Behavioral analysis
+   - Evidence collection for suspicious activity
+   - Automatic cancellation of duress-initiated transfers
+
+VERIFICATION SYSTEM:
+1. Public verification API:
+   - Rich product data return (not just blockchain hash)
+   - Manufacturer signature verification
+   - Ownership history compilation
+   - Warranty status calculation
+   - Real-time blockchain query with caching
+
+2. Anti-counterfeiting features:
+   - Manufacturer whitelist verification
+   - Digital signature validation
+   - Tamper detection
+   - Suspicious activity flagging
+
+ANALYTICS AND MONITORING:
+1. Manufacturer analytics:
+   - Product registration statistics
+   - Verification request metrics
+   - Transfer activity monitoring
+   - Geographic usage patterns
+   - API usage statistics
+
+2. System monitoring:
+   - Real-time performance metrics
+   - Error rate tracking
+   - Security event monitoring
+   - SLA compliance tracking
+   - Automated alerting system
+
+Include complete smart contract code (Solidity), enterprise API implementation (Node.js/Express or similar), authentication middleware, transfer system with duress protection, and monitoring/analytics dashboard.
+
+prompt 4
+
+Create a comprehensive verification interface system with white-label capabilities for manufacturer integration:
+
+MAIN VERIFICATION INTERFACE:
+1. Public verification portal:
+   - Serial number input with QR code scanning
+   - Real-time verification with loading states
+   - Rich product information display
+   - Mobile-responsive design
+   - Multi-language support
+   - Accessibility compliance (WCAG 2.1 AA)
+
+2. Verification result display:
+   - Authentication status with visual indicators
+   - Product details: name, serial, manufacturing date, warranty
+   - Manufacturer verification with trust badges
+   - Current owner information
+   - Complete ownership transfer history timeline
+   - Blockchain transaction details with explorer links
+
+WHITE-LABEL SOLUTION:
+1. Manufacturer-branded interfaces:
+   - Custom domain support (verify.apple.com)
+   - Brand-specific styling and themes
+   - Custom logo and color schemes
+   - Manufacturer-specific messaging
+   - Terms of service and privacy policy integration
+
+2. Embeddable widget:
+   - JavaScript SDK for manufacturer websites
+   - iframe-based integration option
+   - API-first approach for custom implementations
+   - Mobile SDK for iOS/Android apps
+
+ADVANCED VERIFICATION FEATURES:
+1. Batch verification for retailers:
+   - CSV upload for multiple serial numbers
+   - Bulk verification processing
+   - Export verification reports
+   - Retail dashboard for inventory management
+
+2. QR code integration:
+   - QR code generation for products
+   - Mobile camera scanning
+   - Offline verification capability
+   - QR code tamper detection
+
+API FOR THIRD-PARTY INTEGRATION:
+1. Verification API endpoints:
+   - GET /api/v1/verify/{serialNumber}
+   - POST /api/v1/verify/batch (bulk verification)
+   - GET /api/v1/products/{id}/history (ownership timeline)
+   - GET /api/v1/manufacturers/{id}/products (manufacturer's products)
+
+2. Webhook system:
+   - Real-time verification notifications
+   - Transfer completion events
+   - Suspicious activity alerts
+   - Product registration confirmations
+
+SECURITY AND ANTI-FRAUD:
+1. Verification security:
+   - Rate limiting to prevent abuse
+   - IP geolocation for fraud detection
+   - Suspicious pattern recognition
+   - CAPTCHA integration for high-volume requests
+
+2. Data protection:
+   - GDPR compliance features
+   - Data retention policies
+   - User consent management
+   - Right to be forgotten implementation
+
+ANALYTICS DASHBOARD:
+1. Public metrics:
+   - Total verifications performed
+   - Success rate statistics
+   - Geographic verification patterns
+   - Popular product categories
+
+2. Manufacturer-specific analytics:
+   - Product verification trends
+   - Geographic distribution
+   - Transfer activity patterns
+   - Customer engagement metrics
+
+MOBILE APPLICATION:
+1. Consumer mobile app:
+   - QR code scanning
+   - Verification history
+   - Product watchlist
+   - Push notifications for owned products
+   - Offline verification cache
+
+2. Retailer mobile app:
+   - Bulk inventory verification
+   - Product authentication during sales
+   - Integration with POS systems
+   - Staff training modules
+
+INTEGRATION EXAMPLES:
+1. E-commerce platform integration:
+   - Shopify plugin
+   - WooCommerce extension
+   - Amazon marketplace integration
+   - eBay authenticity guarantee integration
+
+2. Supply chain integration:
+   - SAP integration modules
+   - Oracle supply chain integration
+   - Custom ERP system connectors
+   - Logistics partner APIs
+
+Include complete React frontend code, mobile app code (React Native), white-label customization system, API documentation, analytics dashboard, and integration examples for major platforms.

@@ -2,46 +2,32 @@
 from datetime import datetime, timezone
 from bson import ObjectId
 from typing import Dict, List, Optional
-from config.__init__ import DatabaseConfig
-from services.blockchain_service import BlockchainService
-from utils.formatters import format_product_response, format_device_details
+
+from utils.database import get_db_connection
+from services.blockchain_service import blockchain_service
 
 class VerificationService:
-    """Service for handling product verification logic"""
+    """Service for handling product verification operations"""
     
     def __init__(self):
-        self.db = DatabaseConfig.get_db_connection()
-        self.blockchain_service = BlockchainService()
+        pass
     
     def verify_product(self, serial_number: str, customer_id: str = None, 
                       user_role: str = None, user_ip: str = None) -> Dict:
-        """
-        Enhanced verification with device info and customer tracking
-        
-        Args:
-            serial_number: Product serial number to verify
-            customer_id: ID of the customer requesting verification
-            user_role: Role of the user (manufacturer/customer)
-            user_ip: IP address of the requester
-            
-        Returns:
-            Dict containing verification results
-        """
+        """Verify product authenticity"""
         try:
-            # Database lookup with error handling
-            product = self.db.products.find_one({"serial_number": serial_number})
+            db = get_db_connection()
+            
+            # Database lookup
+            product = db.products.find_one({"serial_number": serial_number})
             verification_id = None
             
             if product:
-                print(f"Product found in DB. Blockchain verified flag: {product.get('blockchain_verified')}")
-                
                 if product.get("blockchain_verified"):
                     # Try blockchain verification
                     try:
-                        blockchain_result = self.blockchain_service.verify_product_on_blockchain(serial_number)
-                        print(f"Blockchain result: {blockchain_result}")
+                        blockchain_result = blockchain_service.verify_product_on_blockchain(serial_number)
                     except Exception as e:
-                        print(f"Blockchain verification failed: {e}")
                         blockchain_result = {"verified": False, "error": str(e)}
                     
                     if not blockchain_result.get("verified"):
@@ -61,14 +47,10 @@ class VerificationService:
                 else:
                     result = self._format_authentic_result(product, None, "database")
             else:
-                print("Product not found in DB, checking blockchain...")
-                
                 # Check blockchain directly
                 try:
-                    blockchain_result = self.blockchain_service.verify_product_on_blockchain(serial_number)
-                    print(f"Blockchain check result: {blockchain_result}")
+                    blockchain_result = blockchain_service.verify_product_on_blockchain(serial_number)
                 except Exception as e:
-                    print(f"Blockchain verification failed: {e}")
                     blockchain_result = {"verified": False, "error": str(e)}
                 
                 if blockchain_result.get("verified"):
@@ -76,7 +58,7 @@ class VerificationService:
                 else:
                     result = self._format_not_found_result(serial_number)
             
-            # Enhanced verification logging
+            # Log verification attempt
             verification_id = self._log_verification(
                 serial_number=serial_number,
                 customer_id=customer_id,
@@ -89,11 +71,9 @@ class VerificationService:
             if verification_id:
                 result["verificationId"] = verification_id
             
-            print(f"Returning result: {result}")
             return result
             
         except Exception as e:
-            print(f"Verification service error: {e}")
             raise Exception(f"Verification service error: {str(e)}")
     
     def verify_batch(self, serial_numbers: List[str], customer_id: str = None,
@@ -141,13 +121,11 @@ class VerificationService:
     def get_device_details(self, serial_number: str) -> Optional[Dict]:
         """Get detailed device information"""
         try:
-            product = self.db.products.find_one({"serial_number": serial_number})
+            db = get_db_connection()
+            product = db.products.find_one({"serial_number": serial_number})
             
             if product:
-                # Convert ObjectId to string
-                product['_id'] = str(product['_id'])
-                
-                details = {
+                return {
                     "serial_number": product.get("serial_number"),
                     "serialNumber": product.get("serial_number"),
                     "brand": product.get("brand"),
@@ -165,10 +143,8 @@ class VerificationService:
                     "registered_at": product.get("registered_at"),
                     "created_at": product.get("created_at")
                 }
-                
-                return details
-            else:
-                return None
+            
+            return None
                 
         except Exception as e:
             raise Exception(f"Could not load device details: {str(e)}")
@@ -176,7 +152,9 @@ class VerificationService:
     def get_ownership_history(self, serial_number: str) -> List[Dict]:
         """Get ownership history for a verified product"""
         try:
-            product = self.db.products.find_one({"serial_number": serial_number})
+            db = get_db_connection()
+            product = db.products.find_one({"serial_number": serial_number})
+            
             if not product:
                 raise ValueError("Product not found")
 
@@ -212,22 +190,24 @@ class VerificationService:
     def create_counterfeit_report(self, customer_id: str, report_data: Dict) -> str:
         """Create a counterfeit report"""
         try:
+            db = get_db_connection()
+            
             serial_number = report_data.get('serial_number')
             product_name = report_data.get('product_name')
             device_category = report_data.get('device_category')
             customer_consent = report_data.get('customer_consent', False)
             location_data = report_data.get('location_data') if customer_consent else None
             
-            # Find the most recent verification for this customer and serial number
-            verification = self.db.verifications.find_one({
+            # Find the most recent verification
+            verification = db.verifications.find_one({
                 'serial_number': serial_number,
                 'customer_id': ObjectId(customer_id)
-            }, sort=[('created_at', -1)])  # Get the most recent one
+            }, sort=[('created_at', -1)])
             
             if not verification:
                 raise ValueError('Verification not found')
 
-            # Update the verification log with proper device info
+            # Update the verification log with device info
             try:
                 verification_update = {
                     'device_name': product_name,
@@ -240,16 +220,13 @@ class VerificationService:
                     brand_guess = product_name.split()[0] if product_name.split() else 'Unknown'
                     verification_update['brand'] = brand_guess
                 
-                # Update the verification record
-                self.db.verifications.update_one(
+                db.verifications.update_one(
                     {'_id': verification['_id']},
                     {'$set': verification_update}
                 )
                 
-                print(f"Updated verification log {verification['_id']} with device info: {product_name}, {device_category}")
-                
             except Exception as update_error:
-                print(f"Failed to update verification log: {str(update_error)}")
+                pass  # Non-critical operation
 
             # Create the counterfeit report
             report_doc = {
@@ -276,11 +253,42 @@ class VerificationService:
                     'additional_notes': location_data.get('additional_notes')
                 })
             
-            result = self.db.counterfeit_reports.insert_one(report_doc)
+            result = db.counterfeit_reports.insert_one(report_doc)
             return str(result.inserted_id)
             
         except Exception as e:
             raise Exception(f"Failed to create counterfeit report: {str(e)}")
+    
+    def get_system_stats(self) -> Dict:
+        """Get system-wide statistics"""
+        try:
+            db = get_db_connection()
+            
+            # Count total products
+            total_devices = db.products.count_documents({})
+            blockchain_devices = db.products.count_documents({"blockchain_verified": True})
+            
+            # Count verification logs
+            total_verifications = db.verifications.count_documents({})
+            
+            # Calculate authenticity rate
+            authentic_verifications = db.verifications.count_documents({"is_authentic": True})
+            authenticity_rate = int((authentic_verifications / total_verifications * 100)) if total_verifications > 0 else 0
+            
+            return {
+                "total_devices": total_devices,
+                "blockchain_devices": blockchain_devices,
+                "total_verifications": total_verifications,
+                "authenticity_rate": authenticity_rate
+            }
+            
+        except Exception:
+            return {
+                "total_devices": 0,
+                "blockchain_devices": 0,
+                "total_verifications": 0,
+                "authenticity_rate": 0
+            }
     
     def _format_authentic_result(self, product: Dict, blockchain_result: Dict = None, source: str = "database") -> Dict:
         """Format authentic verification result"""
@@ -359,8 +367,10 @@ class VerificationService:
     
     def _log_verification(self, serial_number: str, customer_id: str, product: Dict,
                          result: Dict, user_role: str = None, user_ip: str = None) -> Optional[str]:
-        """Enhanced verification logging with customer ID and device info"""
+        """Log verification attempt"""
         try:
+            db = get_db_connection()
+            
             verification_doc = {
                 "serial_number": serial_number,
                 "customer_id": ObjectId(customer_id) if customer_id else None,
@@ -375,22 +385,19 @@ class VerificationService:
                 "response_time": 0.5,
                 "verification_method": "manual",
                 "transaction_success": result["authentic"],
-                
-                # Enhanced device information
                 "device_name": f"{result.get('brand', 'Unknown')} {result.get('model', 'Unknown')}".strip(),
                 "device_category": result.get('deviceType', 'Unknown'),
                 "brand": result.get('brand', 'Unknown'),
-                
                 "timestamp": datetime.now(timezone.utc),
                 "created_at": datetime.now(timezone.utc),
                 "updated_at": datetime.now(timezone.utc)
             }
             
-            verification_result = self.db.verifications.insert_one(verification_doc)
+            verification_result = db.verifications.insert_one(verification_doc)
             return str(verification_result.inserted_id)
             
-        except Exception as e:
-            print(f"Enhanced logging failed: {e}")
+        except Exception:
             return None
-        
-verification_service = VerificationService
+
+# Singleton instance
+verification_service = VerificationService()
