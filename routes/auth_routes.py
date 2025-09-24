@@ -202,7 +202,7 @@ def verify_auth(current_user_id, current_user_role):
     }, 200)
 ############
 
-@auth_bp.route('/profile', methods=['GET'])  # Changed from '/get-profile'
+@auth_bp.route('/profile', methods=['GET'])  
 @auth_middleware.token_required_with_roles(allowed_roles=['customer', 'manufacturer', 'admin'])
 def get_profile(current_user_id, current_user_role):
     """Get user profile for any role"""
@@ -280,21 +280,4 @@ def update_profile(current_user_id, current_user_role):
     except Exception as e:
         logger.error(f"Profile update error: {e}")
         return auth_middleware.create_cors_response({'error': 'Internal server error'}, 500)
-    """Update user profile"""
-    try:
-        data = request.get_json()
-        
-        result = profile_service.update_user_profile(current_user_id, data)
-        
-        if not result['success']:
-            return auth_middleware.create_cors_response({'error': result['message']}, 400)
-        
-        return auth_middleware.create_cors_response({
-            'status': 'success',
-            'message': result['message'],
-            'user': result['profile']
-        }, 200)
-        
-    except Exception as e:
-        logger.error(f"Profile update error: {e}")
-        return auth_middleware.create_cors_response({'error': 'Internal server error'}, 500)
+    

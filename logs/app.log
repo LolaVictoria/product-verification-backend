@@ -1257,3 +1257,15 @@
 2025-09-25 00:16:54,977 - app - INFO - Database connection established
 2025-09-25 00:16:54,981 - app - INFO - Services initialized
 2025-09-25 00:16:57,267 - werkzeug - WARNING -  * Debugger is active!
+2025-09-25 00:19:13,009 - utils.database - INFO - Database indexes initialized successfully
+2025-09-25 00:19:13,010 - app - INFO - Database connection established
+2025-09-25 00:19:13,011 - app - INFO - Services initialized
+2025-09-25 00:19:15,285 - werkzeug - WARNING -  * Debugger is active!
+2025-09-25 00:30:28,847 - utils.database - INFO - Database indexes initialized successfully
+2025-09-25 00:30:28,849 - app - INFO - Database connection established
+2025-09-25 00:30:28,852 - app - INFO - Services initialized
+2025-09-25 00:30:30,369 - werkzeug - WARNING -  * Debugger is active!
+2025-09-25 00:40:40,904 - utils.database - INFO - Database indexes initialized successfully
+2025-09-25 00:40:40,905 - app - INFO - Database connection established
+2025-09-25 00:40:40,906 - app - INFO - Services initialized
+2025-09-25 00:40:41,587 - werkzeug - WARNING -  * Debugger is active!
