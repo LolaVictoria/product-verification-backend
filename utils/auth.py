@@ -7,11 +7,14 @@ from flask import request, jsonify, current_app, g
 from utils.database import get_db_connection
 from datetime import datetime, timedelta
 import logging
+from dotenv import load_dotenv
+import os 
 
+load_dotenv()
 logger = logging.getLogger(__name__)
 
 # JWT Configuration
-JWT_SECRET_KEY = "your-secret-key-change-this-in-production"  # Move to environment variable
+JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')  
 JWT_ALGORITHM = "HS256"
 TOKEN_EXPIRY_HOURS = 24
 
