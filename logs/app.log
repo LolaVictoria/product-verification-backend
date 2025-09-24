@@ -1239,3 +1239,21 @@
 2025-09-24 23:39:55,064 - app - INFO - Database connection established
 2025-09-24 23:39:55,069 - app - INFO - Services initialized
 2025-09-24 23:39:56,347 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 23:46:54,800 - utils.database - ERROR - Error initializing database indexes: ac-ni4ekos-shard-00-02.aoxl38d.mongodb.net:27017: [Errno 110] Connection timed out
+2025-09-24 23:46:54,801 - app - INFO - Database connection established
+2025-09-24 23:46:54,803 - app - INFO - Services initialized
+2025-09-24 23:46:55,597 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 23:46:55,723 - middleware.logging_middleware - INFO - REQUEST: {"request_id": "req_1758754015719", "method": "POST", "path": "/auth/admin/login", "client_ip": "127.0.0.1", "user_agent": "curl/8.12.1", "timestamp": "2025-09-24T22:46:55.719883+00:00", "query_params": {}, "headers": {"Host": "localhost:5000", "User-Agent": "curl/8.12.1", "Accept": "*/*", "Content-Type": "application/json", "Content-Length": "66"}, "body": {"email": "damilolaoniyide11@gmail.com"}}
+2025-09-24 23:46:55,730 - middleware.logging_middleware - INFO - REQUEST: {"request_id": "req_1758754015729", "method": "POST", "path": "/auth/admin/login", "client_ip": "127.0.0.1", "user_agent": "curl/8.12.1", "timestamp": "2025-09-24T22:46:55.729473+00:00", "query_params": {}, "headers": {"Host": "localhost:5000", "User-Agent": "curl/8.12.1", "Accept": "*/*", "Content-Type": "application/json", "Content-Length": "66"}, "body": {"email": "damilolaoniyide11@gmail.com"}}
+2025-09-24 23:46:55,741 - middleware.logging_middleware - INFO - REQUEST: {"request_id": "req_1758754015740", "method": "POST", "path": "/auth/admin/login", "client_ip": "127.0.0.1", "user_agent": "curl/8.12.1", "timestamp": "2025-09-24T22:46:55.740623+00:00", "query_params": {}, "headers": {"Host": "localhost:5000", "User-Agent": "curl/8.12.1", "Accept": "*/*", "Content-Type": "application/json", "Content-Length": "66"}, "body": {"email": "damilolaoniyide11@gmail.com"}}
+2025-09-24 23:46:57,472 - middleware.logging_middleware - INFO - RESPONSE: {"request_id": "req_1758754015719", "status_code": 200, "response_time_ms": 1752.07, "content_length": 475, "timestamp": "2025-09-24T22:46:57.471925+00:00"}
+2025-09-24 23:46:57,506 - middleware.logging_middleware - INFO - RESPONSE: {"request_id": "req_1758754015729", "status_code": 200, "response_time_ms": 1776.81, "content_length": 475, "timestamp": "2025-09-24T22:46:57.506299+00:00"}
+2025-09-24 23:46:57,667 - middleware.logging_middleware - INFO - RESPONSE: {"request_id": "req_1758754015740", "status_code": 200, "response_time_ms": 1926.75, "content_length": 475, "timestamp": "2025-09-24T22:46:57.667349+00:00"}
+2025-09-25 00:08:32,996 - utils.database - INFO - Database indexes initialized successfully
+2025-09-25 00:08:32,998 - app - INFO - Database connection established
+2025-09-25 00:08:32,999 - app - INFO - Services initialized
+2025-09-25 00:08:33,926 - werkzeug - WARNING -  * Debugger is active!
+2025-09-25 00:16:54,961 - utils.database - INFO - Database indexes initialized successfully
+2025-09-25 00:16:54,977 - app - INFO - Database connection established
+2025-09-25 00:16:54,981 - app - INFO - Services initialized
+2025-09-25 00:16:57,267 - werkzeug - WARNING -  * Debugger is active!

@@ -200,13 +200,14 @@ def verify_auth(current_user_id, current_user_role):
             'role': current_user_role
         }
     }, 200)
+############
 
-@auth_bp.route('/profile', methods=['GET'])
+@auth_bp.route('/profile', methods=['GET'])  # Changed from '/get-profile'
 @auth_middleware.token_required_with_roles(allowed_roles=['customer', 'manufacturer', 'admin'])
 def get_profile(current_user_id, current_user_role):
-    """Get user profile"""
+    """Get user profile for any role"""
     try:
-        result = profile_service.get_user_profile(current_user_id)
+        result = profile_service.get_user_profile(current_user_id, current_user_role)
         
         if not result['success']:
             return auth_middleware.create_cors_response({'error': result['message']}, 404)
@@ -220,9 +221,65 @@ def get_profile(current_user_id, current_user_role):
         logger.error(f"Profile error: {e}")
         return auth_middleware.create_cors_response({'error': 'Internal server error'}, 500)
 
-@auth_bp.route('/profile', methods=['PUT'])
+@auth_bp.route('/manufacturer/profile', methods=['GET'])
+@auth_middleware.token_required_with_roles(allowed_roles=['manufacturer'])
+def get_manufacturer_profile(current_user_id, current_user_role):
+    """Get manufacturer-specific profile"""
+    try:
+        result = profile_service.get_manufacturer_profile(current_user_id)
+        
+        if not result['success']:
+            return auth_middleware.create_cors_response({'error': result['message']}, 404)
+        
+        return auth_middleware.create_cors_response({
+            'status': 'success',
+            'user': result['profile']
+        }, 200)
+        
+    except Exception as e:
+        logger.error(f"Manufacturer profile error: {e}")
+        return auth_middleware.create_cors_response({'error': 'Internal server error'}, 500)
+
+@auth_bp.route('/admin/profile', methods=['GET'])  # Optional: Admin-specific endpoint
+@auth_middleware.token_required_with_roles(allowed_roles=['admin'])
+def get_admin_profile(current_user_id, current_user_role):
+    """Get admin-specific profile"""
+    try:
+        result = profile_service.get_admin_profile(current_user_id)
+        
+        if not result['success']:
+            return auth_middleware.create_cors_response({'error': result['message']}, 404)
+        
+        return auth_middleware.create_cors_response({
+            'status': 'success',
+            'user': result['profile']
+        }, 200)
+        
+    except Exception as e:
+        logger.error(f"Admin profile error: {e}")
+        return auth_middleware.create_cors_response({'error': 'Internal server error'}, 500)
+
+@auth_bp.route('/update-profile', methods=['PUT'])  # Changed from '/update-profile'
 @auth_middleware.token_required_with_roles(allowed_roles=['customer', 'manufacturer', 'admin'])
 def update_profile(current_user_id, current_user_role):
+    """Update user profile"""
+    try:
+        data = request.get_json()
+        
+        result = profile_service.update_user_profile(current_user_id, current_user_role, data)
+        
+        if not result['success']:
+            return auth_middleware.create_cors_response({'error': result['message']}, 400)
+        
+        return auth_middleware.create_cors_response({
+            'status': 'success',
+            'message': result['message'],
+            'user': result['profile']
+        }, 200)
+        
+    except Exception as e:
+        logger.error(f"Profile update error: {e}")
+        return auth_middleware.create_cors_response({'error': 'Internal server error'}, 500)
     """Update user profile"""
     try:
         data = request.get_json()
