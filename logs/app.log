@@ -1094,3 +1094,17 @@
 2025-09-24 21:45:46,559 - app - INFO - Database connection established
 2025-09-24 21:45:46,560 - app - INFO - Services initialized
 2025-09-24 21:45:47,596 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 21:56:09,671 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 21:56:09,673 - app - INFO - Database connection established
+2025-09-24 21:56:09,673 - app - INFO - Services initialized
+2025-09-24 21:56:21,085 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 21:56:21,086 - app - INFO - Database connection established
+2025-09-24 21:56:21,087 - app - INFO - Services initialized
+2025-09-24 21:56:21,706 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 21:58:12,413 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 21:58:12,414 - app - INFO - Database connection established
+2025-09-24 21:58:12,415 - app - INFO - Services initialized
+2025-09-24 21:58:28,583 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 21:58:28,584 - app - INFO - Database connection established
+2025-09-24 21:58:28,585 - app - INFO - Services initialized
+2025-09-24 21:58:29,236 - werkzeug - WARNING -  * Debugger is active!
