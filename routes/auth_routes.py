@@ -1,5 +1,5 @@
 # routes/auth_routes.py
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify
 from datetime import datetime, timezone
 import logging
 from bson import ObjectId
@@ -9,6 +9,8 @@ from services.profile_service import profile_service
 from utils.validators import validate_login_data, validate_user_registration
 from middleware.auth_middleware import auth_middleware
 from middleware.rate_limiting import rate_limit
+# Import the functions from utils.auth
+from utils.auth import authenticate_admin, authenticate_manufacturer, AuthError
 
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
@@ -16,7 +18,7 @@ logger = logging.getLogger(__name__)
 @auth_bp.route('/login', methods=['POST'])
 @rate_limit({'per_minute': 10, 'per_hour': 50})
 def login():
-    """User login endpoint"""
+    """Generic user login endpoint"""
     try:
         data = request.get_json()
         
@@ -24,20 +26,100 @@ def login():
         if validation_error:
             return auth_middleware.create_cors_response({'error': validation_error}, 400)
         
-        result = auth_service.authenticate_user(data.get('email'), data.get('password'))
+        # Check if role is specified for specific login handling
+        role = data.get('role', '').lower()
         
-        if not result['success']:
-            return auth_middleware.create_cors_response({'error': result['message']}, 401)
+        if role == 'admin':
+            # Use admin authentication from utils.auth
+            try:
+                result = authenticate_admin(data.get('email'), data.get('password'))
+                return auth_middleware.create_cors_response({
+                    'success': True,
+                    'token': result['token'],
+                    'user': result['user']
+                }, 200)
+            except AuthError as e:
+                return auth_middleware.create_cors_response({'error': str(e)}, 401)
         
-        return auth_middleware.create_cors_response({
-            'token': result['token'],
-            'user': result['user'],
-            'expires_at': result['expires_at']
-        }, 200)
+        elif role == 'manufacturer':
+            # Use manufacturer authentication from utils.auth
+            try:
+                result = authenticate_manufacturer(data.get('email'), data.get('password'))
+                return auth_middleware.create_cors_response({
+                    'success': True,
+                    'token': result['token'],
+                    'user': result['user']
+                }, 200)
+            except AuthError as e:
+                return auth_middleware.create_cors_response({'error': str(e)}, 401)
+        
+        else:
+            # Use existing generic authentication
+            result = auth_service.authenticate_user(data.get('email'), data.get('password'))
+            
+            if not result['success']:
+                return auth_middleware.create_cors_response({'error': result['message']}, 401)
+            
+            return auth_middleware.create_cors_response({
+                'success': True,
+                'token': result['token'],
+                'user': result['user'],
+                'expires_at': result['expires_at']
+            }, 200)
         
     except Exception as e:
         logger.error(f"Login error: {e}")
         return auth_middleware.create_cors_response({'error': 'Authentication failed'}, 500)
+
+@auth_bp.route('/admin/login', methods=['POST'])
+@rate_limit({'per_minute': 5, 'per_hour': 20})
+def admin_login():
+    """Specific admin login endpoint"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'email' not in data or 'password' not in data:
+            return auth_middleware.create_cors_response({'error': 'Email and password required'}, 400)
+        
+        # Use authenticate_admin function from utils.auth
+        result = authenticate_admin(data['email'], data['password'])
+        
+        return auth_middleware.create_cors_response({
+            'success': True,
+            'token': result['token'],
+            'user': result['user']
+        }, 200)
+        
+    except AuthError as e:
+        return auth_middleware.create_cors_response({'error': str(e)}, 401)
+    except Exception as e:
+        logger.error(f"Admin login error: {e}")
+        return auth_middleware.create_cors_response({'error': 'Login failed'}, 500)
+
+@auth_bp.route('/manufacturer/login', methods=['POST'])
+@rate_limit({'per_minute': 5, 'per_hour': 20})
+def manufacturer_login():
+    """Specific manufacturer login endpoint"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'email' not in data or 'password' not in data:
+            return auth_middleware.create_cors_response({'error': 'Email and password required'}, 400)
+        
+        # Use authenticate_manufacturer function from utils.auth
+        result = authenticate_manufacturer(data['email'], data['password'])
+        
+        return auth_middleware.create_cors_response({
+            'success': True,
+            'token': result['token'],
+            'user': result['user']
+        }, 200)
+        
+    except AuthError as e:
+        return auth_middleware.create_cors_response({'error': str(e)}, 401)
+    except Exception as e:
+        logger.error(f"Manufacturer login error: {e}")
+        return auth_middleware.create_cors_response({'error': 'Login failed'}, 500)
 
 @auth_bp.route('/register', methods=['POST'])
 @rate_limit({'per_minute': 5, 'per_hour': 20})
@@ -106,6 +188,18 @@ def refresh_token():
     except Exception as e:
         logger.error(f"Token refresh error: {e}")
         return auth_middleware.create_cors_response({"error": "Token refresh failed"}, 500)
+
+@auth_bp.route('/verify', methods=['GET'])
+@auth_middleware.token_required_with_roles(allowed_roles=['customer', 'manufacturer', 'admin'])
+def verify_auth(current_user_id, current_user_role):
+    """Verify if token is valid"""
+    return auth_middleware.create_cors_response({
+        'valid': True,
+        'user': {
+            'id': current_user_id,
+            'role': current_user_role
+        }
+    }, 200)
 
 @auth_bp.route('/profile', methods=['GET'])
 @auth_middleware.token_required_with_roles(allowed_roles=['customer', 'manufacturer', 'admin'])

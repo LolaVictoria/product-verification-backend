@@ -1136,3 +1136,106 @@
 2025-09-24 22:16:18,194 - app - INFO - Database connection established
 2025-09-24 22:16:18,194 - app - INFO - Services initialized
 2025-09-24 22:16:18,977 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 22:23:37,425 - middleware.logging_middleware - INFO - REQUEST: {"request_id": "req_1758749017425", "method": "POST", "path": "/auth/admin/login", "client_ip": "127.0.0.1", "user_agent": "curl/8.12.1", "timestamp": "2025-09-24T21:23:37.425290+00:00", "query_params": {}, "headers": {"Host": "localhost:5000", "User-Agent": "curl/8.12.1", "Accept": "*/*"}}
+2025-09-24 22:23:37,612 - middleware.auth_middleware - ERROR - API Error: Resource not found - POST /auth/admin/login
+2025-09-24 22:23:37,616 - middleware.logging_middleware - INFO - RESPONSE: {"request_id": "req_1758749017425", "status_code": 404, "response_time_ms": 190.7, "content_length": 159, "timestamp": "2025-09-24T21:23:37.615981+00:00", "error_details": {"error": "Resource not found", "method": "POST", "path": "/auth/admin/login", "status": "error", "timestamp": "2025-09-24T21:23:37.611894+00:00"}}
+2025-09-24 22:24:43,271 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 22:24:43,271 - app - INFO - Database connection established
+2025-09-24 22:24:43,272 - app - INFO - Services initialized
+2025-09-24 22:24:44,035 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 22:24:45,156 - middleware.logging_middleware - INFO - REQUEST: {"request_id": "req_1758749085155", "method": "POST", "path": "/auth/admin/login", "client_ip": "127.0.0.1", "user_agent": "curl/8.12.1", "timestamp": "2025-09-24T21:24:45.155796+00:00", "query_params": {}, "headers": {"Host": "localhost:5000", "User-Agent": "curl/8.12.1", "Accept": "*/*"}}
+2025-09-24 22:24:45,373 - middleware.auth_middleware - ERROR - API Error: Resource not found - POST /auth/admin/login
+2025-09-24 22:24:45,380 - middleware.logging_middleware - INFO - RESPONSE: {"request_id": "req_1758749085155", "status_code": 404, "response_time_ms": 224.43, "content_length": 159, "timestamp": "2025-09-24T21:24:45.380192+00:00", "error_details": {"error": "Resource not found", "method": "POST", "path": "/auth/admin/login", "status": "error", "timestamp": "2025-09-24T21:24:45.373412+00:00"}}
+2025-09-24 22:25:14,035 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 22:25:14,036 - app - INFO - Database connection established
+2025-09-24 22:25:14,038 - app - INFO - Services initialized
+2025-09-24 22:25:14,746 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 22:26:47,235 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 22:26:47,237 - app - INFO - Database connection established
+2025-09-24 22:26:47,238 - app - INFO - Services initialized
+2025-09-24 22:27:04,702 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 22:27:04,704 - app - INFO - Database connection established
+2025-09-24 22:27:04,708 - app - INFO - Services initialized
+2025-09-24 22:27:05,933 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 22:30:32,921 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 22:30:32,922 - app - INFO - Database connection established
+2025-09-24 22:30:32,922 - app - INFO - Services initialized
+2025-09-24 22:30:33,953 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 22:30:54,429 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 22:30:54,431 - app - INFO - Database connection established
+2025-09-24 22:30:54,432 - app - INFO - Services initialized
+2025-09-24 22:39:51,817 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 22:39:51,818 - app - INFO - Database connection established
+2025-09-24 22:39:51,819 - app - INFO - Services initialized
+2025-09-24 22:40:12,179 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 22:40:12,181 - app - INFO - Database connection established
+2025-09-24 22:40:12,181 - app - INFO - Services initialized
+2025-09-24 22:40:12,783 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 22:40:19,681 - middleware.logging_middleware - INFO - REQUEST: {"request_id": "req_1758750019680", "method": "POST", "path": "/auth/admin/login", "client_ip": "127.0.0.1", "user_agent": "curl/8.12.1", "timestamp": "2025-09-24T21:40:19.681088+00:00", "query_params": {}, "headers": {"Host": "localhost:5000", "User-Agent": "curl/8.12.1", "Accept": "*/*"}}
+2025-09-24 22:40:19,881 - routes.auth_routes - ERROR - Admin login error: 415 Unsupported Media Type: Did not attempt to load JSON data because the request Content-Type was not 'application/json'.
+2025-09-24 22:40:19,884 - middleware.logging_middleware - INFO - RESPONSE: {"request_id": "req_1758750019680", "status_code": 500, "response_time_ms": 202.78, "content_length": 30, "timestamp": "2025-09-24T21:40:19.883845+00:00", "error_details": {"error": "Login failed"}}
+2025-09-24 22:48:46,189 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 22:48:46,192 - app - INFO - Database connection established
+2025-09-24 22:48:46,195 - app - INFO - Services initialized
+2025-09-24 22:48:47,361 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 22:48:47,709 - middleware.logging_middleware - INFO - REQUEST: {"request_id": "req_1758750527708", "method": "POST", "path": "/auth/admin/login", "client_ip": "127.0.0.1", "user_agent": "curl/8.12.1", "timestamp": "2025-09-24T21:48:47.708565+00:00", "query_params": {}, "headers": {"Host": "localhost:5000", "User-Agent": "curl/8.12.1", "Accept": "*/*"}}
+2025-09-24 22:48:47,906 - routes.auth_routes - ERROR - Admin login error: 415 Unsupported Media Type: Did not attempt to load JSON data because the request Content-Type was not 'application/json'.
+2025-09-24 22:48:47,912 - middleware.logging_middleware - INFO - RESPONSE: {"request_id": "req_1758750527708", "status_code": 500, "response_time_ms": 202.23, "content_length": 30, "timestamp": "2025-09-24T21:48:47.910764+00:00", "error_details": {"error": "Login failed"}}
+2025-09-24 22:50:38,272 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 22:50:38,273 - app - INFO - Database connection established
+2025-09-24 22:50:38,273 - app - INFO - Services initialized
+2025-09-24 22:50:39,026 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 22:51:36,870 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 22:51:36,871 - app - INFO - Database connection established
+2025-09-24 22:51:36,872 - app - INFO - Services initialized
+2025-09-24 22:51:37,776 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 22:53:02,341 - middleware.logging_middleware - INFO - REQUEST: {"request_id": "req_1758750782339", "method": "POST", "path": "/auth/admin/login", "client_ip": "127.0.0.1", "user_agent": "curl/8.12.1", "timestamp": "2025-09-24T21:53:02.339927+00:00", "query_params": {}, "headers": {"Host": "localhost:5000", "User-Agent": "curl/8.12.1", "Accept": "*/*", "Content-Type": "application/json", "Content-Length": "66"}, "body": {"email": "damilolaoniyide11@gmail.com"}}
+2025-09-24 22:53:02,702 - middleware.logging_middleware - INFO - RESPONSE: {"request_id": "req_1758750782339", "status_code": 401, "response_time_ms": 362.52, "content_length": 37, "timestamp": "2025-09-24T21:53:02.702342+00:00", "error_details": {"error": "Invalid credentials"}}
+2025-09-24 22:56:43,473 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 22:56:43,474 - app - INFO - Database connection established
+2025-09-24 22:56:43,475 - app - INFO - Services initialized
+2025-09-24 22:56:44,392 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 23:01:32,445 - middleware.logging_middleware - INFO - REQUEST: {"request_id": "req_1758751292443", "method": "POST", "path": "/auth/admin/login", "client_ip": "127.0.0.1", "user_agent": "curl/8.12.1", "timestamp": "2025-09-24T22:01:32.443977+00:00", "query_params": {}, "headers": {"Host": "localhost:5000", "User-Agent": "curl/8.12.1", "Accept": "*/*", "Content-Type": "application/json", "Content-Length": "66"}, "body": {"email": "damilolaoniyide11@gmail.com"}}
+2025-09-24 23:01:32,825 - middleware.logging_middleware - INFO - RESPONSE: {"request_id": "req_1758751292443", "status_code": 401, "response_time_ms": 381.21, "content_length": 37, "timestamp": "2025-09-24T22:01:32.825285+00:00", "error_details": {"error": "Invalid credentials"}}
+2025-09-24 23:05:39,139 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 23:05:39,140 - app - INFO - Database connection established
+2025-09-24 23:05:39,141 - app - INFO - Services initialized
+2025-09-24 23:05:39,890 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 23:14:16,185 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 23:14:16,223 - app - INFO - Database connection established
+2025-09-24 23:14:16,223 - app - INFO - Services initialized
+2025-09-24 23:14:17,437 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 23:15:38,522 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 23:15:38,523 - app - INFO - Database connection established
+2025-09-24 23:15:38,524 - app - INFO - Services initialized
+2025-09-24 23:15:39,356 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 23:19:44,209 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 23:19:44,220 - app - INFO - Database connection established
+2025-09-24 23:19:44,222 - app - INFO - Services initialized
+2025-09-24 23:19:45,459 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 23:26:06,085 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 23:26:06,086 - app - INFO - Database connection established
+2025-09-24 23:26:06,087 - app - INFO - Services initialized
+2025-09-24 23:26:07,251 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 23:26:27,126 - middleware.logging_middleware - INFO - REQUEST: {"request_id": "req_1758752787124", "method": "POST", "path": "/auth/admin/login", "client_ip": "127.0.0.1", "user_agent": "curl/8.12.1", "timestamp": "2025-09-24T22:26:27.125078+00:00", "query_params": {}, "headers": {"Host": "localhost:5000", "User-Agent": "curl/8.12.1", "Accept": "*/*", "Content-Type": "application/json", "Content-Length": "66"}, "body": {"email": "damilolaoniyide11@gmail.com"}}
+2025-09-24 23:26:28,108 - middleware.logging_middleware - INFO - RESPONSE: {"request_id": "req_1758752787124", "status_code": 401, "response_time_ms": 983.47, "content_length": 37, "timestamp": "2025-09-24T22:26:28.108494+00:00", "error_details": {"error": "Invalid credentials"}}
+2025-09-24 23:29:30,891 - app - ERROR - Database initialization failed: cannot access local variable 'get_db_connection' where it is not associated with a value
+2025-09-24 23:31:28,402 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 23:31:28,405 - app - INFO - Database connection established
+2025-09-24 23:31:28,406 - app - INFO - Services initialized
+2025-09-24 23:34:55,306 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 23:34:55,307 - app - INFO - Database connection established
+2025-09-24 23:34:55,307 - app - INFO - Services initialized
+2025-09-24 23:36:37,389 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 23:36:37,391 - app - INFO - Database connection established
+2025-09-24 23:36:37,391 - app - INFO - Services initialized
+2025-09-24 23:36:49,251 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 23:36:49,253 - app - INFO - Database connection established
+2025-09-24 23:36:49,253 - app - INFO - Services initialized
+2025-09-24 23:36:49,974 - werkzeug - WARNING -  * Debugger is active!
+2025-09-24 23:37:10,123 - middleware.logging_middleware - INFO - REQUEST: {"request_id": "req_1758753430121", "method": "POST", "path": "/auth/admin/login", "client_ip": "127.0.0.1", "user_agent": "curl/8.12.1", "timestamp": "2025-09-24T22:37:10.122055+00:00", "query_params": {}, "headers": {"Host": "localhost:5000", "User-Agent": "curl/8.12.1", "Accept": "*/*", "Content-Type": "application/json", "Content-Length": "66"}, "body": {"email": "damilolaoniyide11@gmail.com"}}
+2025-09-24 23:37:12,757 - middleware.logging_middleware - INFO - RESPONSE: {"request_id": "req_1758753430121", "status_code": 401, "response_time_ms": 2635.1, "content_length": 37, "timestamp": "2025-09-24T22:37:12.757104+00:00", "error_details": {"error": "Invalid credentials"}}
+2025-09-24 23:39:55,061 - utils.database - INFO - Database indexes initialized successfully
+2025-09-24 23:39:55,064 - app - INFO - Database connection established
+2025-09-24 23:39:55,069 - app - INFO - Services initialized
+2025-09-24 23:39:56,347 - werkzeug - WARNING -  * Debugger is active!

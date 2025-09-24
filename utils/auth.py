@@ -3,6 +3,7 @@ Authentication utilities for API route protection
 """
 import jwt
 import functools
+import bcrypt
 from flask import request, jsonify, current_app, g
 from utils.database import get_db_connection
 from datetime import datetime, timedelta
@@ -177,131 +178,49 @@ def require_role(required_role):
         return decorated_function
     return decorator
 
-# Login functions to generate tokens
-
-def authenticate_admin(email, password):
-    """Authenticate admin user and generate token"""
+# FIXED PASSWORD VERIFICATION FUNCTIONS
+def verify_password_bcrypt(password, password_hash):
+    """Verify password against bcrypt hash"""
     try:
-        db = get_db_connection()
+        if not password or not password_hash:
+            return False
         
-        # Find admin user - check both collections for flexibility
-        admin = db.users.find_one({
-            'primary_email': email,
-            'role': 'admin',
-            'verification_status': 'verified'
-        })
+        # Convert string password to bytes
+        password_bytes = password.encode('utf-8')
         
-        if not admin:
-            # Also check if there's an admin in your existing structure
-            admin = db.users.find_one({
-                'email': email,
-                'role': 'admin',
-                'is_active': True
-            })
+        # Convert hash to bytes if it's a string
+        if isinstance(password_hash, str):
+            hash_bytes = password_hash.encode('utf-8')
+        else:
+            hash_bytes = password_hash
         
-        if not admin:
-            raise AuthError("Admin not found")
-        
-        # Use your existing password verification logic
-        password_field = admin.get('password_hash') or admin.get('password')
-        if not verify_password_with_user_utils(email, password):
-            raise AuthError("Invalid credentials")
-        
-        # Generate token
-        user_data = {
-            'user_id': str(admin['_id']),
-            'email': admin.get('primary_email') or admin.get('email')
-        }
-        
-        token = generate_token(user_data, 'admin')
-        
-        # Log successful login
-        log_security_event('admin_login', admin['_id'], request.remote_addr)
-        
-        return {
-            'token': token,
-            'user': {
-                'id': str(admin['_id']),
-                'email': admin.get('primary_email') or admin.get('email'),
-                'role': 'admin'
-            }
-        }
-        
+        # Use bcrypt to verify
+        return bcrypt.checkpw(password_bytes, hash_bytes)
+    
     except Exception as e:
-        logger.error(f"Admin authentication error: {e}")
-        raise AuthError("Authentication failed")
+        logger.error(f"Bcrypt password verification error: {e}")
+        return False
 
-def authenticate_manufacturer(email, password):
-    """Authenticate manufacturer and generate token"""
+def verify_password_with_security_utils(email, password):
+    """Use security_utils password verification system"""
     try:
-        db = get_db_connection()
+        # Import here to avoid circular imports
+        from utils.security import security_utils
+        from utils.users import get_user_by_email
         
-        # Find manufacturer
-        manufacturer = db.manufacturers.find_one({
-            'contact_email': email,
-            'verification_status': 'verified'
-        })
+        user = get_user_by_email(email)
+        if not user:
+            return False
         
-        if not manufacturer:
-            raise AuthError("Manufacturer not found")
-        
-        # Verify password
-        if not verify_password(password, manufacturer.get('password_hash')):
-            raise AuthError("Invalid credentials")
-        
-        # Generate token
-        user_data = {
-            'user_id': str(manufacturer['_id']),
-            'email': manufacturer['contact_email'],
-            'manufacturer_id': manufacturer['manufacturer_id']
-        }
-        
-        token = generate_token(user_data, 'manufacturer')
-        
-        # Log successful login
-        log_security_event('manufacturer_login', manufacturer['_id'], request.remote_addr)
-        
-        return {
-            'token': token,
-            'user': {
-                'id': str(manufacturer['_id']),
-                'email': manufacturer['contact_email'],
-                'role': 'manufacturer',
-                'manufacturer_id': manufacturer['manufacturer_id'],
-                'company_name': manufacturer['company_name']
-            }
-        }
-        
+        stored_hash = user.get('password_hash') or user.get('password')
+        if not stored_hash:
+            return False
+            
+        return security_utils.verify_password(stored_hash, password)
+    
     except Exception as e:
-        logger.error(f"Manufacturer authentication error: {e}")
-        raise AuthError("Authentication failed")
-
-# Import your existing user utils functions
-from utils.users import get_user_by_email, verify_password as verify_password_user_utils, is_token_blacklisted
-
-def verify_password_with_user_utils(email, password):
-    """Use your existing password verification system"""
-    user = get_user_by_email(email)
-    if not user:
+        logger.error(f"Security utils password verification error: {e}")
         return False
-    return verify_password_user_utils(user['id'], password)
-
-def verify_password(password, password_hash):
-    """Verify password against hash - fallback method"""
-    # This is now a fallback - prefer the user_utils version
-    import hashlib
-    
-    if not password_hash:
-        return False
-    
-    # Simple hash comparison (use bcrypt or similar in production)
-    hashed_input = hashlib.sha256(password.encode()).hexdigest()
-    return hashed_input == password_hash
-
-def hash_password(password):
-    """Hash password for storage"""
-    import hashlib
-    return hashlib.sha256(password.encode()).hexdigest()
 
 def log_security_event(event_type, user_id, ip_address):
     """Log security-related events"""
@@ -321,71 +240,229 @@ def log_security_event(event_type, user_id, ip_address):
     except Exception as e:
         logger.error(f"Error logging security event: {e}")
 
-# API Routes for authentication
+def authenticate_admin(email, password):
+    """Authenticate admin user from users collection"""
+    try:
+        print(f"Authenticating admin: {email}")
+        
+        db = get_db_connection()
+        
+        # Find admin in users collection
+        admin = db.users.find_one({
+            'email': email,
+            'role': 'admin'
+        })
+        
+        print(f"Admin found: {bool(admin)}")
+        
+        if not admin:
+            raise AuthError("Invalid credentials")
+        
+        # Check if admin is active/verified if you have such fields
+        if admin.get('is_active') == False:
+            raise AuthError("Admin account is deactivated")
+        
+        if admin.get('verification_status') and admin.get('verification_status') not in ['verified', 'pending']:
+            raise AuthError("Admin account not verified")
+        
+        # Get stored password hash
+        stored_hash = admin.get('password_hash') or admin.get('password')
+        if not stored_hash:
+            raise AuthError("Invalid credentials")
+        
+        print(f"Stored hash type: {type(stored_hash)}")
+        print(f"Stored hash starts with: {str(stored_hash)[:10]}...")
+        
+        # Verify password - try security_utils first, then bcrypt
+        password_valid = False
+        
+        try:
+            # Try security_utils method first
+            password_valid = verify_password_with_security_utils(email, password)
+            print(f"Security utils verification: {password_valid}")
+        except Exception as e:
+            print(f"Security utils failed: {e}")
+        
+        if not password_valid:
+            try:
+                # Try direct bcrypt verification
+                password_valid = verify_password_bcrypt(password, stored_hash)
+                print(f"Bcrypt verification: {password_valid}")
+            except Exception as e:
+                print(f"Bcrypt verification failed: {e}")
+        
+        if not password_valid:
+            raise AuthError("Invalid credentials")
+        
+        # Generate token
+        user_data = {
+            'user_id': str(admin['_id']),
+            'email': admin.get('primary_email') or admin.get('email')
+        }
+        
+        token = generate_token(user_data, 'admin')
+        
+        # Log successful login
+        try:
+            log_security_event('admin_login', admin['_id'], request.remote_addr)
+        except Exception as e:
+            print(f"Security logging failed: {e}")
+        
+        return {
+            'token': token,
+            'user': {
+                'id': str(admin['_id']),
+                'email': admin.get('primary_email') or admin.get('email'),
+                'role': 'admin',
+                'name': admin.get('name'),
+                'username': admin.get('username')
+            }
+        }
+        
+    except AuthError:
+        raise
+    except Exception as e:
+        print(f"Admin authentication error: {e}")
+        import traceback
+        print(traceback.format_exc())
+        raise AuthError("Authentication failed")
 
-def create_auth_routes(app):
-    """Create authentication routes"""
-    
-    @app.route('/auth/admin/login', methods=['POST'])
-    def admin_login():
+def authenticate_manufacturer(email, password):
+    """Authenticate manufacturer from manufacturers collection"""
+    try:
+        print(f"Authenticating manufacturer: {email}")
+        
+        db = get_db_connection()
+        
+        # Find manufacturer in manufacturers collection
+        manufacturer = db.manufacturers.find_one({
+            'contact_email': email
+        })
+        
+        if not manufacturer:
+            manufacturer = db.manufacturers.find_one({
+                'email': email
+            })
+        
+        if not manufacturer:
+            manufacturer = db.manufacturers.find_one({
+                'primary_email': email
+            })
+        
+        print(f"Manufacturer found: {bool(manufacturer)}")
+        
+        if not manufacturer:
+            raise AuthError("Invalid credentials")
+        
+        # Check verification status
+        if manufacturer.get('verification_status') != 'verified':
+            raise AuthError("Manufacturer account not verified")
+        
+        # Check if manufacturer is active
+        if manufacturer.get('is_active') == False:
+            raise AuthError("Manufacturer account is deactivated")
+        
+        # Get stored password hash
+        stored_hash = manufacturer.get('password_hash') or manufacturer.get('password')
+        if not stored_hash:
+            raise AuthError("Invalid credentials")
+        
+        # Verify password using same methods as admin
+        password_valid = False
+        
         try:
-            data = request.get_json()
-            
-            if not data or 'email' not in data or 'password' not in data:
-                return jsonify({'error': 'Email and password required'}), 400
-            
-            result = authenticate_admin(data['email'], data['password'])
-            
-            return jsonify({
-                'success': True,
-                'token': result['token'],
-                'user': result['user']
-            }), 200
-            
-        except AuthError as e:
-            return jsonify({'error': str(e)}), 401
+            # Try security_utils method first
+            password_valid = verify_password_with_security_utils(email, password)
         except Exception as e:
-            logger.error(f"Admin login error: {e}")
-            return jsonify({'error': 'Login failed'}), 500
-    
-    @app.route('/auth/manufacturer/login', methods=['POST'])
-    def manufacturer_login():
+            print(f"Security utils failed for manufacturer: {e}")
+        
+        if not password_valid:
+            try:
+                # Try direct bcrypt verification
+                password_valid = verify_password_bcrypt(password, stored_hash)
+            except Exception as e:
+                print(f"Bcrypt verification failed for manufacturer: {e}")
+        
+        if not password_valid:
+            raise AuthError("Invalid credentials")
+        
+        # Generate token
+        user_data = {
+            'user_id': str(manufacturer['_id']),
+            'email': manufacturer.get('contact_email') or manufacturer.get('email'),
+            'manufacturer_id': manufacturer.get('manufacturer_id')
+        }
+        
+        token = generate_token(user_data, 'manufacturer')
+        
+        # Log successful login
         try:
-            data = request.get_json()
-            
-            if not data or 'email' not in data or 'password' not in data:
-                return jsonify({'error': 'Email and password required'}), 400
-            
-            result = authenticate_manufacturer(data['email'], data['password'])
-            
-            return jsonify({
-                'success': True,
-                'token': result['token'],
-                'user': result['user']
-            }), 200
-            
-        except AuthError as e:
-            return jsonify({'error': str(e)}), 401
+            log_security_event('manufacturer_login', manufacturer['_id'], request.remote_addr)
         except Exception as e:
-            logger.error(f"Manufacturer login error: {e}")
-            return jsonify({'error': 'Login failed'}), 500
-    
-    @app.route('/auth/verify', methods=['GET'])
-    @require_auth
-    def verify_auth():
-        """Verify if token is valid"""
-        return jsonify({
-            'valid': True,
-            'user': request.current_user
-        }), 200
-    
-    @app.route('/auth/logout', methods=['POST'])
-    @require_auth
-    def logout():
-        """Logout (mainly for logging purposes)"""
-        try:
-            log_security_event('logout', request.current_user['user_id'], request.remote_addr)
-            return jsonify({'success': True, 'message': 'Logged out successfully'}), 200
-        except Exception as e:
-            logger.error(f"Logout error: {e}")
-            return jsonify({'error': 'Logout failed'}), 500
+            print(f"Security logging failed: {e}")
+        
+        return {
+            'token': token,
+            'user': {
+                'id': str(manufacturer['_id']),
+                'email': manufacturer.get('contact_email') or manufacturer.get('email'),
+                'role': 'manufacturer',
+                'manufacturer_id': manufacturer.get('manufacturer_id'),
+                'company_name': manufacturer.get('company_name'),
+                'name': manufacturer.get('contact_name') or manufacturer.get('name')
+            }
+        }
+        
+    except AuthError:
+        raise
+    except Exception as e:
+        print(f"Manufacturer authentication error: {e}")
+        import traceback
+        print(traceback.format_exc())
+        raise AuthError("Authentication failed")
+
+# Remove the old SHA256 functions - they're incompatible with bcrypt
+# def verify_password(password, password_hash):  # REMOVED
+# def hash_password(password):  # REMOVED
+
+# Debug function to check your collections
+def debug_user_collections():
+    """Debug function to see what's in your collections"""
+    try:
+        db = get_db_connection()
+        
+        collections = db.list_collection_names()
+        print(f"Available collections: {collections}")
+        
+        # Check users collection
+        if 'users' in collections:
+            admin_count = db.users.count_documents({'role': 'admin'})
+            customer_count = db.users.count_documents({'role': 'customer'})
+            print(f"Users collection - Admins: {admin_count}, Customers: {customer_count}")
+            
+            # Show sample admin
+            sample_admin = db.users.find_one({'role': 'admin'})
+            if sample_admin:
+                print(f"Sample admin fields: {list(sample_admin.keys())}")
+                print(f"Sample admin email: {sample_admin.get('email') or sample_admin.get('primary_email')}")
+                print(f"Sample admin password hash: {str(sample_admin.get('password_hash', 'No password_hash'))[:20]}...")
+        
+        # Check manufacturers collection
+        if 'manufacturers' in collections:
+            mfg_count = db.manufacturers.count_documents({})
+            verified_mfg = db.manufacturers.count_documents({'verification_status': 'verified'})
+            print(f"Manufacturers collection - Total: {mfg_count}, Verified: {verified_mfg}")
+            
+            # Show sample manufacturer
+            sample_mfg = db.manufacturers.find_one({})
+            if sample_mfg:
+                print(f"Sample manufacturer fields: {list(sample_mfg.keys())}")
+        
+        return {
+            'collections': collections,
+            'stats': 'printed to console'
+        }
+        
+    except Exception as e:
+        print(f"Debug error: {e}")
+        return {'error': str(e)}

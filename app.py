@@ -64,7 +64,6 @@
 #         port=port,
 #         debug=debug
 #     )
-
 from flask import Flask
 from flask_cors import CORS
 import logging
@@ -120,11 +119,16 @@ def create_app():
     
     # Register blueprints
     register_all_routes(app)
-    
+    # Add this to see all routes
+    for rule in app.url_map.iter_rules():
+       print(f"{rule.rule} -> {rule.endpoint}")
+
     # Error handlers
     register_error_handlers(app)
-    hashed_password = generate_password_hash("Lola1111")
+    hashed_password = generate_password_hash("Damilola11264")
     print("this is it:", hashed_password)
+
+    
     # Health check endpoint
     @app.route('/health', methods=['GET'])
     def health_check():
