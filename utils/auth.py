@@ -323,7 +323,7 @@ def log_security_event(event_type, user_id, ip_address):
 def create_auth_routes(app):
     """Create authentication routes"""
     
-    @app.route('/api/auth/admin/login', methods=['POST'])
+    @app.route('/auth/admin/login', methods=['POST'])
     def admin_login():
         try:
             data = request.get_json()
@@ -345,7 +345,7 @@ def create_auth_routes(app):
             logger.error(f"Admin login error: {e}")
             return jsonify({'error': 'Login failed'}), 500
     
-    @app.route('/api/auth/manufacturer/login', methods=['POST'])
+    @app.route('/auth/manufacturer/login', methods=['POST'])
     def manufacturer_login():
         try:
             data = request.get_json()
@@ -367,7 +367,7 @@ def create_auth_routes(app):
             logger.error(f"Manufacturer login error: {e}")
             return jsonify({'error': 'Login failed'}), 500
     
-    @app.route('/api/auth/verify', methods=['GET'])
+    @app.route('/auth/verify', methods=['GET'])
     @require_auth
     def verify_auth():
         """Verify if token is valid"""
@@ -376,7 +376,7 @@ def create_auth_routes(app):
             'user': request.current_user
         }), 200
     
-    @app.route('/api/auth/logout', methods=['POST'])
+    @app.route('/auth/logout', methods=['POST'])
     @require_auth
     def logout():
         """Logout (mainly for logging purposes)"""

@@ -95,18 +95,7 @@ def register_all_routes(app):
             return {'status': 'Verification routes not implemented yet'}
         app.register_blueprint(verification_bp, url_prefix='/verification')
    
-    # Integration routes
-    try:
-        from routes.api_routes import api_bp
-        app.register_blueprint(api_bp, url_prefix='/api')
-        print("✓ api routes registered successfully")
-    except ImportError as e:
-        print(f"Warning: api_routes not found ({e}), creating placeholder...")
-        api_bp = Blueprint('api', __name__)
-        @api_bp.route('/health')
-        def api_health():
-            return {'status': 'api routes not implemented yet'}
-        app.register_blueprint(api_bp, url_prefix='/api')
+    
    
     # Main health check
     @app.route('/health')

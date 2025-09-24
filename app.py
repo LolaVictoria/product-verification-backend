@@ -72,8 +72,7 @@ import os
 from config.settings import get_config
 from utils.database import get_db_connection, init_database_indexes
 from services.blockchain_service import blockchain_service
-
-# # Import middleware
+from werkzeug.security import generate_password_hash
 from middleware.auth_middleware import auth_middleware
 from middleware.logging_middleware import init_logging_middleware
 from routes.route_registry import register_all_routes
@@ -124,7 +123,8 @@ def create_app():
     
     # Error handlers
     register_error_handlers(app)
-    
+    hashed_password = generate_password_hash("Lola1111")
+    print("this is it:", hashed_password)
     # Health check endpoint
     @app.route('/health', methods=['GET'])
     def health_check():

@@ -11,9 +11,9 @@ from utils.helpers import format_product_response
 
 logger = logging.getLogger(__name__)
 
-product_bp = Blueprint('products', __name__, url_prefix='/api')
+product_bp = Blueprint('products', __name__, url_prefix='/products')
 
-@product_bp.route('/products', methods=['GET'])
+@product_bp.route('/get-products', methods=['GET'])
 @auth_middleware.optional_auth
 def get_products(current_user_id, current_user_role):
     """Get products list with optional filtering"""
