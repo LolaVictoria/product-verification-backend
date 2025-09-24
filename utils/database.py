@@ -31,7 +31,7 @@ def get_db_connection():
             # Test connection
             client.admin.command('ping')
             
-            db_name = os.getenv('DATABASE_NAME')
+            db_name = os.getenv('DATABASE_NAME', 'product_verification')
             _db_connection = client[db_name]
             
             logger.info(f"Connected to database: {db_name}")
