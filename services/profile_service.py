@@ -1,377 +1,310 @@
-"""
-Profile service for user profile management
-"""
-import logging
+# services/profile_service.py - Updated to handle different user roles
+
 from datetime import datetime, timezone
 from bson import ObjectId
-from typing import Dict, Any, Optional
-
 from utils.database import get_db_connection
-from utils.validators import validate_manufacturer_data
+import logging
 
 logger = logging.getLogger(__name__)
 
 class ProfileService:
     def __init__(self):
-        self.db = get_db_connection()
+        pass
     
-    def get_user_profile(self, user_id: str) -> Dict[str, Any]:
-        """
-        Get user profile by user ID
-        
-        Args:
-            user_id (str): User ID
-            
-        Returns:
-            Dict[str, Any]: Profile data with success status
-        """
+    def get_user_profile(self, user_id, user_role):
+        """Get user profile based on role"""
         try:
-            if not ObjectId.is_valid(user_id):
-                return {'success': False, 'message': 'Invalid user ID format'}
-            
-            user_obj_id = ObjectId(user_id)
-            
-            # Find user in database
-            user = self.db.users.find_one({'_id': user_obj_id})
-            
-            if not user:
-                return {'success': False, 'message': 'User not found'}
-            
-            # Build profile response based on user role
-            profile = self._build_profile_response(user)
-            
-            return {
-                'success': True,
-                'profile': profile
-            }
-            
+            if user_role == 'admin':
+                return self.get_admin_profile(user_id)
+            elif user_role == 'manufacturer':
+                return self.get_manufacturer_profile(user_id)
+            elif user_role == 'customer':
+                return self.get_customer_profile(user_id)
+            else:
+                return {'success': False, 'message': 'Invalid user role'}
+                
         except Exception as e:
             logger.error(f"Error getting user profile: {e}")
-            return {'success': False, 'message': 'Failed to get user profile'}
+            return {'success': False, 'message': 'Failed to fetch profile'}
     
-    def update_user_profile(self, user_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Update user profile
-        
-        Args:
-            user_id (str): User ID
-            update_data (Dict[str, Any]): Data to update
-            
-        Returns:
-            Dict[str, Any]: Update result with success status
-        """
+    def get_admin_profile(self, user_id):
+        """Get admin profile from users collection"""
         try:
-            if not ObjectId.is_valid(user_id):
-                return {'success': False, 'message': 'Invalid user ID format'}
+            db = get_db_connection()
             
-            user_obj_id = ObjectId(user_id)
+            # Convert string to ObjectId if needed
+            if isinstance(user_id, str):
+                user_id = ObjectId(user_id)
             
-            # Check if user exists
-            user = self.db.users.find_one({'_id': user_obj_id})
-            if not user:
-                return {'success': False, 'message': 'User not found'}
+            admin = db.users.find_one({
+                '_id': user_id,
+                'role': 'admin'
+            })
             
-            # Validate update data based on user role
-            validation_result = self._validate_profile_update(user['role'], update_data)
-            if not validation_result['valid']:
-                return {'success': False, 'message': validation_result['errors']}
+            if not admin:
+                return {'success': False, 'message': 'Admin profile not found'}
             
-            # Prepare update document
-            update_doc = self._prepare_update_document(user['role'], update_data)
-            update_doc['updated_at'] = datetime.now(timezone.utc)
-            
-            # Update user in database
-            result = self.db.users.update_one(
-                {'_id': user_obj_id},
-                {'$set': update_doc}
-            )
-            
-            if result.matched_count == 0:
-                return {'success': False, 'message': 'User not found'}
-            
-            # Get updated profile
-            updated_user = self.db.users.find_one({'_id': user_obj_id})
-            profile = self._build_profile_response(updated_user)
+            # Format admin profile
+            profile = {
+                'id': str(admin['_id']),
+                'email': admin.get('email') or admin.get('primary_email'),
+                'name': admin.get('name'),
+                'username': admin.get('username'),
+                'role': 'admin',
+                'is_active': admin.get('is_active', True),
+                'verification_status': admin.get('verification_status'),
+                'created_at': admin.get('created_at'),
+                'last_login': admin.get('last_login'),
+                'is_auth_verified': admin.get('is_auth_verified', False)
+            }
             
             return {
                 'success': True,
-                'message': 'Profile updated successfully',
                 'profile': profile
             }
             
         except Exception as e:
-            logger.error(f"Error updating user profile: {e}")
-            return {'success': False, 'message': 'Failed to update user profile'}
+            logger.error(f"Error fetching admin profile: {e}")
+            return {'success': False, 'message': 'Failed to fetch admin profile'}
     
-    def _build_profile_response(self, user: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Build profile response based on user role
-        
-        Args:
-            user (Dict[str, Any]): User document from database
-            
-        Returns:
-            Dict[str, Any]: Formatted profile data
-        """
-        # Base profile data
-        profile = {
-            'id': str(user['_id']),
-            'role': user.get('role'),
-            'primary_email': user.get('primary_email'),
-            'name': user.get('name'),
-            'account_status': user.get('account_status', 'active'),
-            'created_at': user.get('created_at'),
-            'updated_at': user.get('updated_at')
-        }
-        
-        # Role-specific profile data
-        if user.get('role') == 'manufacturer':
-            profile.update({
-                'current_company_name': user.get('current_company_name'),
-                'company_names': user.get('company_names', []),
-                'verification_status': user.get('verification_status', 'pending'),
-                'wallet_addresses': user.get('wallet_addresses', []),
-                'emails': user.get('emails', []),
-                'registration_date': user.get('registration_date'),
-                'business_info': {
-                    'business_type': user.get('business_type'),
-                    'business_registration_number': user.get('business_registration_number'),
-                    'tax_id': user.get('tax_id'),
-                    'address': user.get('business_address'),
-                    'phone': user.get('business_phone'),
-                    'website': user.get('website')
-                },
-                'contact_info': {
-                    'contact_person': user.get('contact_person'),
-                    'contact_phone': user.get('contact_phone'),
-                    'support_email': user.get('support_email')
-                }
-            })
-        
-        elif user.get('role') == 'customer':
-            profile.update({
-                'first_name': user.get('first_name'),
-                'last_name': user.get('last_name'),
-                'phone': user.get('phone'),
-                'address': user.get('address'),
-                'date_of_birth': user.get('date_of_birth'),
-                'preferences': user.get('preferences', {})
-            })
-        
-        elif user.get('role') == 'admin':
-            profile.update({
-                'admin_level': user.get('admin_level', 'basic'),
-                'permissions': user.get('permissions', []),
-                'last_login': user.get('last_login')
-            })
-        
-        return profile
-    
-    def _validate_profile_update(self, user_role: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Validate profile update data based on user role
-        
-        Args:
-            user_role (str): User role
-            update_data (Dict[str, Any]): Data to validate
-            
-        Returns:
-            Dict[str, Any]: Validation result
-        """
-        errors = []
-        
-        # Common validations
-        if 'name' in update_data:
-            name = update_data['name']
-            if name and (len(name) < 2 or len(name) > 100):
-                errors.append("Name must be between 2 and 100 characters")
-        
-        if 'phone' in update_data:
-            phone = update_data['phone']
-            if phone and len(phone) > 20:
-                errors.append("Phone number cannot exceed 20 characters")
-        
-        # Role-specific validations
-        if user_role == 'manufacturer':
-            if 'current_company_name' in update_data:
-                company_name = update_data['current_company_name']
-                if company_name and (len(company_name) < 2 or len(company_name) > 200):
-                    errors.append("Company name must be between 2 and 200 characters")
-            
-            if 'wallet_address' in update_data:
-                import re
-                wallet_address = update_data['wallet_address']
-                if wallet_address and not re.match(r'^0x[a-fA-F0-9]{40}$', wallet_address):
-                    errors.append("Invalid wallet address format")
-            
-            if 'website' in update_data:
-                website = update_data['website']
-                if website and not website.startswith(('http://', 'https://')):
-                    errors.append("Website must start with http:// or https://")
-        
-        elif user_role == 'customer':
-            if 'first_name' in update_data:
-                first_name = update_data['first_name']
-                if first_name and (len(first_name) < 1 or len(first_name) > 50):
-                    errors.append("First name must be between 1 and 50 characters")
-            
-            if 'last_name' in update_data:
-                last_name = update_data['last_name']
-                if last_name and (len(last_name) < 1 or len(last_name) > 50):
-                    errors.append("Last name must be between 1 and 50 characters")
-        
-        return {
-            'valid': len(errors) == 0,
-            'errors': errors
-        }
-    
-    def _prepare_update_document(self, user_role: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Prepare update document for database
-        
-        Args:
-            user_role (str): User role
-            update_data (Dict[str, Any]): Update data
-            
-        Returns:
-            Dict[str, Any]: Prepared update document
-        """
-        # Fields that are safe to update directly
-        safe_fields = {
-            'manufacturer': [
-                'name', 'current_company_name', 'business_type', 
-                'business_registration_number', 'tax_id', 'business_address',
-                'business_phone', 'website', 'contact_person', 
-                'contact_phone', 'support_email'
-            ],
-            'customer': [
-                'name', 'first_name', 'last_name', 'phone', 
-                'address', 'date_of_birth', 'preferences'
-            ],
-            'admin': [
-                'name', 'phone'
-            ]
-        }
-        
-        allowed_fields = safe_fields.get(user_role, [])
-        update_doc = {}
-        
-        for field in allowed_fields:
-            if field in update_data:
-                update_doc[field] = update_data[field]
-        
-        # Handle special cases
-        if user_role == 'manufacturer':
-            # Handle wallet address updates
-            if 'wallet_address' in update_data:
-                wallet_address = update_data['wallet_address']
-                # Add new wallet address to the list
-                update_doc['$push'] = {
-                    'wallet_addresses': {
-                        'address': wallet_address,
-                        'is_primary': True,
-                        'verified': False,
-                        'added_at': datetime.now(timezone.utc)
-                    }
-                }
-            
-            # Handle company name history
-            if 'current_company_name' in update_data:
-                company_name = update_data['current_company_name']
-                update_doc['$push'] = update_doc.get('$push', {})
-                update_doc['$push']['company_names'] = {
-                    'name': company_name,
-                    'is_current': True,
-                    'changed_at': datetime.now(timezone.utc)
-                }
-        
-        return update_doc
-    
-    def get_profile_completion_status(self, user_id: str) -> Dict[str, Any]:
-        """
-        Get profile completion status for user
-        
-        Args:
-            user_id (str): User ID
-            
-        Returns:
-            Dict[str, Any]: Profile completion status
-        """
+    def get_manufacturer_profile(self, user_id):
+        """Get manufacturer profile from manufacturers collection"""
         try:
-            if not ObjectId.is_valid(user_id):
-                return {'success': False, 'message': 'Invalid user ID format'}
+            db = get_db_connection()
             
-            user_obj_id = ObjectId(user_id)
-            user = self.db.users.find_one({'_id': user_obj_id})
+            # Convert string to ObjectId if needed
+            if isinstance(user_id, str):
+                user_id = ObjectId(user_id)
             
-            if not user:
-                return {'success': False, 'message': 'User not found'}
+            # Try to find manufacturer by ObjectId first
+            manufacturer = db.manufacturers.find_one({'_id': user_id})
             
-            completion_data = self._calculate_profile_completion(user)
+            # If not found, try by manufacturer_id if user_id was a string
+            if not manufacturer and isinstance(user_id, ObjectId):
+                manufacturer = db.manufacturers.find_one({'manufacturer_id': str(user_id)})
+            
+            if not manufacturer:
+                return {'success': False, 'message': 'Manufacturer profile not found'}
+            
+            # Format manufacturer profile
+            profile = {
+                'id': str(manufacturer['_id']),
+                'manufacturer_id': manufacturer.get('manufacturer_id'),
+                'email': manufacturer.get('email') or manufacturer.get('contact_email'),
+                'company_name': manufacturer.get('companyName') or manufacturer.get('company_name'),
+                'name': manufacturer.get('name') or manufacturer.get('contact_name'),
+                'role': 'manufacturer',
+                'wallet_address': manufacturer.get('walletAddress'),
+                'country': manufacturer.get('country'),
+                'headquarters': manufacturer.get('headquarters'),
+                'established_year': manufacturer.get('establishedYear'),
+                'annual_production': manufacturer.get('annualProduction'),
+                'is_verified': manufacturer.get('isVerified', False),
+                'verification_status': manufacturer.get('verification_status', 'pending'),
+                'verification_date': manufacturer.get('verificationDate'),
+                'created_at': manufacturer.get('createdAt'),
+                'is_active': manufacturer.get('is_active', True)
+            }
             
             return {
                 'success': True,
-                'completion': completion_data
+                'profile': profile
             }
             
         except Exception as e:
-            logger.error(f"Error getting profile completion status: {e}")
-            return {'success': False, 'message': 'Failed to get completion status'}
+            logger.error(f"Error fetching manufacturer profile: {e}")
+            return {'success': False, 'message': 'Failed to fetch manufacturer profile'}
     
-    def _calculate_profile_completion(self, user: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Calculate profile completion percentage
-        
-        Args:
-            user (Dict[str, Any]): User document
+    def get_customer_profile(self, user_id):
+        """Get customer profile from users collection"""
+        try:
+            db = get_db_connection()
             
-        Returns:
-            Dict[str, Any]: Completion data
-        """
-        role = user.get('role')
-        
-        if role == 'manufacturer':
-            required_fields = [
-                'name', 'primary_email', 'current_company_name',
-                'business_type', 'business_phone', 'wallet_addresses'
-            ]
-            optional_fields = [
-                'business_registration_number', 'tax_id', 'business_address',
-                'website', 'contact_person', 'support_email'
-            ]
-        elif role == 'customer':
-            required_fields = [
-                'name', 'primary_email', 'first_name', 'last_name'
-            ]
-            optional_fields = [
-                'phone', 'address', 'date_of_birth'
-            ]
-        else:
-            required_fields = ['name', 'primary_email']
-            optional_fields = ['phone']
-        
-        # Calculate completion
-        completed_required = sum(1 for field in required_fields if user.get(field))
-        completed_optional = sum(1 for field in optional_fields if user.get(field))
-        
-        total_fields = len(required_fields) + len(optional_fields)
-        completed_fields = completed_required + completed_optional
-        
-        completion_percentage = (completed_fields / total_fields * 100) if total_fields > 0 else 100
-        
-        missing_required = [field for field in required_fields if not user.get(field)]
-        missing_optional = [field for field in optional_fields if not user.get(field)]
-        
-        return {
-            'percentage': round(completion_percentage, 1),
-            'completed_fields': completed_fields,
-            'total_fields': total_fields,
-            'required_completed': completed_required,
-            'required_total': len(required_fields),
-            'missing_required': missing_required,
-            'missing_optional': missing_optional,
-            'is_complete': len(missing_required) == 0
-        }
-
+            # Convert string to ObjectId if needed
+            if isinstance(user_id, str):
+                user_id = ObjectId(user_id)
+            
+            customer = db.users.find_one({
+                '_id': user_id,
+                'role': 'customer'
+            })
+            
+            if not customer:
+                return {'success': False, 'message': 'Customer profile not found'}
+            
+            # Format customer profile
+            profile = {
+                'id': str(customer['_id']),
+                'email': customer.get('email') or customer.get('primary_email'),
+                'name': customer.get('name'),
+                'username': customer.get('username'),
+                'role': 'customer',
+                'is_active': customer.get('is_active', True),
+                'verification_status': customer.get('verification_status'),
+                'created_at': customer.get('created_at'),
+                'last_login': customer.get('last_login'),
+                'manufacturer_id': customer.get('manufacturer_id')  # If linked to a manufacturer
+            }
+            
+            return {
+                'success': True,
+                'profile': profile
+            }
+            
+        except Exception as e:
+            logger.error(f"Error fetching customer profile: {e}")
+            return {'success': False, 'message': 'Failed to fetch customer profile'}
+    
+    def update_user_profile(self, user_id, user_role, update_data):
+        """Update user profile based on role"""
+        try:
+            if user_role == 'admin':
+                return self.update_admin_profile(user_id, update_data)
+            elif user_role == 'manufacturer':
+                return self.update_manufacturer_profile(user_id, update_data)
+            elif user_role == 'customer':
+                return self.update_customer_profile(user_id, update_data)
+            else:
+                return {'success': False, 'message': 'Invalid user role'}
+                
+        except Exception as e:
+            logger.error(f"Error updating user profile: {e}")
+            return {'success': False, 'message': 'Failed to update profile'}
+    
+    def update_admin_profile(self, user_id, update_data):
+        """Update admin profile"""
+        try:
+            db = get_db_connection()
+            
+            # Convert string to ObjectId if needed
+            if isinstance(user_id, str):
+                user_id = ObjectId(user_id)
+            
+            # Allowed fields for admin update
+            allowed_fields = ['name', 'username']
+            update_fields = {}
+            
+            for field in allowed_fields:
+                if field in update_data:
+                    update_fields[field] = update_data[field]
+            
+            if not update_fields:
+                return {'success': False, 'message': 'No valid fields to update'}
+            
+            # Add updated timestamp
+            update_fields['updated_at'] = datetime.now(timezone.utc)
+            
+            # Update admin
+            result = db.users.update_one(
+                {'_id': user_id, 'role': 'admin'},
+                {'$set': update_fields}
+            )
+            
+            if result.modified_count == 0:
+                return {'success': False, 'message': 'No changes made or admin not found'}
+            
+            # Fetch updated profile
+            updated_profile = self.get_admin_profile(user_id)
+            
+            return {
+                'success': True,
+                'message': 'Admin profile updated successfully',
+                'profile': updated_profile['profile']
+            }
+            
+        except Exception as e:
+            logger.error(f"Error updating admin profile: {e}")
+            return {'success': False, 'message': 'Failed to update admin profile'}
+    
+    def update_manufacturer_profile(self, user_id, update_data):
+        """Update manufacturer profile"""
+        try:
+            db = get_db_connection()
+            
+            # Convert string to ObjectId if needed
+            if isinstance(user_id, str):
+                user_id = ObjectId(user_id)
+            
+            # Allowed fields for manufacturer update
+            allowed_fields = ['companyName', 'company_name', 'name', 'contact_name', 'country', 
+                            'headquarters', 'establishedYear', 'annualProduction']
+            update_fields = {}
+            
+            for field in allowed_fields:
+                if field in update_data:
+                    update_fields[field] = update_data[field]
+            
+            if not update_fields:
+                return {'success': False, 'message': 'No valid fields to update'}
+            
+            # Add updated timestamp
+            update_fields['updated_at'] = datetime.now(timezone.utc)
+            
+            # Update manufacturer
+            result = db.manufacturers.update_one(
+                {'_id': user_id},
+                {'$set': update_fields}
+            )
+            
+            if result.modified_count == 0:
+                return {'success': False, 'message': 'No changes made or manufacturer not found'}
+            
+            # Fetch updated profile
+            updated_profile = self.get_manufacturer_profile(user_id)
+            
+            return {
+                'success': True,
+                'message': 'Manufacturer profile updated successfully',
+                'profile': updated_profile['profile']
+            }
+            
+        except Exception as e:
+            logger.error(f"Error updating manufacturer profile: {e}")
+            return {'success': False, 'message': 'Failed to update manufacturer profile'}
+    
+    def update_customer_profile(self, user_id, update_data):
+        """Update customer profile"""
+        try:
+            db = get_db_connection()
+            
+            # Convert string to ObjectId if needed
+            if isinstance(user_id, str):
+                user_id = ObjectId(user_id)
+            
+            # Allowed fields for customer update
+            allowed_fields = ['name', 'username']
+            update_fields = {}
+            
+            for field in allowed_fields:
+                if field in update_data:
+                    update_fields[field] = update_data[field]
+            
+            if not update_fields:
+                return {'success': False, 'message': 'No valid fields to update'}
+            
+            # Add updated timestamp
+            update_fields['updated_at'] = datetime.now(timezone.utc)
+            
+            # Update customer
+            result = db.users.update_one(
+                {'_id': user_id, 'role': 'customer'},
+                {'$set': update_fields}
+            )
+            
+            if result.modified_count == 0:
+                return {'success': False, 'message': 'No changes made or customer not found'}
+            
+            # Fetch updated profile
+            updated_profile = self.get_customer_profile(user_id)
+            
+            return {
+                'success': True,
+                'message': 'Customer profile updated successfully',
+                'profile': updated_profile['profile']
+            }
+            
+        except Exception as e:
+            logger.error(f"Error updating customer profile: {e}")
+            return {'success': False, 'message': 'Failed to update customer profile'}
 
 profile_service = ProfileService()
