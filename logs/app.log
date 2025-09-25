@@ -1301,3 +1301,28 @@
 2025-09-25 06:42:37,922 - middleware.logging_middleware - INFO - RESPONSE: {"request_id": "req_1758778957759", "status_code": 200, "response_time_ms": 163.7, "content_length": 681, "timestamp": "2025-09-25T05:42:37.922734+00:00"}
 2025-09-25 06:42:56,435 - middleware.logging_middleware - INFO - REQUEST: {"request_id": "req_1758778976434", "method": "GET", "path": "/auth/admin/profile", "client_ip": "127.0.0.1", "user_agent": "curl/8.12.1", "timestamp": "2025-09-25T05:42:56.434919+00:00", "query_params": {}, "headers": {"Host": "localhost:5000", "User-Agent": "curl/8.12.1", "Accept": "*/*", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjhhNzhkYzQ4ZmFmYjAyYjkyNmUzZDI5IiwiZW1haWwiOiJkYW1pbG9sYW9uaXlpZGUxMUBnbWFpbC5jb20iLCJyb2xlIjoiYWRtaW4iLCJtYW51ZmFjdHVyZXJfaWQiOm51bGwsImV4cCI6MTc1ODg2NDk1NiwiaWF0IjoxNzU4Nzc4NTU2fQ.PgxpD5RRkZXtMVH0HsEk-NqjlchFPSok4ChnzqYjbFc"}}
 2025-09-25 06:42:56,571 - middleware.logging_middleware - INFO - RESPONSE: {"request_id": "req_1758778976434", "status_code": 401, "response_time_ms": 136.04, "content_length": 37, "timestamp": "2025-09-25T05:42:56.571039+00:00", "error_details": {"message": "Token is invalid!"}}
+2025-09-25 08:55:54,028 - utils.database - INFO - Database indexes initialized successfully
+2025-09-25 08:55:54,063 - app - INFO - Database connection established
+2025-09-25 08:55:54,064 - app - INFO - Services initialized
+2025-09-25 08:56:09,295 - utils.database - INFO - Database indexes initialized successfully
+2025-09-25 08:56:09,296 - app - INFO - Database connection established
+2025-09-25 08:56:09,296 - app - INFO - Services initialized
+2025-09-25 08:56:09,981 - werkzeug - WARNING -  * Debugger is active!
+2025-09-25 09:02:06,067 - utils.database - INFO - Database indexes initialized successfully
+2025-09-25 09:02:06,069 - app - INFO - Database connection established
+2025-09-25 09:02:06,069 - app - INFO - Services initialized
+2025-09-25 09:02:06,305 - app - INFO - Routes registered successfully
+2025-09-25 09:02:21,935 - utils.database - INFO - Database indexes initialized successfully
+2025-09-25 09:02:21,937 - app - INFO - Database connection established
+2025-09-25 09:02:21,937 - app - INFO - Services initialized
+2025-09-25 09:02:22,212 - app - INFO - Routes registered successfully
+2025-09-25 09:02:22,710 - werkzeug - WARNING -  * Debugger is active!
+2025-09-25 09:19:13,138 - utils.database - INFO - Database indexes initialized successfully
+2025-09-25 09:19:13,139 - app - INFO - Database connection established
+2025-09-25 09:19:13,140 - app - INFO - Services initialized
+2025-09-25 09:19:13,367 - app - INFO - Routes registered successfully
+2025-09-25 09:19:28,367 - utils.database - INFO - Database indexes initialized successfully
+2025-09-25 09:19:28,369 - app - INFO - Database connection established
+2025-09-25 09:19:28,369 - app - INFO - Services initialized
+2025-09-25 09:19:28,687 - app - INFO - Routes registered successfully
+2025-09-25 09:19:29,356 - werkzeug - WARNING -  * Debugger is active!

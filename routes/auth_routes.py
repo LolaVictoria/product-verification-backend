@@ -239,7 +239,7 @@ def get_manufacturer_profile(current_user_id, current_user_role):
         logger.error(f"Manufacturer profile error: {e}")
         return auth_middleware.create_cors_response({'error': 'Internal server error'}, 500)
 
-@auth_bp.route('/admin/profile', methods=['GET'])  # Optional: Admin-specific endpoint
+@auth_bp.route('/admin/profile', methods=['GET'])  
 @auth_middleware.token_required_with_roles(allowed_roles=['admin'])
 def get_admin_profile(current_user_id, current_user_role):
     """Get admin-specific profile"""
@@ -258,7 +258,7 @@ def get_admin_profile(current_user_id, current_user_role):
         logger.error(f"Admin profile error: {e}")
         return auth_middleware.create_cors_response({'error': 'Internal server error'}, 500)
 
-@auth_bp.route('/update-profile', methods=['PUT'])  # Changed from '/update-profile'
+@auth_bp.route('/update-profile', methods=['PUT'])  
 @auth_middleware.token_required_with_roles(allowed_roles=['customer', 'manufacturer', 'admin'])
 def update_profile(current_user_id, current_user_role):
     """Update user profile"""
