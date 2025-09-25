@@ -101,6 +101,7 @@ class AuthMiddleware:
         
         if token.startswith('Bearer '):
             token = token[7:]
+            payload = verify_token(token)
             
         try:
             data = jwt.decode(token, secret_key, algorithms=['HS256'])

@@ -45,7 +45,14 @@ def generate_token(user_data, role):
 def verify_token(token):
     """Verify and decode JWT token"""
     try:
+        if token.startswith('Bearer '):
+            token = token[7:]  # Remove "Bearer " prefix
+            print(f"🔧 Removed Bearer prefix from token")
+        
+        print(f"🔍 Verifying token: {token[:50]}...")
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        print(f"✅ Token verified successfully: user_id={payload.get('user_id')}")
+        return payload
         return payload
     except jwt.ExpiredSignatureError:
         raise AuthError("Token has expired")
