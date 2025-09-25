@@ -200,7 +200,6 @@ def verify_auth(current_user_id, current_user_role):
             'role': current_user_role
         }
     }, 200)
-############
 
 @auth_bp.route('/profile', methods=['GET'])  
 @auth_middleware.token_required_with_roles(allowed_roles=['customer', 'manufacturer', 'admin'])
