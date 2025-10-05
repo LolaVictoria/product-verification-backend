@@ -22,91 +22,13 @@ logger = logging.getLogger(__name__)
 # ===============================
 # LOGIN ENDPOINTS
 # ===============================
-
-@auth_bp.route('/admin/login', methods=['POST'])
-@rate_limit({'per_minute': 5, 'per_hour': 20})
-def admin_login():
-    """Admin login endpoint"""
-    try:
-        data = request.get_json()
-        
-        if not data or 'email' not in data or 'password' not in data:
-            return response_middleware.create_cors_response({
-                'success': False,
-                'error': 'Email and password required'
-            }, 400)
-        
-        # Use auth_service
-        result = auth_service.authenticate_admin(
-            data['email'], 
-            data['password']
-        )
-        
-        return response_middleware.create_cors_response({
-            'success': True,
-            'token': result['token'],
-            'user': result['user'],
-            'expires_at': result.get('expires_at')
-        }, 200)
-        
-    except AuthError as e:
-        logger.warning(f"Admin login failed: {e}")
-        return response_middleware.create_cors_response({
-            'success': False,
-            'error': str(e)
-        }, 401)
-    except Exception as e:
-        logger.error(f"Admin login error: {e}")
-        return response_middleware.create_cors_response({
-            'success': False,
-            'error': 'Login failed'
-        }, 500)
-
-
-@auth_bp.route('/manufacturer/login', methods=['POST'])
-@rate_limit({'per_minute': 5, 'per_hour': 20})
-def manufacturer_login():
-    """Manufacturer login endpoint"""
-    try:
-        data = request.get_json()
-        
-        if not data or 'email' not in data or 'password' not in data:
-            return response_middleware.create_cors_response({
-                'success': False,
-                'error': 'Email and password required'
-            }, 400)
-        
-        # Use auth_service
-        result = auth_service.authenticate_manufacturer(
-            data['email'], 
-            data['password']
-        )
-        
-        return response_middleware.create_cors_response({
-            'success': True,
-            'token': result['token'],
-            'user': result['user'],
-            'expires_at': result.get('expires_at')
-        }, 200)
-        
-    except AuthError as e:
-        logger.warning(f"Manufacturer login failed: {e}")
-        return response_middleware.create_cors_response({
-            'success': False,
-            'error': str(e)
-        }, 401)
-    except Exception as e:
-        logger.error(f"Manufacturer login error: {e}")
-        return response_middleware.create_cors_response({
-            'success': False,
-            'error': 'Login failed'
-        }, 500)
-
-
-@auth_bp.route('/customer/login', methods=['POST'])
+@auth_bp.route('/login', methods=['POST'])
 @rate_limit({'per_minute': 10, 'per_hour': 50})
-def customer_login():
-    """Customer login endpoint"""
+def unified_login():
+    """
+    Unified login endpoint - automatically detects user type
+    Tries to authenticate against all user types
+    """
     try:
         data = request.get_json()
         
@@ -116,33 +38,61 @@ def customer_login():
                 'error': 'Email and password required'
             }, 400)
         
-        # Use auth_service
-        result = auth_service.authenticate_customer(
-            data['email'], 
-            data['password']
-        )
+        email = data['email']
+        password = data['password']
         
-        return response_middleware.create_cors_response({
-            'success': True,
-            'token': result['token'],
-            'user': result['user'],
-            'expires_at': result.get('expires_at')
-        }, 200)
+        # Try authenticating as each user type
+        # Order: customer -> manufacturer -> admin
         
-    except AuthError as e:
-        logger.warning(f"Customer login failed: {e}")
+        # Try customer first (most common)
+        try:
+            result = auth_service.authenticate_customer(email, password)
+            return response_middleware.create_cors_response({
+                'success': True,
+                'token': result['token'],
+                'user': result['user'],
+                'expires_at': result.get('expires_at')
+            }, 200)
+        except AuthError:
+            pass  # Try next type
+        
+        # Try manufacturer
+        try:
+            result = auth_service.authenticate_manufacturer(email, password)
+            return response_middleware.create_cors_response({
+                'success': True,
+                'token': result['token'],
+                'user': result['user'],
+                'expires_at': result.get('expires_at')
+            }, 200)
+        except AuthError:
+            pass  # Try next type
+        
+        # Try admin
+        try:
+            result = auth_service.authenticate_admin(email, password)
+            return response_middleware.create_cors_response({
+                'success': True,
+                'token': result['token'],
+                'user': result['user'],
+                'expires_at': result.get('expires_at')
+            }, 200)
+        except AuthError:
+            pass  # All failed
+        
+        # If all authentication attempts failed
+        logger.warning(f"Login failed for {email}")
         return response_middleware.create_cors_response({
             'success': False,
-            'error': str(e)
+            'error': 'Invalid email or password'
         }, 401)
+        
     except Exception as e:
-        logger.error(f"Customer login error: {e}")
+        logger.error(f"Unified login error: {e}")
         return response_middleware.create_cors_response({
             'success': False,
             'error': 'Login failed'
         }, 500)
-
-
 # ===============================
 # REGISTRATION ENDPOINTS
 # ===============================
