@@ -45,7 +45,7 @@ def register_routes(app: Flask):
         app.register_blueprint(onboarding_bp, url_prefix='/api/v1/manufacturer/onboarding')
         
         
-        logger.info("Registered: /api/v1/manufacturer/* (6 blueprints)")
+        logger.info("Registered: /api/v1/manufacturer/* (5 blueprints)")
         
         # ===============================
         # ADMIN ROUTES
