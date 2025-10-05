@@ -26,7 +26,7 @@ def create_app():
     
     # Setup CORS using config
     CORS(app, 
-         origins=app.config.get('CORS_ORIGINS', ['http://localhost:3000']),
+         origins=["http://localhost:5173", "http://localhost:3000", "https://blockchain-verification-esup.vercel.app/"],
          allow_headers=['Content-Type', 'Authorization', 'X-API-Key'],
          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
          supports_credentials=True)
