@@ -24,9 +24,10 @@ def create_app():
         app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'jwt-secret')
         app.config['MONGODB_URI'] = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/product_verification')
     
-    # Setup CORS using config
+    allowed_origins = os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(',')
+    
     CORS(app, 
-         origins=["http://localhost:5173", "http://localhost:3000", "https://blockchain-verification-esup.vercel.app/"],
+         origins=allowed_origins,
          allow_headers=['Content-Type', 'Authorization', 'X-API-Key'],
          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
          supports_credentials=True)
