@@ -59,8 +59,6 @@ def create_app():
         app.logger.error(f"Route registration failed: {e}")
         print(f"Route registration failed: {e}")
         traceback.print_exc()
-        # Fall back to safe route registration
-        register_routes_safely(app)
     
     # Add essential endpoints
     register_essential_endpoints(app)
@@ -73,73 +71,6 @@ def create_app():
     
     return app
 
-def register_routes_safely(app):
-    """Fallback route registration with individual error handling"""
-    routes_registered = []
-    routes_failed = []
-    
-    # Route modules that should work (based on your log analysis)
-    working_route_modules = [
-        # These were successful in your logs
-        ('app.api.v1.manufacturer_routes', 'manufacturer_bp'),
-        ('app.api.v1.admin_routes', 'admin_bp'),
-        ('app.api.v1.analytics_routes', 'analytics_bp'),
-        ('app.api.v1.billing_routes', 'billing_bp'),
-    ]
-    
-    # Route modules with known issues (skip for now)
-    problematic_modules = [
-        # These have import/syntax errors
-        'app.api.v1.auth_routes',           
-        'app.api.v1.verification_routes',   
-        'app.api.v1.demo_routes',           
-        'app.api.v1.integration_routes',    # validate_manufacturer_access issue
-        'app.api.external.webhook_routes',  # missing middleware module
-    ]
-    
-    print(f"Attempting to register working routes...")
-    print(f"Skipping problematic modules: {problematic_modules}")
-    
-    for module_path, blueprint_name in working_route_modules:
-        try:
-            # Import the module
-            module = __import__(module_path, fromlist=[blueprint_name])
-            
-            # Check if blueprint exists
-            if hasattr(module, blueprint_name):
-                blueprint = getattr(module, blueprint_name)
-                app.register_blueprint(blueprint)
-                routes_registered.append(f"{module_path} -> {blueprint_name}")
-                print(f"✓ Registered: {module_path}")
-            else:
-                # List all attributes to help debug
-                available_attrs = [attr for attr in dir(module) if not attr.startswith('_')]
-                routes_failed.append(f"{module_path}: Blueprint '{blueprint_name}' not found. Available: {available_attrs}")
-                print(f"✗ Blueprint not found: {module_path}")
-                
-        except ImportError as e:
-            routes_failed.append(f"{module_path}: Import failed - {str(e)}")
-            print(f"✗ Import failed: {module_path} - {str(e)}")
-        except Exception as e:
-            routes_failed.append(f"{module_path}: {str(e)}")
-            print(f"✗ Error: {module_path} - {str(e)}")
-    
-    print(f"\nRoutes registered: {routes_registered}")
-    if routes_failed:
-        print(f"Routes failed: {routes_failed}")
-        
-    # If no routes registered, print helpful debug info
-    if not routes_registered:
-        print("\nDEBUG: No routes registered. Checking file structure...")
-        import os
-        for root, dirs, files in os.walk('app/api'):
-            level = root.replace('app/api', '').count(os.sep)
-            indent = ' ' * 2 * level
-            print(f"{indent}{os.path.basename(root)}/")
-            subindent = ' ' * 2 * (level + 1)
-            for file in files:
-                if file.endswith('.py'):
-                    print(f"{subindent}{file}")
 
 def register_essential_endpoints(app):
     """Register essential endpoints that always work"""
@@ -217,14 +148,14 @@ def register_essential_endpoints(app):
         import_results = {}
         
         modules_to_test = [
-            'app.utils.database',
-            'app.utils.auth',
+            'app.config.database',
+            'app.config.environment',
             'app.services.blockchain_service',
+            'app.api.route_registry',
             'app.api.v1.auth_routes',
-            'app.api.v1.manufacturer_routes',
-            'app.api.v1.admin_routes',
-            'app.api.v1.analytics_routes',
-            'app.api.v1.billing_routes',
+            'app.api.v1.demo_routes',
+            'app.api.v1.manufacturer.dashboard_routes',
+            'app.api.v1.manufacturer.product_routes',
         ]
         
         for module_name in modules_to_test:
@@ -239,6 +170,7 @@ def register_essential_endpoints(app):
             'python_path': sys.path,
             'current_directory': os.getcwd()
         }
+
 
 def register_error_handlers(app):
     """Register error handlers"""
@@ -260,11 +192,12 @@ def register_error_handlers(app):
         app.logger.error(f"Internal server error: {error}")
         return jsonify({'error': 'Internal server error'}), 500
 
+
 def setup_logging(app):
     """Setup application logging"""
     log_level = os.getenv('LOG_LEVEL', 'INFO')
     
-    # Create logs directory
+    # Create logs directory if it doesn't exist
     os.makedirs('logs', exist_ok=True)
     
     # Configure logging
@@ -279,6 +212,7 @@ def setup_logging(app):
     
     # Quiet down noisy loggers
     logging.getLogger('werkzeug').setLevel(logging.WARNING)
+
 
 def print_route_info(app):
     """Print registered routes for debugging"""
@@ -298,16 +232,16 @@ def print_route_info(app):
         print(f"{rule.rule:40} -> {rule.endpoint:30} [{methods}]")
     print("="*60 + "\n")
 
-# Create the application instance
-try:
-    app = create_app()
-    print("✅ Application created successfully")
-except Exception as e:
-    print(f"❌ Application creation failed: {e}")
-    traceback.print_exc()
-    sys.exit(1)
 
 if __name__ == '__main__':
+    try:
+        app = create_app()
+        print("✅ Application created successfully")
+    except Exception as e:
+        print(f"❌ Application creation failed: {e}")
+        traceback.print_exc()
+        sys.exit(1)
+    
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_ENV', 'development') == 'development'
     
@@ -324,12 +258,7 @@ if __name__ == '__main__':
     print("="*80 + "\n")
     
     try:
-        app.run(
-            host='0.0.0.0',
-            port=port, 
-            debug=debug, 
-            threaded=True
-        )
+        app.run(host='0.0.0.0', port=port, debug=debug, threaded=True)
     except Exception as e:
         print(f"\n❌ CRITICAL ERROR: Failed to start server")
         print(f"Error: {e}")

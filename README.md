@@ -2,24 +2,25 @@
 
 A B2B SaaS platform that enables manufacturers to integrate product verification into their customer-facing applications. Think "Stripe for product authenticity."
 
-## 🚀 Features
+## Features
 
 - **Product Verification API** - REST API for verifying product authenticity
+- **Blockchain Integration** - Immutable product registration on Ethereum
 - **Cryptographic Signatures** - Digital signatures for tamper-proof verification
-- **Multi-tenant Architecture** - Secure isolation between manufacturers
 - **Real-time Analytics** - Usage metrics and verification insights
 - **Webhook Integration** - Real-time notifications for verification events
 - **Billing Integration** - Stripe-powered subscription management
 - **Admin Dashboard** - Management interface for platform administrators
+- **Demo Mode** - Try the platform without registration
 
-## 📋 Requirements
+## Requirements
 
 - Python 3.9+
 - MongoDB 5.0+
 - Redis 6.0+ (for rate limiting)
-- Node.js 16+ (for frontend, if applicable)
+- Ethereum Node/Infura (for blockchain features)
 
-## 🛠 Installation
+## Installation
 
 ### Local Development
 
@@ -37,23 +38,38 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 3. **Install dependencies**
 ```bash
-pip install -r requirements/development.txt
+pip install -r requirements.txt
 ```
 
 4. **Set up environment variables**
 ```bash
-cp .env.template .env
+cp .env.example .env
 # Edit .env with your configuration
 ```
 
-5. **Start services**
+Required environment variables:
 ```bash
-# Start MongoDB and Redis
-docker-compose up -d mongo redis
-
-# Run the application
-flask run
+FLASK_ENV=development
+MONGODB_URI=mongodb://localhost:27017/product_verification
+JWT_SECRET_KEY=your-secret-key-here
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+BLOCKCHAIN_RPC_URL=https://sepolia.infura.io/v3/YOUR-PROJECT-ID
+CONTRACT_ADDRESS=0x...
+PRIVATE_KEY=0x...
 ```
+
+5. **Start MongoDB**
+```bash
+docker-compose up -d mongodb
+```
+
+6. **Run the application**
+```bash
+python app.py
+```
+
+The API will be available at `http://localhost:5000`
 
 ### Docker Deployment
 
@@ -65,56 +81,130 @@ docker-compose up --build
 docker-compose up -d
 ```
 
-## 🔧 Configuration
+## API Documentation
 
-### Environment Variables
+### Base URL
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `FLASK_ENV` | Environment (development/production) | `development` |
-| `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/product_verification` |
-| `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
-| `JWT_SECRET_KEY` | JWT signing secret | (required) |
-| `STRIPE_SECRET_KEY` | Stripe API secret key | (required for billing) |
-| `BLOCKCHAIN_RPC_URL` | Blockchain RPC endpoint | (optional) |
+- Development: `http://localhost:5000`
+- Production: `https://api.your-domain.com`
 
-### Database Setup
-
-```bash
-# Initialize database
-python scripts/init_db.py
-
-# Create admin user
-python scripts/create_admin.py --email admin@example.com --password securepassword
-
-# Seed sample data (development only)
-python scripts/seed_data.py
-```
-
-## 📚 API Documentation
+All API routes are versioned under `/api/v1/` prefix.
 
 ### Authentication
 
+#### Register Manufacturer
 ```bash
-curl -X POST http://localhost:5000/api/auth/login \
+curl -X POST http://localhost:5000/api/v1/auth/manufacturer/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "manufacturer@example.com",
-    "password": "password"
+    "password": "securepassword",
+    "company_name": "Example Corp",
+    "phone": "+1234567890"
   }'
 ```
 
-### Product Verification
-
+#### Login
 ```bash
-curl -X GET http://localhost:5000/api/verify/ABC123456 \
-  -H "Authorization: Bearer your-jwt-token"
+curl -X POST http://localhost:5000/api/v1/auth/manufacturer/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "manufacturer@example.com",
+    "password": "securepassword"
+  }'
 ```
 
-### Manufacturer Integration
+Response:
+```json
+{
+  "success": true,
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
+  "user": {
+    "id": "...",
+    "email": "manufacturer@example.com",
+    "role": "manufacturer"
+  }
+}
+```
+
+### Demo Mode
+
+Try the platform without registration:
 
 ```bash
-curl -X POST http://localhost:5000/api/v1/integration/verify/single \
+# Start demo session
+curl -X POST http://localhost:5000/api/v1/demo/start-session
+
+# Verify product in demo mode
+curl -X POST http://localhost:5000/api/v1/demo/verify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "serial_number": "DEMO123456"
+  }'
+```
+
+### Product Management (Manufacturer Dashboard)
+
+All manufacturer endpoints require JWT authentication:
+
+```bash
+# Register a product
+curl -X POST http://localhost:5000/api/v1/manufacturer/products \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "serial_number": "ABC123456",
+    "brand": "YourBrand",
+    "model": "Model X",
+    "manufacture_date": "2024-01-15",
+    "registration_type": "blockchain"
+  }'
+
+# Get all products
+curl -X GET http://localhost:5000/api/v1/manufacturer/products \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get dashboard stats
+curl -X GET http://localhost:5000/api/v1/manufacturer/dashboard/stats \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Bulk import products
+curl -X POST http://localhost:5000/api/v1/manufacturer/products/bulk-import \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "file=@products.csv"
+```
+
+### API Key Management
+
+Generate API keys for external integrations:
+
+```bash
+# Create API key
+curl -X POST http://localhost:5000/api/v1/manufacturer/api-keys \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Production API Key",
+    "permissions": ["verify", "register", "analytics"]
+  }'
+
+# List API keys
+curl -X GET http://localhost:5000/api/v1/manufacturer/api-keys \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Revoke API key
+curl -X POST http://localhost:5000/api/v1/manufacturer/api-keys/{key_id}/revoke \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### External API (For Customer-Facing Apps)
+
+Use API keys for programmatic access:
+
+```bash
+# Verify single product
+curl -X POST http://localhost:5000/api/external/verify \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -123,107 +213,168 @@ curl -X POST http://localhost:5000/api/v1/integration/verify/single \
       "ip_address": "192.168.1.1"
     }
   }'
-```
 
-## 🧪 Testing
-
-### Run Tests
-
-```bash
-# Unit tests
-pytest tests/unit/ -v
-
-# Integration tests  
-pytest tests/integration/ -v
-
-# All tests with coverage
-pytest tests/ --cov=app --cov-report=html
-```
-
-### Test Data
-
-```bash
-# Create test manufacturer
-python scripts/create_test_data.py --type manufacturer
-
-# Create test products
-python scripts/create_test_data.py --type products --count 10
-```
-
-## 🚀 Deployment
-
-### Production Checklist
-
-- [ ] Environment variables configured
-- [ ] Database migrations applied
-- [ ] SSL certificates configured
-- [ ] Monitoring and logging set up
-- [ ] Backup procedures in place
-- [ ] Rate limiting configured
-- [ ] Security headers enabled
-
-### Health Checks
-
-```bash
-# Application health
-curl http://localhost:5000/health
-
-# Detailed health check
-curl http://localhost:5000/health/detailed
-```
-
-## 📊 Monitoring
-
-### Application Metrics
-
-- Visit `/metrics` for Prometheus metrics
-- Health checks available at `/health`
-- Application logs in `logs/app.log`
-
-### Key Metrics to Monitor
-
-- Verification request rate
-- API response times
-- Database connection pool usage
-- Authentication failure rate
-- Error rates by endpoint
-
-## 🔒 Security
-
-### Best Practices
-
-- All API keys are hashed before storage
-- JWT tokens expire after 24 hours
-- Rate limiting on all public endpoints
-- Input validation on all user data
-- CORS properly configured
-- Security headers enabled
-
-### API Key Management
-
-```bash
-# Generate new API key
-curl -X POST http://localhost:5000/api/manufacturer/api-keys \
-  -H "Authorization: Bearer your-jwt-token" \
+# Batch verification
+curl -X POST http://localhost:5000/api/external/verify/batch \
+  -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Production API Key",
-    "permissions": ["verify", "analytics"]
+    "serial_numbers": ["ABC123", "DEF456", "GHI789"]
+  }'
+
+# Get product details
+curl -X GET http://localhost:5000/api/external/products/ABC123456 \
+  -H "X-API-Key: your-api-key"
+
+# Test API connection
+curl -X GET http://localhost:5000/api/external/test-connection \
+  -H "X-API-Key: your-api-key"
+```
+
+### Public Verification (No Auth Required)
+
+```bash
+# Verify by serial number
+curl -X GET http://localhost:5000/api/v1/verification/ABC123456
+
+# Verify by QR code
+curl -X GET http://localhost:5000/api/v1/verification/qr/QR_CODE_VALUE
+
+# Get ownership history
+curl -X GET http://localhost:5000/api/v1/verification/ownership-history/ABC123456
+```
+
+### Counterfeit Reporting
+
+```bash
+# Report counterfeit product
+curl -X POST http://localhost:5000/api/v1/verification/counterfeit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "serial_number": "FAKE123",
+    "description": "Found product with invalid serial",
+    "reporter_email": "user@example.com"
   }'
 ```
 
-## 📱 Integration Examples
+### Analytics
+
+```bash
+# Get verification trends
+curl -X GET http://localhost:5000/api/v1/manufacturer/analytics/verification-trends \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get geographic distribution
+curl -X GET http://localhost:5000/api/v1/manufacturer/analytics/geographic-distribution \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Export analytics data
+curl -X POST http://localhost:5000/api/v1/manufacturer/analytics/export \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "format": "csv",
+    "start_date": "2024-01-01",
+    "end_date": "2024-12-31"
+  }'
+```
+
+### Subscription & Billing
+
+```bash
+# Get subscription status
+curl -X GET http://localhost:5000/api/v1/billing/subscription/status \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Upgrade subscription
+curl -X POST http://localhost:5000/api/v1/billing/subscription/upgrade \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "plan": "professional"
+  }'
+
+# Get available plans
+curl -X GET http://localhost:5000/api/v1/billing/subscription/plans
+
+# View invoices
+curl -X GET http://localhost:5000/api/v1/billing/subscription/invoices \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Admin Endpoints
+
+Admin routes require admin role JWT:
+
+```bash
+# Get all manufacturers
+curl -X GET http://localhost:5000/api/v1/admin/manufacturers \
+  -H "Authorization: Bearer ADMIN_JWT_TOKEN"
+
+# Approve manufacturer
+curl -X POST http://localhost:5000/api/v1/admin/manufacturers/{id}/approve \
+  -H "Authorization: Bearer ADMIN_JWT_TOKEN"
+
+# System health
+curl -X GET http://localhost:5000/api/v1/admin/system/health \
+  -H "Authorization: Bearer ADMIN_JWT_TOKEN"
+
+# Audit logs
+curl -X GET http://localhost:5000/api/v1/admin/audit/logs \
+  -H "Authorization: Bearer ADMIN_JWT_TOKEN"
+```
+
+## Webhooks
+
+Configure webhooks to receive real-time notifications:
+
+### Stripe Webhooks
+```bash
+POST /api/v1/billing/webhooks/stripe
+```
+
+### Blockchain Events
+```bash
+POST /api/external/webhooks/blockchain
+```
+
+### Verification Events
+```bash
+POST /api/external/webhooks/verification
+```
+
+## Integration Examples
 
 ### JavaScript/Node.js
 
 ```javascript
-const response = await fetch('https://api.your-domain.com/api/verify/ABC123', {
+const axios = require('axios');
+
+const client = axios.create({
+  baseURL: 'https://api.your-domain.com',
   headers: {
     'X-API-Key': 'your-api-key'
   }
 });
-const result = await response.json();
-console.log(result.authentic ? 'Authentic' : 'Counterfeit');
+
+async function verifyProduct(serialNumber) {
+  try {
+    const response = await client.post('/api/external/verify', {
+      serial_number: serialNumber
+    });
+    
+    if (response.data.authentic) {
+      console.log('Product is authentic!');
+      console.log('Details:', response.data.product);
+    } else {
+      console.log('Warning: Product may be counterfeit');
+    }
+  } catch (error) {
+    console.error('Verification failed:', error.message);
+  }
+}
+
+verifyProduct('ABC123456');
 ```
 
 ### Python
@@ -231,116 +382,259 @@ console.log(result.authentic ? 'Authentic' : 'Counterfeit');
 ```python
 import requests
 
-response = requests.get(
-    'https://api.your-domain.com/api/verify/ABC123',
-    headers={'X-API-Key': 'your-api-key'}
-)
-result = response.json()
+class ProductVerifier:
+    def __init__(self, api_key):
+        self.base_url = 'https://api.your-domain.com'
+        self.headers = {'X-API-Key': api_key}
+    
+    def verify(self, serial_number):
+        response = requests.post(
+            f'{self.base_url}/api/external/verify',
+            headers=self.headers,
+            json={'serial_number': serial_number}
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def batch_verify(self, serial_numbers):
+        response = requests.post(
+            f'{self.base_url}/api/external/verify/batch',
+            headers=self.headers,
+            json={'serial_numbers': serial_numbers}
+        )
+        response.raise_for_status()
+        return response.json()
+
+# Usage
+verifier = ProductVerifier('your-api-key')
+result = verifier.verify('ABC123456')
 print('Authentic' if result['authentic'] else 'Counterfeit')
 ```
 
 ### PHP
 
 ```php
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://api.your-domain.com/api/verify/ABC123');
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-API-Key: your-api-key']);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-$response = curl_exec($ch);
-$result = json_decode($response, true);
+<?php
+
+class ProductVerifier {
+    private $apiKey;
+    private $baseUrl = 'https://api.your-domain.com';
+    
+    public function __construct($apiKey) {
+        $this->apiKey = $apiKey;
+    }
+    
+    public function verify($serialNumber) {
+        $ch = curl_init();
+        
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $this->baseUrl . '/api/external/verify',
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode([
+                'serial_number' => $serialNumber
+            ]),
+            CURLOPT_HTTPHEADER => [
+                'X-API-Key: ' . $this->apiKey,
+                'Content-Type: application/json'
+            ]
+        ]);
+        
+        $response = curl_exec($ch);
+        curl_close($ch);
+        
+        return json_decode($response, true);
+    }
+}
+
+$verifier = new ProductVerifier('your-api-key');
+$result = $verifier->verify('ABC123456');
 echo $result['authentic'] ? 'Authentic' : 'Counterfeit';
-curl_close($ch);
 ```
 
-## 🤝 Contributing
+## Testing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Workflow
+### Run Tests
 
 ```bash
-# Install pre-commit hooks
-pre-commit install
+# All tests
+pytest tests/ -v
 
-# Run code formatting
-black app/ tests/
-flake8 app/ tests/
+# With coverage
+pytest tests/ --cov=app --cov-report=html
 
-# Run tests before committing
-pytest tests/
+# Specific test file
+pytest tests/test_auth.py -v
 ```
 
-## 📁 Project Structure
+### Manual Testing
+
+```bash
+# Health check
+curl http://localhost:5000/health
+
+# Database test
+curl http://localhost:5000/test-db
+
+# Debug imports
+curl http://localhost:5000/debug/imports
+```
+
+## Project Structure
 
 ```
-product-verification-platform/
+product-verification-backend/
 ├── app/
-│   ├── api/                 # API routes
-│   ├── core/                # Core utilities
-│   ├── models/              # Data models
-│   ├── services/            # Business logic
-│   └── utils/               # Utility functions
-├── tests/                   # Test files
-├── scripts/                 # Deployment scripts
-├── docker/                  # Docker configuration
-├── docs/                    # Documentation
-└── requirements/            # Python dependencies
+│   ├── api/
+│   │   ├── v1/
+│   │   │   ├── auth_routes.py
+│   │   │   ├── demo_routes.py
+│   │   │   ├── manufacturer/
+│   │   │   │   ├── dashboard_routes.py
+│   │   │   │   ├── product_routes.py
+│   │   │   │   ├── api_key_routes.py
+│   │   │   │   ├── analytics_routes.py
+│   │   │   │   └── onboarding_routes.py
+│   │   │   ├── admin/
+│   │   │   │   ├── manufacturer_management_routes.py
+│   │   │   │   ├── system_routes.py
+│   │   │   │   └── audit_routes.py
+│   │   │   ├── billing/
+│   │   │   │   ├── subscription_routes.py
+│   │   │   │   └── webhook_routes.py
+│   │   │   └── verification/
+│   │   │       ├── public_routes.py
+│   │   │       └── reporting_routes.py
+│   │   ├── external/
+│   │   │   ├── verification_routes.py
+│   │   │   ├── crypto_routes.py
+│   │   │   └── webhook_routes.py
+│   │   ├── middleware/
+│   │   │   ├── auth_middleware.py
+│   │   │   ├── validation_middleware.py
+│   │   │   ├── webhook_middleware.py
+│   │   │   └── rate_limiting.py
+│   │   └── route_registry.py
+│   ├── services/
+│   │   ├── auth/
+│   │   ├── manufacturer/
+│   │   ├── blockchain/
+│   │   └── billing/
+│   ├── models/
+│   ├── utils/
+│   └── config/
+├── tests/
+├── scripts/
+├── docker/
+└── requirements.txt
 ```
 
-## 🐛 Troubleshooting
+## Deployment
+
+### Production Checklist
+
+- Set `FLASK_ENV=production`
+- Use strong `JWT_SECRET_KEY`
+- Enable SSL/TLS certificates
+- Configure MongoDB replica set
+- Set up Redis for rate limiting
+- Configure Stripe webhooks
+- Enable monitoring and logging
+- Set up backup procedures
+- Configure CORS properly
+- Use production WSGI server (gunicorn)
+
+### Running with Gunicorn
+
+```bash
+gunicorn -w 4 -b 0.0.0.0:5000 app:app
+```
+
+### Environment-Specific Settings
+
+```bash
+# Development
+export FLASK_ENV=development
+export DEBUG=True
+
+# Production
+export FLASK_ENV=production
+export DEBUG=False
+```
+
+## Security
+
+- All passwords hashed with bcrypt
+- API keys hashed before storage
+- JWT tokens expire after 1 hour
+- Refresh tokens valid for 7 days
+- Rate limiting on all endpoints
+- Input validation and sanitization
+- CORS properly configured
+- Webhook signature verification
+- SQL injection prevention (NoSQL)
+
+## Monitoring
+
+### Health Checks
+
+```bash
+# Basic health
+curl http://localhost:5000/health
+
+# API health with version
+curl http://localhost:5000/api/health
+
+# Database connection test
+curl http://localhost:5000/test-db
+```
+
+### Key Metrics
+
+- Total routes: 114
+- Active manufacturers
+- Verification requests per day
+- API response times
+- Error rates
+- Blockchain transaction status
+
+## Troubleshooting
 
 ### Common Issues
 
-**Database Connection Failed**
+**Import Errors**
 ```bash
-# Check MongoDB status
-docker-compose ps mongo
-
-# View MongoDB logs
-docker-compose logs mongo
+python check_imports.py
 ```
 
-**Authentication Issues**
+**Database Connection**
 ```bash
-# Verify JWT secret is set
-echo $JWT_SECRET_KEY
+# Check MongoDB
+docker-compose ps mongodb
 
-# Check token expiry
-python -c "import jwt; print(jwt.decode('your-token', verify=False))"
+# View logs
+docker-compose logs mongodb
 ```
 
-**High Memory Usage**
+**JWT Token Issues**
 ```bash
-# Check application metrics
-curl http://localhost:5000/metrics | grep memory
-
-# Monitor processes
-docker stats
+# Verify token (without validation)
+python -c "import jwt; print(jwt.decode('YOUR_TOKEN', options={'verify_signature': False}))"
 ```
 
-## 📞 Support
+## Support
 
-- **Documentation**: [docs/](./docs/)
-- **Issues**: [GitHub Issues](https://github.com/your-org/product-verification-platform/issues)
-- **Email**: support@your-domain.com
-- **Slack**: #product-verification
+- Documentation: Full API docs at `/docs`
+- Issues: GitHub Issues
+- Email: support@your-domain.com
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see LICENSE file
 
-## 🙏 Acknowledgments
-
-- Thanks to all contributors
-- Built with Flask, MongoDB, and Redis
-- Inspired by Stripe's API design philosophy
-
----
+## Version
 
 **Version**: 1.0.0  
-**Last Updated**: 2024-01-15  
-**Maintainers**: Your Development Team
+**Last Updated**: 2025-10-05  
+**Total Routes**: 114  
+**API Version**: v1
