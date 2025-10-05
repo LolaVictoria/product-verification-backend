@@ -1,0 +1,79 @@
+# docker-compose.yml (Development)
+
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:4.4
+    container_name: product-verification-db
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: product_verification
+
+  # Redis for rate limiting and sessions
+  redis:
+    image: redis:6-alpine
+    container_name: product-verification-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  # Main Application
+  api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: product-verification-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - FLASK_ENV=development
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/product_verification?authSource=admin
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET_KEY=dev-jwt-secret-key-change-in-production
+      - SECRET_KEY=dev-secret-key-change-in-production
+    depends_on:
+      - mongodb
+      - redis
+    command: python app.py
+
+  # Frontend (Optional - if you have a dashboard)
+  frontend:
+    image: node:16-alpine
+    container_name: product-verification-frontend
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+    command: >
+      sh -c "
+        if [ ! -d node_modules ]; then npm install; fi &&
+        npm run dev
+      "
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000
+    depends_on:
+      - api
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  default:
+    name: product-verification-network

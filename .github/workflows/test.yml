@@ -1,0 +1,36 @@
+# .github/workflows/test.yml
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mongodb:
+        image: mongo:5.0
+        ports:
+          - 27017:27017
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements/testing.txt
+    
+    - name: Run tests
+      run: |
+        pytest tests/ -v --cov=app --cov-report=xml
+      env:
+        MONGODB_URI: mongodb://localhost:27017/test_db
+        JWT_SECRET_KEY: test-secret-key
+    
+    - name: Upload coverage
+      uses: codecov/codecov-action@v2
