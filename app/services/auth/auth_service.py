@@ -31,6 +31,85 @@ class AuthService:
         self.secret_key = os.getenv('SECRET_KEY')
         self.token_expiry_hours = int(os.getenv('TOKEN_EXPIRY_HOURS', '24'))
    
+    @staticmethod
+    def authenticate_customer(email, password):
+        """Authenticate customer from users collection"""
+        try:
+            print(f"Authenticating customer: {email}")
+            
+            db = get_db_connection()
+            
+            # Find customer in users collection
+            customer = db.users.find_one({
+                'email': email,
+                'role': 'customer'
+            })
+            
+            if not customer:
+                customer = db.users.find_one({
+                    'primary_email': email,
+                    'role': 'customer'
+                })
+            
+            print(f"Customer found: {bool(customer)}")
+            
+            if not customer:
+                raise AuthError("Invalid credentials")
+            
+            # Check if customer is active
+            if customer.get('is_active') == False:
+                raise AuthError("Customer account is deactivated")
+            
+            # Get stored password hash
+            stored_hash = customer.get('password_hash') or customer.get('password')
+            if not stored_hash:
+                raise AuthError("Invalid credentials")
+            
+            # Verify password
+            password_valid = False
+            
+            try:
+                password_valid = verify_password(email, password)
+            except Exception as e:
+                print(f"Security utils failed for customer: {e}")
+            
+            if not password_valid:
+                try:
+                    password_valid = verify_password(password, stored_hash)
+                except Exception as e:
+                    print(f"Bcrypt verification failed for customer: {e}")
+            
+            if not password_valid:
+                raise AuthError("Invalid credentials")
+            
+            # Generate token
+            user_data = {
+                'user_id': str(customer['_id']),
+                'email': customer.get('primary_email') or customer.get('email')
+            }
+            
+            token = auth_service.generate_token(user_data, 'customer')
+            
+            # Log successful login
+            try:
+                AuthService.log_security_event('customer_login', customer['_id'], request.remote_addr)
+            except Exception as e:
+                print(f"Security logging failed: {e}")
+            
+            return {
+                'token': token,
+                'user': format_user_response(customer, 'customer')
+            }
+            
+        except AuthError:
+            raise
+        except Exception as e:
+            print(f"Customer authentication error: {e}")
+            import traceback
+            print(traceback.format_exc())
+            raise AuthError("Authentication failed")
+    
+    @staticmethod
     def authenticate_admin(email, password):
         """Authenticate admin user from users collection"""
         try:
@@ -112,6 +191,7 @@ class AuthService:
             print(traceback.format_exc())
             raise AuthError("Authentication failed")
 
+    @staticmethod
     def authenticate_manufacturer(email, password):
         """Authenticate manufacturer from manufacturers collection"""
         try:
@@ -206,6 +286,7 @@ class AuthService:
             print(traceback.format_exc())
             raise AuthError("Authentication failed")
         
+    @staticmethod
     def get_current_user():
         """Get current user from token"""
         try:
@@ -219,6 +300,7 @@ class AuthService:
         except AuthError:
             raise
 
+    @staticmethod
     def log_security_event(event_type, user_id, ip_address):
         """Log security-related events"""
         try:

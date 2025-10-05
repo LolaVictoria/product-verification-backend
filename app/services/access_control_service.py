@@ -19,6 +19,7 @@ class AccessControlService:
     def __init__(self):
         self.db = get_db_connection()
     
+    @staticmethod
     def validate_manufacturer_access(self, user_id: str, user_role: str = None, 
                                     manufacturer_id: str = None) -> Dict[str, Any]:
         """
@@ -123,6 +124,7 @@ class AccessControlService:
                 'message': 'Error validating manufacturer access'
             }
     
+    @staticmethod
     def can_access_product(self, user_id: str, user_role: str, product_id: str) -> Dict[str, Any]:
         """
         Check if user can access a specific product
@@ -192,6 +194,7 @@ class AccessControlService:
                 'message': 'Error checking product access'
             }
     
+    @staticmethod
     def can_access_api_key(self, user_id: str, user_role: str, api_key_id: str) -> Dict[str, Any]:
         """
         Check if user can access/modify an API key
@@ -253,6 +256,7 @@ class AccessControlService:
                 'message': 'Error checking API key access'
             }
     
+    @staticmethod
     def can_access_analytics(self, user_id: str, user_role: str, 
                             target_manufacturer_id: str) -> Dict[str, Any]:
         """
@@ -299,6 +303,7 @@ class AccessControlService:
                 'message': 'Error checking analytics access'
             }
     
+    @staticmethod
     def can_modify_user(self, actor_user_id: str, actor_role: str, 
                        target_user_id: str) -> Dict[str, Any]:
         """
@@ -339,6 +344,7 @@ class AccessControlService:
                 'message': 'Error checking modification access'
             }
     
+    @staticmethod
     def can_access_billing(self, user_id: str, user_role: str, 
                           target_manufacturer_id: str) -> Dict[str, Any]:
         """
@@ -385,6 +391,7 @@ class AccessControlService:
                 'message': 'Error checking billing access'
             }
     
+    @staticmethod
     def has_feature_access(self, user_id: str, feature_name: str) -> bool:
         """
         Check if user has access to a specific feature based on subscription
@@ -403,6 +410,7 @@ class AccessControlService:
             logger.error(f"Error checking feature access: {e}")
             return False
     
+    @staticmethod
     def check_rate_limit_access(self, user_id: str, user_role: str) -> Dict[str, Any]:
         """
         Get rate limit information for user

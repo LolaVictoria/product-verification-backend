@@ -8,6 +8,7 @@ class UsageService:
     def __init__(self, db):
         self.db = db
 
+    @staticmethod
     def log_api_usage(self, manufacturer_id: str, endpoint: str, request_count: int = 1) -> None:
         """Log API usage and increment usage counter"""
         try:
@@ -28,7 +29,8 @@ class UsageService:
         except Exception as e:
             logger.error(f"Error logging API usage for {manufacturer_id}: {str(e)}")
             raise
-
+    
+    @staticmethod
     def _increment_usage(self, manufacturer_id: ObjectId, endpoint: str) -> None:
         """Increment usage counter for rate limiting"""
         try:

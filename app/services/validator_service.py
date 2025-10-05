@@ -3,6 +3,8 @@ import re
 from email_validator import validate_email, EmailNotValidError
 
 class ValidatorService:
+    
+    @staticmethod
     def validate_manufacturer_profile(data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Validate manufacturer profile updates (existing manufacturers)
@@ -43,6 +45,7 @@ class ValidatorService:
             'errors': errors
         }
 
+    @staticmethod
     def validate_integration_request(data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Validate integration request data.
@@ -81,6 +84,7 @@ class ValidatorService:
             'errors': errors
         }
 
+    @staticmethod
     def validate_user_registration(data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Validate user registration data.
@@ -137,6 +141,7 @@ class ValidatorService:
             'errors': errors
         }
 
+    @staticmethod
     def validate_login_data(data: Dict[str, Any]) -> Optional[str]:
         """Validate login data"""
         if not data:
@@ -161,6 +166,7 @@ class ValidatorService:
         
         return None
 
+    @staticmethod
     def validate_user_registration(data: Dict[str, Any]) -> Optional[str]:
         """Validate user registration data"""
         if not data:
@@ -206,6 +212,7 @@ class ValidatorService:
         
         return None
 
+    @staticmethod
     def validate_email_update(data: Dict[str, Any]) -> Optional[str]:
         """Validate email update data"""
         if not data:
@@ -220,6 +227,7 @@ class ValidatorService:
         
         return None
 
+    @staticmethod
     def validate_password_change(data: Dict[str, Any]) -> Optional[str]:
         """Validate password change data"""
         if not data:
@@ -241,6 +249,7 @@ class ValidatorService:
         
         return None
 
+    @staticmethod
     def validate_profile_update(data: Dict[str, Any]) -> Optional[str]:
         """Validate profile update data"""
         if not data:

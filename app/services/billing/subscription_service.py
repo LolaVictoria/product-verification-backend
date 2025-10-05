@@ -80,6 +80,7 @@ class SubscriptionService:
             }
         }
     
+    @staticmethod
     def get_subscription_status(self, manufacturer_id: str) -> Dict[str, Any]:
         """
         Get current subscription status for manufacturer
@@ -141,6 +142,7 @@ class SubscriptionService:
                 'error': 'Failed to get subscription status'
             }
     
+    @staticmethod
     def create_subscription(self, manufacturer_id: str, plan_name: str, 
                           billing_cycle: str = 'monthly') -> Dict[str, Any]:
         """
@@ -249,6 +251,7 @@ class SubscriptionService:
                 'error': 'Failed to create subscription'
             }
     
+    @staticmethod
     def upgrade_subscription(self, manufacturer_id: str, new_plan: str) -> Dict[str, Any]:
         """Upgrade to a higher plan"""
         try:
@@ -308,6 +311,7 @@ class SubscriptionService:
                 'error': 'Failed to upgrade subscription'
             }
     
+    @staticmethod
     def cancel_subscription(self, manufacturer_id: str, reason: str = None) -> Dict[str, Any]:
         """Cancel subscription"""
         try:
@@ -361,6 +365,7 @@ class SubscriptionService:
                 'error': 'Failed to cancel subscription'
             }
     
+    @staticmethod
     def get_available_plans(self) -> List[Dict[str, Any]]:
         """Get all available subscription plans"""
         return [
@@ -375,6 +380,7 @@ class SubscriptionService:
             for plan_id, plan_data in self.plans.items()
         ]
     
+    @staticmethod
     def check_plan_limits(self, manufacturer_id: str, feature: str) -> Dict[str, Any]:
         """
         Check if manufacturer has reached plan limits
@@ -457,6 +463,7 @@ class SubscriptionService:
                 'error': 'Failed to check limits'
             }
     
+    @staticmethod
     def can_access_feature(self, manufacturer_id: str, feature_name: str) -> bool:
         """Check if manufacturer's plan includes a feature"""
         try:
@@ -471,6 +478,7 @@ class SubscriptionService:
             logger.error(f"Error checking feature access: {e}")
             return False
     
+    @staticmethod
     def track_api_usage(self, manufacturer_id: str, endpoint: str) -> None:
         """Track API usage for billing purposes"""
         try:
@@ -482,6 +490,7 @@ class SubscriptionService:
         except Exception as e:
             logger.error(f"Error tracking API usage: {e}")
     
+    @staticmethod
     def get_usage_statistics(self, manufacturer_id: str, time_period: str = '30d') -> Dict[str, Any]:
         """Get usage statistics for manufacturer"""
         try:
@@ -523,6 +532,7 @@ class SubscriptionService:
                 'error': 'Failed to get usage statistics'
             }
     
+    @staticmethod
     def get_billing_history(self, manufacturer_id: str) -> Dict[str, Any]:
         """Get billing and invoice history"""
         try:
@@ -550,6 +560,7 @@ class SubscriptionService:
                 'error': 'Failed to get billing history'
             }
     
+    @staticmethod
     def _format_subscription(self, subscription: Dict[str, Any]) -> Dict[str, Any]:
         """Format subscription data for response"""
         plan = subscription.get('plan', 'free')
@@ -568,6 +579,7 @@ class SubscriptionService:
             'updated_at': subscription.get('updated_at')
         }
     
+    @staticmethod
     def _update_subscription_status(self, manufacturer_id: str, status: str) -> None:
         """Update subscription status in database"""
         try:
@@ -584,5 +596,4 @@ class SubscriptionService:
             logger.error(f"Error updating subscription status: {e}")
 
 
-# Singleton instance
 subscription_service = SubscriptionService()

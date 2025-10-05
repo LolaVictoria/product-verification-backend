@@ -15,7 +15,7 @@ class TokenService:
         self.token_expiry_hours = int(os.getenv('TOKEN_EXPIRY_HOURS', '24'))
     
     
-    
+    @staticmethod
     def refresh_token(self, old_token: str) -> Dict[str, Any]:
         """Refresh user token"""
         try:
@@ -60,6 +60,8 @@ class TokenService:
                 'success': False,
                 'error': 'Token refresh failed'
             }
+    
+    @staticmethod
     def logout_user(self, token: str) -> dict:
         """Logout user by blacklisting token"""
         try:
@@ -79,6 +81,7 @@ class TokenService:
                 'message': 'Logout failed'
             }
     
+    @staticmethod
     def blacklist_token(self, token: str) -> Dict[str, Any]:
         """Add JWT token to blacklist (for logout/token invalidation)"""
         try:
@@ -125,6 +128,7 @@ class TokenService:
                 'error': 'Token blacklisting failed'
             }
 
+    @staticmethod
     def _cleanup_expired_tokens(self):
         """Remove expired tokens from blacklist"""
         try:
@@ -134,6 +138,7 @@ class TokenService:
         except Exception as e:
             logger.warning(f"Token cleanup failed: {e}")
 
+    @staticmethod
     def is_token_blacklisted(self, token: str) -> bool:
         """Check if token is blacklisted"""
         try:
@@ -152,7 +157,6 @@ class TokenService:
         except Exception as e:
             logger.error(f"Error checking token blacklist: {e}")
             return False  # Fail open for availability
-
         
     @staticmethod
     def generate_jwt_token(user_id: str, user_role: str, secret_key: str, expires_in_hours: int = 24) -> str:

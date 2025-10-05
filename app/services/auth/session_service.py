@@ -21,6 +21,7 @@ class SessionService:
         self.sessions_collection = self.db.sessions
         self.session_duration = timedelta(days=7)  # Default session duration
     
+    @staticmethod
     def create_session(self, user_id: str, user_data: Dict, ip_address: str = None, user_agent: str = None) -> Dict:
         """
         Create a new session for user
@@ -83,6 +84,7 @@ class SessionService:
                 'error': 'Failed to create session'
             }
     
+    @staticmethod
     def get_session(self, session_id: str) -> Optional[Dict]:
         """Get session by session ID"""
         try:
@@ -105,6 +107,7 @@ class SessionService:
             logger.error(f"Get session error: {e}")
             return None
     
+    @staticmethod
     def get_user_sessions(self, user_id: str, active_only: bool = True) -> list:
         """Get all sessions for a user"""
         try:
@@ -126,6 +129,7 @@ class SessionService:
             logger.error(f"Get user sessions error: {e}")
             return []
     
+    @staticmethod
     def update_session_activity(self, session_id: str) -> bool:
         """Update last activity timestamp for session"""
         try:
@@ -140,6 +144,7 @@ class SessionService:
             logger.error(f"Update session activity error: {e}")
             return False
     
+    @staticmethod
     def refresh_session(self, refresh_token: str) -> Dict:
         """
         Refresh session using refresh token
@@ -209,6 +214,7 @@ class SessionService:
                 'error': 'Failed to refresh session'
             }
     
+    @staticmethod
     def invalidate_session(self, session_id: str) -> bool:
         """Invalidate/logout a session"""
         try:
@@ -230,6 +236,7 @@ class SessionService:
             logger.error(f"Invalidate session error: {e}")
             return False
     
+    @staticmethod
     def invalidate_user_sessions(self, user_id: str, except_session: str = None) -> int:
         """
         Invalidate all sessions for a user
@@ -289,6 +296,7 @@ class SessionService:
             logger.error(f"Cleanup expired sessions error: {e}")
             return 0
     
+    @staticmethod
     def get_session_stats(self, user_id: str) -> Dict:
         """Get session statistics for a user"""
         try:
@@ -321,6 +329,7 @@ class SessionService:
                 'last_login': None
             }
     
+    @staticmethod
     def validate_session_token(self, session_id: str, access_token: str) -> Dict:
         """
         Validate that access token belongs to session

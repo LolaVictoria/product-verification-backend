@@ -5,7 +5,7 @@ import random
 logger = logging.getLogger(__name__)
 class SandboxDemoService:
     # Add these methods to your existing DemoService
-    
+    @staticmethod
     def simulate_verification(self, serial_number: str, demo_products: list, company_name: str) -> dict:
         """Simulate product verification for demo"""
         # Find matching demo product
@@ -37,6 +37,7 @@ class SandboxDemoService:
                 'verification_timestamp': datetime.now(timezone.utc).isoformat()
             }
     
+    @staticmethod
     def generate_demo_analytics(self, company_name: str, requests_made: int) -> dict:
         """Generate realistic demo analytics"""
         # Simulate realistic analytics data
@@ -81,6 +82,7 @@ class SandboxDemoService:
             'note': 'This is demo data. Real analytics will show your actual verification patterns.'
         }
     
+    @staticmethod
     def track_demo_conversion_interest(self, email: str, company: str, ip_address: str):
         """Track when demo users show interest in upgrading"""
         try:

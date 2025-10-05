@@ -32,7 +32,8 @@ class UserService:
     def __init__(self):
         self.secret_key = os.getenv('SECRET_KEY')
         self.token_expiry_hours = int(os.getenv('TOKEN_EXPIRY_HOURS', '24'))
-  
+    
+    @staticmethod
     def register_user(self, user_data: dict) -> dict:
         """Register new user"""
         try:
@@ -84,7 +85,7 @@ class UserService:
                 'message': 'Registration failed'
             }
     
-
+    @staticmethod
     def create_user(email: str, password: str, **kwargs) -> Dict[str, Any]:
         """
         Create a new user with the provided information.
@@ -194,17 +195,17 @@ class UserService:
             
             return None
 
-
+    @staticmethod
     def get_client_ip(request) -> str:
         """Get client IP address from request"""
         return request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
 
-    
+    @staticmethod
     def get_user_agent(request) -> str:
         """Get user agent from request"""
         return request.headers.get('User-Agent', '')
 
-   
+    @staticmethod
     def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
         """
         Retrieve a user by their user ID.
@@ -223,7 +224,7 @@ class UserService:
         
         return None
 
-
+    @staticmethod
     def _update_last_login(self, user_id: ObjectId):
         """Update user's last login timestamp"""
         try:

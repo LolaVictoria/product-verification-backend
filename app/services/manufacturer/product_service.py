@@ -18,6 +18,7 @@ class ProductService:
     def __init__(self):
         self.db = get_db_connection()
     
+    @staticmethod
     def generate_serial_number(self, manufacturer_prefix: str = None) -> str:
         """Generate a unique serial number"""
         if manufacturer_prefix:
@@ -30,6 +31,7 @@ class ProductService:
         
         return f"{prefix}-{random_part}"
     
+    @staticmethod
     def get_manufacturer_products(self, manufacturer_id: str, page: int = 1, limit: int = 20, filter_type: str = 'all') -> Dict[str, Any]:
         """Get manufacturer's products with pagination and filtering"""
         try:
@@ -85,6 +87,7 @@ class ProductService:
             logger.error(f"Error getting manufacturer products: {e}")
             return {'success': False, 'message': 'Failed to get products'}
     
+    @staticmethod
     def register_product(self, manufacturer_id: str, product_data: Dict[str, Any]) -> Dict[str, Any]:
         """Register a new product"""
         try:
@@ -146,6 +149,7 @@ class ProductService:
             logger.error(f"Error registering product: {e}")
             return {'success': False, 'message': 'Failed to register product'}
     
+    @staticmethod
     def confirm_blockchain_registration(self, manufacturer_id: str, product_id: str, blockchain_data: Dict[str, Any]) -> Dict[str, Any]:
         """Confirm blockchain registration for a product"""
         try:
@@ -186,6 +190,7 @@ class ProductService:
             logger.error(f"Error confirming blockchain registration: {e}")
             return {'success': False, 'message': 'Failed to confirm blockchain registration'}
     
+    @staticmethod
     def mark_blockchain_failed(self, manufacturer_id: str, product_id: str, error_message: str = None) -> Dict[str, Any]:
         """Mark blockchain registration as failed"""
         try:
@@ -224,6 +229,7 @@ class ProductService:
             logger.error(f"Error marking blockchain failed: {e}")
             return {'success': False, 'message': 'Failed to mark blockchain registration as failed'}
     
+    @staticmethod
     def transfer_ownership(self, manufacturer_id: str, transfer_data: Dict[str, Any]) -> Dict[str, Any]:
         """Transfer product ownership to another manufacturer"""
         try:
@@ -303,6 +309,7 @@ class ProductService:
             logger.error(f"Error transferring ownership: {e}")
             return {'success': False, 'message': 'Failed to transfer ownership'}
     
+    @staticmethod
     def get_product_details(self, product_id: str, manufacturer_id: str = None) -> Dict[str, Any]:
         """Get detailed product information"""
         try:
@@ -353,6 +360,7 @@ class ProductService:
             logger.error(f"Error getting product details: {e}")
             return {'success': False, 'message': 'Failed to get product details'}
     
+    @staticmethod
     def update_product(self, manufacturer_id: str, product_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update product information"""
         try:
@@ -396,6 +404,7 @@ class ProductService:
             logger.error(f"Error updating product: {e}")
             return {'success': False, 'message': 'Failed to update product'}
     
+    @staticmethod
     def delete_product(self, manufacturer_id: str, product_id: str) -> Dict[str, Any]:
         """Delete a product (only if not verified on blockchain)"""
         try:
@@ -433,7 +442,7 @@ class ProductService:
             logger.error(f"Error deleting product: {e}")
             return {'success': False, 'message': 'Failed to delete product'}
 
-   ##############################################################
+    @staticmethod
     def register_product_via_api(self, product_data: Dict[str, Any]) -> Dict[str, Any]:
         """Register a product via API"""
         try:
@@ -512,6 +521,7 @@ class ProductService:
             logger.error(f"Error registering product: {str(e)}")
             return {'success': False, 'error': 'Failed to register product'}
 
+    @staticmethod
     def get_manufacturer_products_api(self, manufacturer_id: str, page: int = 1, limit: int = 50) -> Dict[str, Any]:
         """Get manufacturer's products for API"""
         try:

@@ -218,6 +218,7 @@ class NotificationService:
         """Send counterfeit push notification (stub - implement with FCM/APNS)"""
         logger.info(f"Push notification for customer {customer_id}: Counterfeit detected - Alert {alert_id}")
         # Implement with Firebase Cloud Messaging or Apple Push Notification Service
+    
     def send_webhook(self, webhook_url: str, payload: Dict[str, Any]) -> bool:
         """Send webhook notification with retries"""
         for attempt in range(self.webhook_retries):

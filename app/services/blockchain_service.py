@@ -120,10 +120,12 @@ class BlockchainService:
         ]'''
         return json.loads(abi_json)
     
+    @staticmethod
     def is_connected(self):
         """Check if blockchain connection is active"""
         return self.connected and self.web3 and self.web3.is_connected()
     
+    @staticmethod
     def register_device(self, serial_number, device_data):
         """Register device on blockchain"""
         if not self.is_connected() or not self.contract or not self.account:
@@ -177,6 +179,7 @@ class BlockchainService:
                 'error': f'Failed to register on blockchain: {str(e)}'
             }
     
+    @staticmethod
     def verify_device(self, serial_number):
         """Verify device on blockchain"""
         if not self.is_connected() or not self.contract:
@@ -226,6 +229,7 @@ class BlockchainService:
                 'error': f'Verification failed: {str(e)}'
             }
     
+    @staticmethod
     def get_device_details(self, serial_number):
         """Get detailed device information from blockchain"""
         if not self.is_connected() or not self.contract:
@@ -255,6 +259,7 @@ class BlockchainService:
             logger.error(f"Error getting device details: {e}")
             return {'success': False, 'error': str(e)}
     
+    @staticmethod
     def get_ownership_history(self, serial_number):
         """Get ownership history from blockchain"""
         if not self.is_connected() or not self.contract:
@@ -282,6 +287,7 @@ class BlockchainService:
             logger.error(f"Error getting ownership history: {e}")
             return {'success': False, 'error': str(e)}
     
+    @staticmethod
     def get_network_info(self):
         """Get network information"""
         if not self.is_connected():
@@ -300,6 +306,7 @@ class BlockchainService:
             logger.error(f"Error getting network info: {e}")
             return None
     
+    @staticmethod
     def _get_network_name(self):
         """Get human-readable network name"""
         network_names = {
@@ -311,6 +318,7 @@ class BlockchainService:
         }
         return network_names.get(self.chain_id, f'Unknown Network (Chain ID: {self.chain_id})')
     
+    @staticmethod
     def estimate_gas(self, function_call):
         """Estimate gas for a transaction"""
         if not self.is_connected() or not self.account:
@@ -322,6 +330,7 @@ class BlockchainService:
             logger.error(f"Gas estimation error: {e}")
             return None
     
+    @staticmethod
     def get_transaction_receipt(self, tx_hash):
         """Get transaction receipt"""
         if not self.is_connected():

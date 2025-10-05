@@ -15,6 +15,7 @@ class CustomerService:
         self.customers_collection = self.db.customers
         self.verifications_collection = self.db.verifications
     
+    @staticmethod
     def create_customer_for_manufacturer(self, customer_data: Dict) -> Dict:
         """
         Create a customer account linked to a specific manufacturer
@@ -57,6 +58,7 @@ class CustomerService:
             logger.error(f"Error creating customer: {str(e)}")
             raise Exception(f"Failed to create customer: {str(e)}")
     
+    @staticmethod
     def get_customer_by_email_and_manufacturer(self, email: str, manufacturer_id: ObjectId) -> Optional[Dict]:
         """
         Get customer by email within a specific manufacturer's scope
@@ -70,6 +72,7 @@ class CustomerService:
             logger.error(f"Error getting customer by email: {str(e)}")
             return None
     
+    @staticmethod
     def get_customer_by_id_and_manufacturer(self, customer_id: str, manufacturer_id: ObjectId) -> Optional[Dict]:
         """
         Get customer by ID, ensuring they belong to the specified manufacturer
@@ -83,6 +86,7 @@ class CustomerService:
             logger.error(f"Error getting customer by ID: {str(e)}")
             return None
     
+    @staticmethod
     def verify_customer_email(self, verification_token: str) -> bool:
         """
         Verify customer email using verification token
@@ -105,6 +109,7 @@ class CustomerService:
             logger.error(f"Error verifying customer email: {str(e)}")
             return False
     
+    @staticmethod
     def get_manufacturer_customers(self, manufacturer_id: ObjectId, page: int = 1, limit: int = 50) -> Dict:
         """
         Get all customers for a specific manufacturer with pagination
@@ -136,6 +141,7 @@ class CustomerService:
             logger.error(f"Error getting manufacturer customers: {str(e)}")
             return {'customers': [], 'pagination': {'page': 1, 'limit': limit, 'total': 0, 'pages': 0}}
     
+    @staticmethod
     def update_customer_verification_stats(self, customer_id: ObjectId) -> None:
         """
         Update customer's verification statistics after a new verification
@@ -155,6 +161,7 @@ class CustomerService:
         except Exception as e:
             logger.error(f"Error updating customer verification stats: {str(e)}")
     
+    @staticmethod
     def get_customer_verification_summary(self, customer_id: str, manufacturer_id: ObjectId) -> Dict:
         """
         Get verification summary for a customer
@@ -206,6 +213,7 @@ class CustomerService:
             logger.error(f"Error getting customer verification summary: {str(e)}")
             return {'error': str(e)}
     
+    @staticmethod
     def search_manufacturer_customers(self, manufacturer_id: ObjectId, search_term: str, page: int = 1, limit: int = 50) -> Dict:
         """
         Search customers within a manufacturer's scope
@@ -245,12 +253,14 @@ class CustomerService:
             logger.error(f"Error searching customers: {str(e)}")
             return {'customers': [], 'pagination': {'page': 1, 'limit': limit, 'total': 0, 'pages': 0}}
     
+    @staticmethod
     def _generate_verification_token(self) -> str:
         """
         Generate a secure verification token for email verification
         """
         return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
     
+    @staticmethod
     def get_customer_analytics_for_manufacturer(self, manufacturer_id: ObjectId, start_date: str = None, end_date: str = None) -> Dict:
         """
         Get customer analytics for a manufacturer

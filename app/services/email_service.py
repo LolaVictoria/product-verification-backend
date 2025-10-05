@@ -57,6 +57,7 @@ class EmailService:
             logger.warning(f"AWS SES initialization failed: {e}, falling back to console mode")
             self.email_mode = 'console'
     
+    
     def send_trial_expiry_warning(self, email: str, company_name: str, days_remaining: int) -> Dict[str, Any]:
         """Send trial expiry warning email"""
         try:

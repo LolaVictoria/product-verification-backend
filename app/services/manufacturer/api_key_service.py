@@ -24,6 +24,7 @@ class ApiKeyService:
         self.db = get_db_connection()
         self.max_api_keys = 5  # Default limit
     
+    @staticmethod
     def create_api_key(self, manufacturer_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Create a new API key for a manufacturer
@@ -114,6 +115,7 @@ class ApiKeyService:
                 'message': 'Failed to create API key'
             }
     
+    @staticmethod
     def validate_api_key(self, api_key: str) -> Optional[Dict[str, Any]]:
         """
         Validate an API key and return its data
@@ -166,6 +168,7 @@ class ApiKeyService:
             logger.error(f"Error validating API key: {e}")
             return None
     
+    @staticmethod
     def revoke_api_key(self, manufacturer_id: str, key_id: str) -> Dict[str, Any]:
         """
         Revoke an API key
@@ -216,6 +219,7 @@ class ApiKeyService:
                 'message': 'Failed to revoke API key'
             }
     
+    @staticmethod
     def get_api_keys(self, manufacturer_id: str) -> Dict[str, Any]:
         """
         Get all active API keys for a manufacturer
@@ -265,11 +269,11 @@ class ApiKeyService:
                 'message': 'Failed to get API keys'
             }
     
+    @staticmethod
     def _generate_api_key(self, length: int = 32) -> str:
         """Generate a secure API key"""
         characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
         return ''.join(secrets.choice(characters) for _ in range(length))
 
 
-# Singleton instance
 api_key_service = ApiKeyService()

@@ -10,6 +10,7 @@ class ProfileService:
     def __init__(self):
         pass
     
+    @staticmethod
     def get_user_profile(self, user_id, user_role):
         """Get user profile based on role"""
         try:
@@ -26,6 +27,7 @@ class ProfileService:
             logger.error(f"Error getting user profile: {e}")
             return {'success': False, 'message': 'Failed to fetch profile'}
     
+    @staticmethod
     def update_user_profile(self, user_id, user_role, update_data):
         """Update user profile based on role"""
         try:
@@ -42,6 +44,7 @@ class ProfileService:
             logger.error(f"Error updating user profile: {e}")
             return {'success': False, 'message': 'Failed to update profile'}
     
+    @staticmethod
     def update_admin_profile(self, user_id, update_data):
         """Update admin profile"""
         try:
@@ -87,6 +90,7 @@ class ProfileService:
             logger.error(f"Error updating admin profile: {e}")
             return {'success': False, 'message': 'Failed to update admin profile'}
     
+    @staticmethod
     def update_manufacturer_profile(self, user_id, update_data):
         """Update manufacturer profile"""
         try:
@@ -133,6 +137,7 @@ class ProfileService:
             logger.error(f"Error updating manufacturer profile: {e}")
             return {'success': False, 'message': 'Failed to update manufacturer profile'}
     
+    @staticmethod
     def update_customer_profile(self, user_id, update_data):
         """Update customer profile"""
         try:
@@ -178,7 +183,7 @@ class ProfileService:
             logger.error(f"Error updating customer profile: {e}")
             return {'success': False, 'message': 'Failed to update customer profile'}
 
-        
+    @staticmethod
     def get_admin_profile(self, user_id):
         """Get admin profile from users collection"""
         try:
@@ -217,6 +222,7 @@ class ProfileService:
             logger.error(f"Error fetching admin profile: {e}")
             return {'success': False, 'message': 'Failed to fetch admin profile'}
 
+    @staticmethod
     def get_manufacturer_profile(self, user_id):
         """Get manufacturer profile from manufacturers collection"""
         try:
@@ -290,6 +296,7 @@ class ProfileService:
             logger.error(f"Error fetching manufacturer profile: {e}")
             return {'success': False, 'message': 'Failed to fetch manufacturer profile'}
 
+    @staticmethod
     def get_customer_profile(self, user_id):
         """Get customer profile from users collection"""
         try:

@@ -14,6 +14,7 @@ class AnalyticsService:
     def __init__(self):
         self.db = get_db_connection()
     
+    @staticmethod
     def get_system_overview(self, time_range='7d'):
         """Get system-wide analytics overview"""
         try:
@@ -81,6 +82,7 @@ class AnalyticsService:
             logger.error(f"Error getting system overview: {e}")
             raise
     
+    @staticmethod
     def get_verification_analytics(self, time_range='7d', manufacturer_id=None):
         """Get verification analytics"""
         try:
@@ -159,6 +161,7 @@ class AnalyticsService:
             logger.error(f"Error getting verification analytics: {e}")
             raise
     
+    @staticmethod
     def get_manufacturer_analytics(self, manufacturer_id, time_range='7d'):
         """Get analytics for specific manufacturer"""
         try:
@@ -255,6 +258,7 @@ class AnalyticsService:
             logger.error(f"Error getting manufacturer analytics: {e}")
             raise
     
+    @staticmethod
     def get_product_performance(self, time_range='30d', limit=20):
         """Get top performing products by verification count"""
         try:
@@ -307,6 +311,7 @@ class AnalyticsService:
             logger.error(f"Error getting product performance: {e}")
             raise
     
+    @staticmethod
     def get_geographic_analytics(self, time_range='30d'):
         """Get geographic distribution of verifications"""
         try:
@@ -337,6 +342,7 @@ class AnalyticsService:
             logger.error(f"Error getting geographic analytics: {e}")
             raise
     
+    @staticmethod
     def _format_daily_trends(self, daily_data):
         """Format daily trend data"""
         trends = {}
@@ -364,7 +370,7 @@ class AnalyticsService:
         
         return formatted_trends
 
-
+    @staticmethod
     def get_dashboard_stats(self, manufacturer_id: str) -> Dict[str, Any]:
         """Get manufacturer dashboard statistics"""
         try:
@@ -455,6 +461,7 @@ class AnalyticsService:
             logger.error(f"Error getting dashboard stats: {str(e)}")
             return {'success': False, 'message': 'Failed to get dashboard stats'}
 
+    @staticmethod
     def get_manufacturer_analytics_api(self, manufacturer_id: str, time_range: str = '7d') -> Dict[str, Any]:
         """Get manufacturer analytics for API"""
         try:

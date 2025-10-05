@@ -13,6 +13,7 @@ class OwnershipService:
         self.db = db
         self.webhook_processor = webhook_service
 
+    @staticmethod
     def transfer_ownership_via_api(self, transfer_data: Dict[str, Any], manufacturer_id: str) -> Dict[str, Any]:
         """Transfer product ownership via API"""
         try:

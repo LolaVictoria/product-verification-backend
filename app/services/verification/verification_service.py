@@ -4,14 +4,17 @@ from bson import ObjectId
 from typing import Dict, List, Optional
 from app.config.database import get_db_connection
 from app.services.blockchain_service import blockchain_service
-from app.validators.product_validator import ProductValidator
-from app.utils.input_validators import validate_serial_number
+import logging
+
+logger = logging.getLogger(__name__)
+
 class VerificationService:
     """Service for handling product verification operations"""
     
     def __init__(self):
         pass
     
+    @staticmethod
     def verify_product(self, serial_number: str, customer_id: str = None, 
                       user_role: str = None, user_ip: str = None) -> Dict:
         """Verify product authenticity"""
@@ -76,6 +79,7 @@ class VerificationService:
         except Exception as e:
             raise Exception(f"Verification service error: {str(e)}")
     
+    @staticmethod
     def verify_batch(self, serial_numbers: List[str], customer_id: str = None,
                     user_role: str = None, user_ip: str = None) -> Dict:
         """Verify multiple products in batch"""
@@ -118,6 +122,7 @@ class VerificationService:
         except Exception as e:
             raise Exception(f"Batch verification failed: {str(e)}")
     
+    @staticmethod
     def get_device_details(self, serial_number: str) -> Optional[Dict]:
         """Get detailed device information"""
         try:
@@ -149,6 +154,7 @@ class VerificationService:
         except Exception as e:
             raise Exception(f"Could not load device details: {str(e)}")
     
+    @staticmethod
     def get_ownership_history(self, serial_number: str) -> List[Dict]:
         """Get ownership history for a verified product"""
         try:
@@ -187,6 +193,7 @@ class VerificationService:
         except Exception as e:
             raise Exception(f"Could not load ownership history: {str(e)}")
     
+    @staticmethod
     def create_counterfeit_report(self, customer_id: str, report_data: Dict) -> str:
         """Create a counterfeit report"""
         try:
@@ -259,6 +266,7 @@ class VerificationService:
         except Exception as e:
             raise Exception(f"Failed to create counterfeit report: {str(e)}")
     
+    @staticmethod
     def get_system_stats(self) -> Dict:
         """Get system-wide statistics"""
         try:
@@ -290,6 +298,7 @@ class VerificationService:
                 "authenticity_rate": 0
             }
     
+    @staticmethod
     def _format_authentic_result(self, product: Dict, blockchain_result: Dict = None, source: str = "database") -> Dict:
         """Format authentic verification result"""
         result = {
@@ -317,6 +326,7 @@ class VerificationService:
             
         return result
     
+    @staticmethod
     def _format_blockchain_only_result(self, serial_number: str, blockchain_result: Dict) -> Dict:
         """Format blockchain-only verification result"""
         tx_hash = blockchain_result.get("transaction_hash")
@@ -353,6 +363,7 @@ class VerificationService:
             "deviceType": "Unknown"
         }
     
+    @staticmethod
     def _format_not_found_result(self, serial_number: str) -> Dict:
         """Format not found verification result"""
         return {
@@ -365,6 +376,7 @@ class VerificationService:
             "deviceType": "Unknown"
         }
     
+    @staticmethod
     def _log_verification(self, serial_number: str, customer_id: str, product: Dict,
                          result: Dict, user_role: str = None, user_ip: str = None) -> Optional[str]:
         """Log verification attempt"""
@@ -398,6 +410,51 @@ class VerificationService:
             
         except Exception:
             return None
+
+    def verify_product_with_signature(self, serial_number: str, customer_id: str = None) -> dict:
+        """Main verification method using cryptographic signatures"""
+        try:
+            db = get_db_connection()
+            
+            # Get product from database
+            product = db.products.find_one({"serial_number": serial_number})
+            
+            if not product:
+                # Try blockchain as fallback
+                return self._verify_blockchain_only(serial_number)
+            
+            # Get manufacturer's public key
+            manufacturer = db.manufacturers.find_one({"_id": product["manufacturer_id"]})
+            if not manufacturer or not manufacturer.get('public_key'):
+                return {
+                    'verified': False,
+                    'reason': 'Manufacturer public key not found',
+                    'serial_number': serial_number
+                }
+            
+            # Verify cryptographic signature
+            if product.get('signature_data'):
+                verification_result = self.signature_service.verify_product_signature(
+                    serial_number,
+                    product['signature_data'],
+                    manufacturer['public_key']
+                )
+            else:
+                # Fallback to blockchain verification
+                verification_result = self._verify_blockchain_fallback(serial_number, product)
+            
+            # Log verification attempt
+            self._log_verification(serial_number, customer_id, verification_result)
+            
+            return verification_result
+            
+        except Exception as e:
+            logger.error(f"Verification service error: {e}")
+            return {
+                'verified': False,
+                'reason': 'Verification service error',
+                'error': str(e)
+            }
 
 
 verification_service = VerificationService()

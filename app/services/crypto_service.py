@@ -17,6 +17,7 @@ class CryptoService:
         self.master_key = self._get_or_create_master_key()
         self.cipher_suite = Fernet(self.master_key)
     
+    @staticmethod
     def _get_or_create_master_key(self):
         """Get or create master encryption key for private key storage"""
         key_file = 'crypto_master.key'
@@ -32,6 +33,7 @@ class CryptoService:
             logger.info("Generated new master encryption key")
             return key
     
+    @staticmethod
     def generate_manufacturer_keypair(self):
         """Generate RSA key pair for manufacturer"""
         try:
@@ -70,10 +72,12 @@ class CryptoService:
             logger.error(f"Error generating keypair: {e}")
             raise
     
+    @staticmethod
     def _generate_key_id(self, public_key_pem):
         """Generate unique ID for key pair"""
         return hashlib.sha256(public_key_pem).hexdigest()[:16]
     
+    @staticmethod
     def create_product_signature(self, encrypted_private_key_b64, product_data):
         """Create digital signature for product registration"""
         try:
@@ -119,6 +123,7 @@ class CryptoService:
             logger.error(f"Error creating signature: {e}")
             raise
     
+    @staticmethod
     def verify_product_signature(self, public_key_pem, signature_b64, message_data):
         """Verify product signature"""
         try:
@@ -148,6 +153,7 @@ class CryptoService:
             logger.error(f"Signature verification failed: {e}")
             return False
     
+    @staticmethod
     def create_transfer_hash(self, transfer_data):
         """Create cryptographic hash for ownership transfer"""
         try:

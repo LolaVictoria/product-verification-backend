@@ -35,6 +35,7 @@ class StripeService:
             'enterprise_yearly': os.getenv('STRIPE_PRICE_ENTERPRISE_YEARLY'),
         }
     
+    @staticmethod
     def create_stripe_customer(self, email: str, name: str, metadata: Dict[str, str]) -> Dict[str, Any]:
         """
         Create Stripe customer
@@ -69,6 +70,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def get_stripe_customer(self, customer_id: str) -> Dict[str, Any]:
         """Get Stripe customer details"""
         try:
@@ -86,6 +88,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def create_checkout_session(self, customer_id: str, plan_name: str, 
                                 billing_cycle: str, metadata: Dict[str, str]) -> Dict[str, Any]:
         """
@@ -139,6 +142,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def create_portal_session(self, customer_id: str, return_url: str = None) -> Dict[str, Any]:
         """Create Stripe customer portal session for managing subscription"""
         try:
@@ -159,6 +163,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def create_stripe_subscription(self, customer_id: str, price_id: str) -> Dict[str, Any]:
         """Create Stripe subscription directly"""
         try:
@@ -182,6 +187,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def retrieve_stripe_subscription(self, subscription_id: str) -> Dict[str, Any]:
         """Retrieve Stripe subscription details"""
         try:
@@ -205,6 +211,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def update_stripe_subscription(self, subscription_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
         """Update Stripe subscription"""
         try:
@@ -227,6 +234,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def cancel_stripe_subscription(self, subscription_id: str) -> Dict[str, Any]:
         """Cancel Stripe subscription"""
         try:
@@ -250,6 +258,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def get_customer_invoices(self, customer_id: str, limit: int = 10) -> Dict[str, Any]:
         """Get customer invoices from Stripe"""
         try:
@@ -284,11 +293,13 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def get_stripe_price_id(self, plan_name: str, billing_cycle: str) -> Optional[str]:
         """Get Stripe price ID for plan and billing cycle"""
         key = f"{plan_name}_{billing_cycle}"
         return self.price_ids.get(key)
     
+    @staticmethod
     def handle_webhook_event(self, payload: bytes, signature: str) -> Dict[str, Any]:
         """
         Process Stripe webhook events
@@ -340,6 +351,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def process_checkout_completed(self, session) -> Dict[str, Any]:
         """Process checkout.session.completed event"""
         try:
@@ -389,6 +401,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def process_subscription_created(self, subscription) -> Dict[str, Any]:
         """Process customer.subscription.created event"""
         try:
@@ -437,6 +450,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def process_subscription_updated(self, subscription) -> Dict[str, Any]:
         """Process customer.subscription.updated event"""
         try:
@@ -492,6 +506,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def process_subscription_deleted(self, subscription) -> Dict[str, Any]:
         """Process customer.subscription.deleted event"""
         try:
@@ -536,6 +551,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def process_invoice_paid(self, invoice) -> Dict[str, Any]:
         """Process invoice.paid event"""
         try:
@@ -565,6 +581,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def process_invoice_payment_failed(self, invoice) -> Dict[str, Any]:
         """Process invoice.payment_failed event"""
         try:
@@ -607,6 +624,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def process_payment_method_attached(self, payment_method) -> Dict[str, Any]:
         """Process payment_method.attached event"""
         try:
@@ -642,6 +660,7 @@ class StripeService:
                 'error': str(e)
             }
     
+    @staticmethod
     def _extract_plan_from_subscription(self, subscription) -> Optional[str]:
         """Extract plan name from Stripe subscription"""
         try:

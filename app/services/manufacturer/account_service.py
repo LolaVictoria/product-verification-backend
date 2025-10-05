@@ -24,6 +24,7 @@ class ManufacturerAccountService:
         self.db = get_db_connection()
         self.validator = ManufacturerValidator()
     
+    @staticmethod
     def create_manufacturer(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Create a new manufacturer account
@@ -125,6 +126,7 @@ class ManufacturerAccountService:
                 'error': 'Failed to create manufacturer'
             }
     
+    @staticmethod
     def get_manufacturer_by_id(self, manufacturer_id: str) -> Dict[str, Any]:
         """Get manufacturer by ID"""
         try:
@@ -142,6 +144,7 @@ class ManufacturerAccountService:
             logger.error(f"Error getting manufacturer: {e}")
             return None
     
+    @staticmethod
     def update_manufacturer(self, manufacturer_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update manufacturer account"""
         try:
@@ -196,6 +199,7 @@ class ManufacturerAccountService:
                 'error': 'Failed to update manufacturer'
             }
     
+    @staticmethod
     def verify_manufacturer(self, manufacturer_id: str, admin_user_id: str) -> Dict[str, Any]:
         """Verify manufacturer account"""
         try:
@@ -238,6 +242,7 @@ class ManufacturerAccountService:
                 'error': 'Failed to verify manufacturer'
             }
     
+    @staticmethod
     def suspend_manufacturer(self, manufacturer_id: str, admin_user_id: str, reason: str) -> Dict[str, Any]:
         """Suspend manufacturer account"""
         try:
@@ -278,6 +283,7 @@ class ManufacturerAccountService:
                 'error': 'Failed to suspend manufacturer'
             }
     
+    @staticmethod
     def activate_manufacturer(self, manufacturer_id: str, admin_user_id: str) -> Dict[str, Any]:
         """Activate suspended manufacturer account"""
         try:
@@ -323,5 +329,5 @@ class ManufacturerAccountService:
             }
 
 
-# Singleton instance
+
 account_service = ManufacturerAccountService()

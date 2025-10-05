@@ -28,7 +28,7 @@ class WebhookService:
             raise
     
     @staticmethod
-    def                                                                                                                            _handle_product_registration(db, data):
+    def _handle_product_registration(db, data):
         """Handle product registration blockchain event"""
         serial_number = data.get('serial_number')
         transaction_hash = data['transaction_hash']

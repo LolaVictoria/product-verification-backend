@@ -295,30 +295,4 @@ class SecurityFeaturesService:
         except Exception:
             return False
 
-# Add to existing notification_service.py
-class NotificationService:
-    # ... existing methods ...
-    
-    def send_duress_alert(self, contact_info: Dict, customer_id: str, location_data: Dict):
-        """Send duress/emergency alert to emergency contact"""
-        alert_message = f"""
-        EMERGENCY ALERT - DURESS SITUATION DETECTED
-        
-        Customer ID: {customer_id}
-        Time: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}
-        
-        Location: {location_data.get('city', 'Unknown')}, {location_data.get('state', 'Unknown')}
-        
-        This is an automated alert from the Product Verification System.
-        A duress PIN was used, indicating a potential emergency situation.
-        
-        If this is a false alarm, please contact support immediately.
-        """
-        
-        if contact_info['type'] == 'email':
-            self.send_email(contact_info['value'], "EMERGENCY DURESS ALERT", alert_message)
-        elif contact_info['type'] == 'sms':
-            self.send_sms(contact_info['value'], alert_message)
-
-# security_features_service singleton
 security_features_service = SecurityFeaturesService()
