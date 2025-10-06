@@ -18,14 +18,14 @@ def register_routes(app: Flask):
         
         # Auth Routes
         from app.api.v1.auth_routes import auth_bp
-        app.register_blueprint(auth_bp, url_prefix='/api/v1/auth')
-        logger.info("Registered: /api/v1/auth")
+        app.register_blueprint(auth_bp, url_prefix='/v1/auth')
+        logger.info("Registered: /v1/auth")
         
         # Demo Routes 
         try:
             from app.api.v1.demo_routes import demo_bp
-            app.register_blueprint(demo_bp, url_prefix='/api/v1/demo')
-            logger.info("Registered: /api/v1/demo")
+            app.register_blueprint(demo_bp, url_prefix='/v1/demo')
+            logger.info("Registered: /v1/demo")
         except ImportError:
             logger.warning("demo_routes.py not found - skipping demo routes")
         # ===============================
@@ -38,14 +38,14 @@ def register_routes(app: Flask):
         from app.api.v1.manufacturer.onboarding_routes import onboarding_bp;
         
         
-        app.register_blueprint(dashboard_bp, url_prefix='/api/v1/manufacturer/dashboard')
-        app.register_blueprint(product_bp, url_prefix='/api/v1/manufacturer/products')
-        app.register_blueprint(api_key_bp, url_prefix='/api/v1/manufacturer/api-keys')
-        app.register_blueprint(analytics_bp, url_prefix='/api/v1/manufacturer/analytics')
-        app.register_blueprint(onboarding_bp, url_prefix='/api/v1/manufacturer/onboarding')
+        app.register_blueprint(dashboard_bp, url_prefix='/v1/manufacturer/dashboard')
+        app.register_blueprint(product_bp, url_prefix='/v1/manufacturer/products')
+        app.register_blueprint(api_key_bp, url_prefix='/v1/manufacturer-keys')
+        app.register_blueprint(analytics_bp, url_prefix='/v1/manufacturer/analytics')
+        app.register_blueprint(onboarding_bp, url_prefix='/v1/manufacturer/onboarding')
         
         
-        logger.info("Registered: /api/v1/manufacturer/* (5 blueprints)")
+        logger.info("Registered: /v1/manufacturer/* (5 blueprints)")
         
         # ===============================
         # ADMIN ROUTES
@@ -54,11 +54,11 @@ def register_routes(app: Flask):
         from app.api.v1.admin.system_routes import system_bp
         from app.api.v1.admin.audit_routes import audit_bp
         
-        app.register_blueprint(admin_manufacturer_bp, url_prefix='/api/v1/admin/manufacturers')
-        app.register_blueprint(system_bp, url_prefix='/api/v1/admin/system')
-        app.register_blueprint(audit_bp, url_prefix='/api/v1/admin/audit')
+        app.register_blueprint(admin_manufacturer_bp, url_prefix='/v1/admin/manufacturers')
+        app.register_blueprint(system_bp, url_prefix='/v1/admin/system')
+        app.register_blueprint(audit_bp, url_prefix='/v1/admin/audit')
         
-        logger.info("Registered: /api/v1/admin/* (3 blueprints)")
+        logger.info("Registered: /v1/admin/* (3 blueprints)")
         
         # ===============================
         # BILLING ROUTES
@@ -66,10 +66,10 @@ def register_routes(app: Flask):
         from app.api.v1.billing.subscription_routes import subscription_bp
         from app.api.v1.billing.webhook_routes import billing_webhook_bp
         
-        app.register_blueprint(subscription_bp, url_prefix='/api/v1/billing/subscription')
-        app.register_blueprint(billing_webhook_bp, url_prefix='/api/v1/billing/webhooks')
+        app.register_blueprint(subscription_bp, url_prefix='/v1/billing/subscription')
+        app.register_blueprint(billing_webhook_bp, url_prefix='/v1/billing/webhooks')
         
-        logger.info("Registered: /api/v1/billing/* (2 blueprints)")
+        logger.info("Registered: /v1/billing/* (2 blueprints)")
         
         # ===============================
         # VERIFICATION ROUTES
@@ -77,10 +77,10 @@ def register_routes(app: Flask):
         from app.api.v1.verification.public_routes import public_verification_bp
         from app.api.v1.verification.reporting_routes import reporting_bp
         
-        app.register_blueprint(public_verification_bp, url_prefix='/api/v1/verification')
-        app.register_blueprint(reporting_bp, url_prefix='/api/v1/verification')
+        app.register_blueprint(public_verification_bp, url_prefix='/v1/verification')
+        app.register_blueprint(reporting_bp, url_prefix='/v1/verification')
         
-        logger.info("Registered: /api/v1/verification/* (2 blueprints)")
+        logger.info("Registered: /v1/verification/* (2 blueprints)")
         
         # ===============================
         # EXTERNAL API ROUTES (API Key Auth)
@@ -89,12 +89,12 @@ def register_routes(app: Flask):
         from app.api.external.crypto_routes import crypto_bp
         from app.api.external.webhook_routes import webhook_bp
         
-        # Note: verification_api_bp already has url_prefix='/api/external'
+        # Note: verification_api_bp already has url_prefix='/external'
         app.register_blueprint(verification_api_bp)
         app.register_blueprint(crypto_bp)
         app.register_blueprint(webhook_bp)
         
-        logger.info("Registered: /api/external/* (3 blueprints)")
+        logger.info("Registered: /external/* (3 blueprints)")
         
         # ===============================
         # HEALTH & STATUS ROUTES
@@ -104,7 +104,7 @@ def register_routes(app: Flask):
             """Basic health check endpoint"""
             return {'status': 'healthy', 'service': 'product-verification-api'}, 200
         
-        @app.route('/api/health', methods=['GET'])
+        @app.route('/health', methods=['GET'])
         def api_health_check():
             """API health check with version info"""
             return {
@@ -122,13 +122,13 @@ def register_routes(app: Flask):
         logger.info("=" * 60)
         logger.info("ROUTE REGISTRATION SUMMARY")
         logger.info("=" * 60)
-        logger.info("Auth Routes:          /api/v1/auth/*")
-        logger.info("Manufacturer Routes:  /api/v1/manufacturer/* (4 blueprints)")
-        logger.info("Admin Routes:         /api/v1/admin/* (3 blueprints)")
-        logger.info("Billing Routes:       /api/v1/billing/* (2 blueprints)")
-        logger.info("Verification Routes:  /api/v1/verification/* (2 blueprints)")
-        logger.info("External API:         /api/external/* (3 blueprints)")
-        logger.info("Health Checks:        /health, /api/health")
+        logger.info("Auth Routes:          /v1/auth/*")
+        logger.info("Manufacturer Routes:  /v1/manufacturer/* (4 blueprints)")
+        logger.info("Admin Routes:         /v1/admin/* (3 blueprints)")
+        logger.info("Billing Routes:       /v1/billing/* (2 blueprints)")
+        logger.info("Verification Routes:  /v1/verification/* (2 blueprints)")
+        logger.info("External API:         /external/* (3 blueprints)")
+        logger.info("Health Checks:        /health, /health")
         logger.info("=" * 60)
         logger.info(f"Total Blueprints Registered: 15")
         logger.info("=" * 60)

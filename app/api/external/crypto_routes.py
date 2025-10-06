@@ -12,7 +12,7 @@ from app.api.middleware.rate_limiting import api_rate_limit
 
 logger = logging.getLogger(__name__)
 
-crypto_bp = Blueprint('crypto', __name__, url_prefix='/api/external/crypto')
+crypto_bp = Blueprint('crypto', __name__, url_prefix='/external/crypto')
 
 
 @crypto_bp.route('/manufacturers/create', methods=['POST'])

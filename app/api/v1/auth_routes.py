@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # ===============================
 @auth_bp.route('/login', methods=['POST'])
 @rate_limit({'per_minute': 10, 'per_hour': 50})
-def unified_login():
+def login():
     """
     Unified login endpoint - automatically detects user type
     Tries to authenticate against all user types
@@ -585,13 +585,9 @@ def health_check():
         'status': 'healthy',
         'service': 'auth',
         'endpoints': {
-            'login': {
-                'admin': '/api/v1/auth/admin/login',
-                'manufacturer': '/api/v1/auth/manufacturer/login',
-                'customer': '/api/v1/auth/customer/login'
-            },
-            'register': '/api/v1/auth/register',
-            'verify_email': '/api/v1/auth/verify-email',
-            'profile': '/api/v1/auth/profile'
+            'login':  '/v1/auth/login',
+            'register': '/v1/auth/register',
+            'verify_email': '/v1/auth/verify-email',
+            'profile': '/v1/auth/profile'
         }
     }, 200)

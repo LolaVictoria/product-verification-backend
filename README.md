@@ -88,13 +88,13 @@ docker-compose up -d
 - Development: `http://localhost:5000`
 - Production: `https://api.your-domain.com`
 
-All API routes are versioned under `/api/v1/` prefix.
+All API routes are versioned under `/v1/` prefix.
 
 ### Authentication
 
 #### Register Manufacturer
 ```bash
-curl -X POST http://localhost:5000/api/v1/auth/manufacturer/register \
+curl -X POST http://localhost:5000/v1/auth/manufacturer/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "manufacturer@example.com",
@@ -106,7 +106,7 @@ curl -X POST http://localhost:5000/api/v1/auth/manufacturer/register \
 
 #### Login
 ```bash
-curl -X POST http://localhost:5000/api/v1/auth/manufacturer/login \
+curl -X POST http://localhost:5000/v1/auth/manufacturer/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "manufacturer@example.com",
@@ -134,10 +134,10 @@ Try the platform without registration:
 
 ```bash
 # Start demo session
-curl -X POST http://localhost:5000/api/v1/demo/start-session
+curl -X POST http://localhost:5000/v1/demo/start-session
 
 # Verify product in demo mode
-curl -X POST http://localhost:5000/api/v1/demo/verify \
+curl -X POST http://localhost:5000/v1/demo/verify \
   -H "Content-Type: application/json" \
   -d '{
     "serial_number": "DEMO123456"
@@ -150,7 +150,7 @@ All manufacturer endpoints require JWT authentication:
 
 ```bash
 # Register a product
-curl -X POST http://localhost:5000/api/v1/manufacturer/products \
+curl -X POST http://localhost:5000/v1/manufacturer/products \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -162,15 +162,15 @@ curl -X POST http://localhost:5000/api/v1/manufacturer/products \
   }'
 
 # Get all products
-curl -X GET http://localhost:5000/api/v1/manufacturer/products \
+curl -X GET http://localhost:5000/v1/manufacturer/products \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
 # Get dashboard stats
-curl -X GET http://localhost:5000/api/v1/manufacturer/dashboard/stats \
+curl -X GET http://localhost:5000/v1/manufacturer/dashboard/stats \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
 # Bulk import products
-curl -X POST http://localhost:5000/api/v1/manufacturer/products/bulk-import \
+curl -X POST http://localhost:5000/v1/manufacturer/products/bulk-import \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -F "file=@products.csv"
 ```
@@ -181,7 +181,7 @@ Generate API keys for external integrations:
 
 ```bash
 # Create API key
-curl -X POST http://localhost:5000/api/v1/manufacturer/api-keys \
+curl -X POST http://localhost:5000/v1/manufacturer-keys \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -190,11 +190,11 @@ curl -X POST http://localhost:5000/api/v1/manufacturer/api-keys \
   }'
 
 # List API keys
-curl -X GET http://localhost:5000/api/v1/manufacturer/api-keys \
+curl -X GET http://localhost:5000/v1/manufacturer-keys \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
 # Revoke API key
-curl -X POST http://localhost:5000/api/v1/manufacturer/api-keys/{key_id}/revoke \
+curl -X POST http://localhost:5000/v1/manufacturer-keys/{key_id}/revoke \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -204,7 +204,7 @@ Use API keys for programmatic access:
 
 ```bash
 # Verify single product
-curl -X POST http://localhost:5000/api/external/verify \
+curl -X POST http://localhost:5000/external/verify \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -215,7 +215,7 @@ curl -X POST http://localhost:5000/api/external/verify \
   }'
 
 # Batch verification
-curl -X POST http://localhost:5000/api/external/verify/batch \
+curl -X POST http://localhost:5000/external/verify/batch \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -223,11 +223,11 @@ curl -X POST http://localhost:5000/api/external/verify/batch \
   }'
 
 # Get product details
-curl -X GET http://localhost:5000/api/external/products/ABC123456 \
+curl -X GET http://localhost:5000/external/products/ABC123456 \
   -H "X-API-Key: your-api-key"
 
 # Test API connection
-curl -X GET http://localhost:5000/api/external/test-connection \
+curl -X GET http://localhost:5000/external/test-connection \
   -H "X-API-Key: your-api-key"
 ```
 
@@ -235,20 +235,20 @@ curl -X GET http://localhost:5000/api/external/test-connection \
 
 ```bash
 # Verify by serial number
-curl -X GET http://localhost:5000/api/v1/verification/ABC123456
+curl -X GET http://localhost:5000/v1/verification/ABC123456
 
 # Verify by QR code
-curl -X GET http://localhost:5000/api/v1/verification/qr/QR_CODE_VALUE
+curl -X GET http://localhost:5000/v1/verification/qr/QR_CODE_VALUE
 
 # Get ownership history
-curl -X GET http://localhost:5000/api/v1/verification/ownership-history/ABC123456
+curl -X GET http://localhost:5000/v1/verification/ownership-history/ABC123456
 ```
 
 ### Counterfeit Reporting
 
 ```bash
 # Report counterfeit product
-curl -X POST http://localhost:5000/api/v1/verification/counterfeit \
+curl -X POST http://localhost:5000/v1/verification/counterfeit \
   -H "Content-Type: application/json" \
   -d '{
     "serial_number": "FAKE123",
@@ -261,15 +261,15 @@ curl -X POST http://localhost:5000/api/v1/verification/counterfeit \
 
 ```bash
 # Get verification trends
-curl -X GET http://localhost:5000/api/v1/manufacturer/analytics/verification-trends \
+curl -X GET http://localhost:5000/v1/manufacturer/analytics/verification-trends \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
 # Get geographic distribution
-curl -X GET http://localhost:5000/api/v1/manufacturer/analytics/geographic-distribution \
+curl -X GET http://localhost:5000/v1/manufacturer/analytics/geographic-distribution \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
 # Export analytics data
-curl -X POST http://localhost:5000/api/v1/manufacturer/analytics/export \
+curl -X POST http://localhost:5000/v1/manufacturer/analytics/export \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -283,11 +283,11 @@ curl -X POST http://localhost:5000/api/v1/manufacturer/analytics/export \
 
 ```bash
 # Get subscription status
-curl -X GET http://localhost:5000/api/v1/billing/subscription/status \
+curl -X GET http://localhost:5000/v1/billing/subscription/status \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
 # Upgrade subscription
-curl -X POST http://localhost:5000/api/v1/billing/subscription/upgrade \
+curl -X POST http://localhost:5000/v1/billing/subscription/upgrade \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -295,10 +295,10 @@ curl -X POST http://localhost:5000/api/v1/billing/subscription/upgrade \
   }'
 
 # Get available plans
-curl -X GET http://localhost:5000/api/v1/billing/subscription/plans
+curl -X GET http://localhost:5000/v1/billing/subscription/plans
 
 # View invoices
-curl -X GET http://localhost:5000/api/v1/billing/subscription/invoices \
+curl -X GET http://localhost:5000/v1/billing/subscription/invoices \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -308,19 +308,19 @@ Admin routes require admin role JWT:
 
 ```bash
 # Get all manufacturers
-curl -X GET http://localhost:5000/api/v1/admin/manufacturers \
+curl -X GET http://localhost:5000/v1/admin/manufacturers \
   -H "Authorization: Bearer ADMIN_JWT_TOKEN"
 
 # Approve manufacturer
-curl -X POST http://localhost:5000/api/v1/admin/manufacturers/{id}/approve \
+curl -X POST http://localhost:5000/v1/admin/manufacturers/{id}/approve \
   -H "Authorization: Bearer ADMIN_JWT_TOKEN"
 
 # System health
-curl -X GET http://localhost:5000/api/v1/admin/system/health \
+curl -X GET http://localhost:5000/v1/admin/system/health \
   -H "Authorization: Bearer ADMIN_JWT_TOKEN"
 
 # Audit logs
-curl -X GET http://localhost:5000/api/v1/admin/audit/logs \
+curl -X GET http://localhost:5000/v1/admin/audit/logs \
   -H "Authorization: Bearer ADMIN_JWT_TOKEN"
 ```
 
@@ -330,17 +330,17 @@ Configure webhooks to receive real-time notifications:
 
 ### Stripe Webhooks
 ```bash
-POST /api/v1/billing/webhooks/stripe
+POST /v1/billing/webhooks/stripe
 ```
 
 ### Blockchain Events
 ```bash
-POST /api/external/webhooks/blockchain
+POST /external/webhooks/blockchain
 ```
 
 ### Verification Events
 ```bash
-POST /api/external/webhooks/verification
+POST /external/webhooks/verification
 ```
 
 ## Integration Examples
@@ -351,7 +351,7 @@ POST /api/external/webhooks/verification
 const axios = require('axios');
 
 const client = axios.create({
-  baseURL: 'https://api.your-domain.com',
+  baseURL: 'https:/.your-domain.com',
   headers: {
     'X-API-Key': 'your-api-key'
   }
@@ -359,7 +359,7 @@ const client = axios.create({
 
 async function verifyProduct(serialNumber) {
   try {
-    const response = await client.post('/api/external/verify', {
+    const response = await client.post('/external/verify', {
       serial_number: serialNumber
     });
     
@@ -384,12 +384,12 @@ import requests
 
 class ProductVerifier:
     def __init__(self, api_key):
-        self.base_url = 'https://api.your-domain.com'
+        self.base_url = 'https:/.your-domain.com'
         self.headers = {'X-API-Key': api_key}
     
     def verify(self, serial_number):
         response = requests.post(
-            f'{self.base_url}/api/external/verify',
+            f'{self.base_url}/external/verify',
             headers=self.headers,
             json={'serial_number': serial_number}
         )
@@ -398,7 +398,7 @@ class ProductVerifier:
     
     def batch_verify(self, serial_numbers):
         response = requests.post(
-            f'{self.base_url}/api/external/verify/batch',
+            f'{self.base_url}/external/verify/batch',
             headers=self.headers,
             json={'serial_numbers': serial_numbers}
         )
@@ -418,7 +418,7 @@ print('Authentic' if result['authentic'] else 'Counterfeit')
 
 class ProductVerifier {
     private $apiKey;
-    private $baseUrl = 'https://api.your-domain.com';
+    private $baseUrl = 'https:/.your-domain.com';
     
     public function __construct($apiKey) {
         $this->apiKey = $apiKey;
@@ -428,7 +428,7 @@ class ProductVerifier {
         $ch = curl_init();
         
         curl_setopt_array($ch, [
-            CURLOPT_URL => $this->baseUrl . '/api/external/verify',
+            CURLOPT_URL => $this->baseUrl . '/external/verify',
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode([
@@ -583,7 +583,7 @@ export DEBUG=False
 curl http://localhost:5000/health
 
 # API health with version
-curl http://localhost:5000/api/health
+curl http://localhost:5000/health
 
 # Database connection test
 curl http://localhost:5000/test-db

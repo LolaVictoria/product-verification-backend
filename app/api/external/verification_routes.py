@@ -15,7 +15,7 @@ from app.api.middleware.rate_limiting import api_rate_limit
 
 logger = logging.getLogger(__name__)
 
-verification_api_bp = Blueprint('verification_api', __name__, url_prefix='/api/external')
+verification_api_bp = Blueprint('verification_api', __name__, url_prefix='/external')
 
 
 # ===============================
@@ -348,11 +348,11 @@ def api_status():
         'version': '1.0.0',
         'timestamp': datetime.now(timezone.utc).isoformat(),
         'endpoints': {
-            'verify': '/api/external/verify',
-            'verify_batch': '/api/external/verify/batch',
-            'register': '/api/external/products/register',
-            'products': '/api/external/products',
-            'analytics': '/api/external/analytics'
+            'verify': '/external/verify',
+            'verify_batch': '/external/verify/batch',
+            'register': '/external/products/register',
+            'products': '/external/products',
+            'analytics': '/external/analytics'
         }
     }), 200
 

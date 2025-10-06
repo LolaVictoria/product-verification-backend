@@ -13,7 +13,7 @@ from app.api.middleware.webhook_middleware import webhook_middleware
 
 logger = logging.getLogger(__name__)
 
-webhook_bp = Blueprint('webhooks', __name__, url_prefix='/api/external/webhooks')
+webhook_bp = Blueprint('webhooks', __name__, url_prefix='/external/webhooks')
 
 
 # ===============================
@@ -205,11 +205,11 @@ def webhook_test():
             'status': 'active',
             'service': 'webhook_handlers',
             'endpoints': [
-                '/api/external/webhooks/stripe',
-                '/api/external/webhooks/blockchain',
-                '/api/external/webhooks/manufacturer',
-                '/api/external/webhooks/verification',
-                '/api/external/webhooks/test'
+                '/external/webhooks/stripe',
+                '/external/webhooks/blockchain',
+                '/external/webhooks/manufacturer',
+                '/external/webhooks/verification',
+                '/external/webhooks/test'
             ],
             'timestamp': datetime.now(timezone.utc).isoformat()
         }), 200

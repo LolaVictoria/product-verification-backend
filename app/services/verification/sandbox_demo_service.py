@@ -111,7 +111,7 @@ class SandboxDemoService:
 class ProductVerifyDemo {
     constructor() {
         this.demoSession = null;
-        this.apiBaseUrl = '/api/v1/demo';
+        this.apiBaseUrl = '/v1/demo';
     }
     
     async startDemo(companyName, email) {

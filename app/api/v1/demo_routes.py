@@ -10,7 +10,7 @@ from app.api.middleware.response_middleware import response_middleware
 from app.services.verification.sandbox_demo_service import demo_service
 from app.utils.generate_demo_data import generate_demo_data
 
-demo_bp = Blueprint('demo', __name__, url_prefix='/api/v1/demo')
+demo_bp = Blueprint('demo', __name__, url_prefix='/v1/demo')
 
 @demo_bp.route('/start-session', methods=['POST'])
 def start_demo_session():
@@ -51,7 +51,7 @@ def start_demo_session():
             },
             'sample_api_call': {
                 'method': 'POST',
-                'url': '/api/v1/demo/verify',
+                'url': '/v1/demo/verify',
                 'headers': {
                     'X-Demo-Session': demo_session['session_id'],
                     'Content-Type': 'application/json'
