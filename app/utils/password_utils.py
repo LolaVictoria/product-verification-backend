@@ -7,7 +7,7 @@ def hash_password(password: str) -> str:
     """Hash password using bcrypt"""
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-def verify_password(stored_hash: str, provided_password: str) -> bool:
+def verify_password(provided_password: str, stored_hash: str,) -> bool:
         """Verify password against stored hash"""
         try:
             # Check if it's bcrypt

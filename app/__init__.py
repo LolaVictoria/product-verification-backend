@@ -258,10 +258,10 @@ if __name__ == '__main__':
     print("- http://localhost:5000/debug/imports (Import Debug)")
     print("="*80 + "\n")
     
-    try:
-        app.run(host='0.0.0.0', port=port, debug=debug, threaded=True)
-    except Exception as e:
-        print(f"\n❌ CRITICAL ERROR: Failed to start server")
-        print(f"Error: {e}")
-        traceback.print_exc()
-        sys.exit(1)
+    # try:
+    #     app.run(host='0.0.0.0', port=port, debug=debug, threaded=True)
+    # except Exception as e:
+    #     print(f"\n❌ CRITICAL ERROR: Failed to start server")
+    #     print(f"Error: {e}")
+    #     traceback.print_exc()
+    #     sys.exit(1)

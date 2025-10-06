@@ -1,6 +1,6 @@
 #middleware/response_middleware
 from flask import request, jsonify, make_response, current_app
-from functools import wraps
+import os
 from typing import Dict, Optional, Any
 from datetime import datetime, timezone
 import logging
@@ -47,11 +47,8 @@ class ResponseMiddleware:
         """Unified CORS response helper"""
         response = make_response(jsonify(data), status_code)
         
-        allowed_origins = [
-            'http://localhost:3000',
-            'http://localhost:5173',
-            'https://blockchain-verification-esup.vercel.app'
-        ]
+        allowed_origins = os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(',')
+    
         
         origin = request.headers.get('Origin')
         if origin in allowed_origins:

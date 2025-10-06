@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Any
 import logging
 import hashlib
-
+from app.utils.token_utils import generate_token
 logger = logging.getLogger(__name__)
 class TokenService:
     """Service for handling authentication operations"""
@@ -33,7 +33,7 @@ class TokenService:
             # Generate new token
             from app.services.auth.auth_service import AuthService
             auth_service = AuthService()
-            new_token = auth_service.generate_token(user_id, user_role)
+            new_token = generate_token(user_id, user_role)
             
             # Blacklist old token
             self.blacklist_token(old_token)
@@ -41,7 +41,7 @@ class TokenService:
             return {
                 'success': True,
                 'token': new_token,
-                'expires_at': (datetime.utcnow() + timedelta(hours=self.token_expiry_hours)).isoformat()
+                'expires_at': (datetime.datetime.now(datetime.UTC) + timedelta(hours=self.token_expiry_hours)).isoformat()
             }
             
         except jwt.ExpiredSignatureError:
@@ -106,8 +106,8 @@ class TokenService:
             blacklist_doc = {
                 'token_hash': hashlib.sha256(token.encode()).hexdigest()[:32],  # Store hash, not full token
                 'user_id': user_id,
-                'blacklisted_at': datetime.utcnow(),
-                'expires_at': datetime.utcfromtimestamp(exp) if exp else datetime.utcnow() + timedelta(hours=24)
+                'blacklisted_at': datetime.datetime.now(datetime.UTC),
+                'expires_at': datetime.utcfromtimestamp(exp) if exp else datetime.datetime.now(datetime.UTC) + timedelta(hours=24)
             }
             
             # Insert into database
@@ -133,7 +133,7 @@ class TokenService:
         """Remove expired tokens from blacklist"""
         try:
             self.db.blacklisted_tokens.delete_many({
-                'expires_at': {'$lt': datetime.utcnow()}
+                'expires_at': {'$lt': datetime.datetime.now(datetime.UTC)}
             })
         except Exception as e:
             logger.warning(f"Token cleanup failed: {e}")
@@ -149,7 +149,7 @@ class TokenService:
             
             blacklisted = self.db.blacklisted_tokens.find_one({
                 'token_hash': token_hash,
-                'expires_at': {'$gt': datetime.utcnow()}
+                'expires_at': {'$gt': datetime.datetime.now(datetime.UTC)}
             })
             
             return blacklisted is not None

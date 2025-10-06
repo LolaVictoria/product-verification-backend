@@ -126,8 +126,8 @@ class UserService:
             'email': email,
             'password_hash': password_hash.hex(),
             'salt': salt,
-            'created_at': datetime.utcnow().isoformat(),
-            'updated_at': datetime.utcnow().isoformat(),
+            'created_at': datetime.datetime.now(datetime.UTC).isoformat(),
+            'updated_at': datetime.datetime.now(datetime.UTC).isoformat(),
             'is_active': True,
             **kwargs  # Additional fields like name, role, etc.
         }
@@ -164,7 +164,7 @@ class UserService:
             
             if update_data:
                 users_db[user_id].update(update_data)
-                users_db[user_id]['updated_at'] = datetime.utcnow().isoformat()
+                users_db[user_id]['updated_at'] = datetime.datetime.now(datetime.UTC).isoformat()
             
             # Return safe user data
             safe_user_data = users_db[user_id].copy()

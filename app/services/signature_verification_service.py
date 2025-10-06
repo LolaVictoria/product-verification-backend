@@ -43,7 +43,7 @@ class SignatureVerificationService:
             return {
                 'product_signature': base64.b64encode(signature).decode(),
                 'signed_data': canonical_data,
-                'signature_timestamp': datetime.utcnow().isoformat(),
+                'signature_timestamp': datetime.datetime.now(datetime.UTC).isoformat(),
                 'signature_algorithm': 'RSA-PSS-SHA256',
                 'manufacturer_public_key_hash': self._get_public_key_hash(private_key.public_key())
             }
@@ -87,7 +87,7 @@ class SignatureVerificationService:
                     'manufacturer_verified': True,
                     'verification_method': 'cryptographic_signature',
                     'signature_timestamp': signature_data.get('signature_timestamp'),
-                    'verified_at': datetime.utcnow().isoformat()
+                    'verified_at': datetime.datetime.now(datetime.UTC).isoformat()
                 }
                 
             except InvalidSignature:
@@ -117,7 +117,7 @@ class SignatureVerificationService:
             'manufacturing_date': product_data.get('manufacturing_date', ''),
             'manufacturer_name': product_data.get('manufacturer_name', ''),
             'batch_number': product_data.get('batch_number', ''),
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.datetime.now(datetime.UTC).isoformat()
         }
         
         # Create deterministic JSON string (sorted keys)

@@ -1,16 +1,13 @@
 # services/auth_service.py
 import os
 from datetime import datetime
-from flask import request
+from flask import request, g
 from app.utils.formatters import format_user_response
 from app.config.database import get_db_connection
 import logging
-from flask import request,  g
-from datetime import datetime
-import logging
 from dotenv import load_dotenv
-import os 
 from app.utils.password_utils import verify_password
+from app.utils.token_utils import generate_token
 load_dotenv()
 logger = logging.getLogger(__name__)
 
@@ -19,7 +16,6 @@ JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
 JWT_ALGORITHM = "HS256"
 TOKEN_EXPIRY_HOURS = 24
 
-logger = logging.getLogger(__name__)
 class AuthError(Exception):
     """Custom authentication exception"""
     pass
@@ -65,21 +61,8 @@ class AuthService:
             if not stored_hash:
                 raise AuthError("Invalid credentials")
             
-            # Verify password
-            password_valid = False
-            
-            try:
-                password_valid = verify_password(email, password)
-            except Exception as e:
-                print(f"Security utils failed for customer: {e}")
-            
-            if not password_valid:
-                try:
-                    password_valid = verify_password(password, stored_hash)
-                except Exception as e:
-                    print(f"Bcrypt verification failed for customer: {e}")
-            
-            if not password_valid:
+            # Verify password - FIXED: correct parameter order
+            if not verify_password(password, stored_hash):
                 raise AuthError("Invalid credentials")
             
             # Generate token
@@ -88,7 +71,7 @@ class AuthService:
                 'email': customer.get('primary_email') or customer.get('email')
             }
             
-            token = auth_service.generate_token(user_data, 'customer')
+            token = generate_token(user_data, 'customer')
             
             # Log successful login
             try:
@@ -111,14 +94,14 @@ class AuthService:
     
     @staticmethod
     def authenticate_admin(email, password):
-        """Authenticate admin user from users collection"""
+        """Authenticate admin user from admins collection"""
         try:
             print(f"Authenticating admin: {email}")
             
             db = get_db_connection()
             
-            # Find admin in users collection
-            admin = db.users.find_one({
+            # Find admin in admins collection
+            admin = db.admins.find_one({
                 'email': email,
                 'role': 'admin'
             })
@@ -128,12 +111,9 @@ class AuthService:
             if not admin:
                 raise AuthError("Invalid credentials")
             
-            # Check if admin is active/verified if you have such fields
+            # Check if admin is active
             if admin.get('is_active') == False:
                 raise AuthError("Admin account is deactivated")
-            
-            if admin.get('verification_status') and admin.get('verification_status') not in ['verified', 'pending']:
-                raise AuthError("Admin account not verified")
             
             # Get stored password hash
             stored_hash = admin.get('password_hash') or admin.get('password')
@@ -143,23 +123,9 @@ class AuthService:
             print(f"Stored hash type: {type(stored_hash)}")
             print(f"Stored hash starts with: {str(stored_hash)[:10]}...")
             
-            # Verify password - try security_utils first, then bcrypt
-            password_valid = False
-            
-            try:
-                # Try security_utils method first
-                password_valid = verify_password(email, password)
-                print(f"Security utils verification: {password_valid}")
-            except Exception as e:
-                print(f"Security utils failed: {e}")
-            
-            if not password_valid:
-                try:
-                    # Try direct bcrypt verification
-                    password_valid = verify_password(password, stored_hash)
-                    print(f"Bcrypt verification: {password_valid}")
-                except Exception as e:
-                    print(f"Bcrypt verification failed: {e}")
+            # Verify password - FIXED: correct parameter order
+            password_valid = verify_password(password, stored_hash)
+            print(f"Password verification result: {password_valid}")
             
             if not password_valid:
                 raise AuthError("Invalid credentials")
@@ -167,10 +133,10 @@ class AuthService:
             # Generate token
             user_data = {
                 'user_id': str(admin['_id']),
-                'email': admin.get('primary_email') or admin.get('email')
+                'email': admin.get('email')
             }
             
-            token = auth_service.generate_token(user_data, 'admin')
+            token = generate_token(user_data, 'admin')
             
             # Log successful login
             try:
@@ -232,23 +198,8 @@ class AuthService:
             if not stored_hash:
                 raise AuthError("Invalid credentials")
             
-            # Verify password using same methods as admin
-            password_valid = False
-            
-            try:
-                # Try security_utils method first
-                password_valid = verify_password(email, password)
-            except Exception as e:
-                print(f"Security utils failed for manufacturer: {e}")
-            
-            if not password_valid:
-                try:
-                    # Try direct bcrypt verification
-                    password_valid = verify_password(password, stored_hash)
-                except Exception as e:
-                    print(f"Bcrypt verification failed for manufacturer: {e}")
-            
-            if not password_valid:
+            # Verify password - FIXED: correct parameter order
+            if not verify_password(password, stored_hash):
                 raise AuthError("Invalid credentials")
             
             # Generate token
@@ -258,7 +209,7 @@ class AuthService:
                 'manufacturer_id': manufacturer.get('manufacturer_id')
             }
             
-            token = auth_service.generate_token(user_data, 'manufacturer')
+            token = generate_token(user_data, 'manufacturer')
             
             # Log successful login
             try:
@@ -319,7 +270,6 @@ class AuthService:
         except Exception as e:
             logger.error(f"Error logging security event: {e}")
 
-    # Debug function to check your collections
     def debug_user_collections():
         """Debug function to see what's in your collections"""
         try:

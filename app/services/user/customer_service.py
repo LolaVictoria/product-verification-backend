@@ -39,8 +39,8 @@ class CustomerService:
                 'verification_token': verification_token,
                 'email_verified': False,
                 'status': 'active',
-                'created_at': datetime.utcnow(),
-                'updated_at': datetime.utcnow(),
+                'created_at': datetime.datetime.now(datetime.UTC),
+                'updated_at': datetime.datetime.now(datetime.UTC),
                 'last_verification': None,
                 'total_verifications': 0
             }
@@ -97,7 +97,7 @@ class CustomerService:
                 {
                     '$set': {
                         'email_verified': True,
-                        'updated_at': datetime.utcnow()
+                        'updated_at': datetime.datetime.now(datetime.UTC)
                     },
                     '$unset': {'verification_token': ''}
                 }
@@ -151,8 +151,8 @@ class CustomerService:
                 {'_id': customer_id},
                 {
                     '$set': {
-                        'last_verification': datetime.utcnow(),
-                        'updated_at': datetime.utcnow()
+                        'last_verification': datetime.datetime.now(datetime.UTC),
+                        'updated_at': datetime.datetime.now(datetime.UTC)
                     },
                     '$inc': {'total_verifications': 1}
                 }

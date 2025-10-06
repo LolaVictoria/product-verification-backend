@@ -53,7 +53,7 @@ def up():
     db.migrations.insert_one({
         'version': '001',
         'name': 'initial_schema',
-        'applied_at': datetime.utcnow()
+        'applied_at': datetime.datetime.now(datetime.UTC)
     })
     
     print("Migration 001_initial_schema completed")
