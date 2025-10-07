@@ -54,7 +54,7 @@ def register_routes(app: Flask):
         from app.api.v1.admin.system_routes import system_bp
         from app.api.v1.admin.audit_routes import audit_bp
         
-        app.register_blueprint(admin_manufacturer_bp, url_prefix='/v1/admin/manufacturers')
+        app.register_blueprint(admin_manufacturer_bp, url_prefix='/v1/admin')
         app.register_blueprint(system_bp, url_prefix='/v1/admin/system')
         app.register_blueprint(audit_bp, url_prefix='/v1/admin/audit')
         
