@@ -14,34 +14,19 @@ admin_manufacturer_bp = Blueprint('admin_manufacturers', __name__)
 logger = logging.getLogger(__name__)
 
 
-@admin_manufacturer_bp.route('/manufacturers', methods=['GET'])
+@admin_manufacturer_bp.route('/manufacturers/list', methods=['GET'])
 @auth_middleware.token_required_with_roles(['admin'])
-def get_all_manufacturers(current_user_id, current_user_role):
-    """Get all manufacturers with pagination and filters"""
+def list_manufacturers(current_user_id, current_user_role):
+    """List all manufacturers"""
     try:
-        page = request.args.get('page', 1, type=int)
-        limit = request.args.get('limit', 20, type=int)
-        status = request.args.get('status', 'all')
-        search = request.args.get('search', '')
-        sort_by = request.args.get('sort_by', 'created_at')
-        
-        result = admin_service.get_all_manufacturers(
-            page=page,
-            limit=limit,
-            status=status,
-            search=search,
-            sort_by=sort_by
-        )
-        
+        result = admin_service.list_all_manufacturers()
         return response_middleware.create_cors_response(result, 200)
-        
     except Exception as e:
-        logger.error(f"Get manufacturers error: {e}")
+        logger.error(f"List manufacturers error: {e}")
         return response_middleware.create_cors_response({
             'success': False,
-            'error': 'Failed to get manufacturers'
+            'error': 'Failed to list manufacturers'
         }, 500)
-
 
 @admin_manufacturer_bp.route('/<manufacturer_id>', methods=['GET'])
 @auth_middleware.token_required_with_roles(['admin'])

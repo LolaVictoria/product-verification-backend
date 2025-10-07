@@ -9,9 +9,10 @@ from functools import wraps
 from flask import request, g, jsonify
 from app.services.auth.token_service import token_service
 from app.services.auth.auth_service import AuthError
-
+import jwt
+import os
 logger = logging.getLogger(__name__)
-
+JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
 
 class AuthMiddleware:
     """Middleware for authentication - token handling only"""
@@ -36,54 +37,104 @@ class AuthMiddleware:
             raise AuthError("Invalid authorization header format")
         
         return auth_header[7:]  # Remove 'Bearer ' prefix
-    
+
     @staticmethod
-    def token_required_with_roles(allowed_roles=None):
-        """
-        Decorator for routes requiring authentication with specific roles
-        
-        Args:
-            allowed_roles: List of allowed roles, or None for any authenticated user
-        """
+    def token_required_with_roles(allowed_roles):
         def decorator(f):
             @wraps(f)
-            def wrapper(*args, **kwargs):
+            def decorated_function(*args, **kwargs):
+                # Handle OPTIONS for CORS
+                if request.method == 'OPTIONS':
+                    return jsonify({'success': True}), 200
+                
+                # Try both cases for Authorization header
+                auth_header = request.headers.get('Authorization') or request.headers.get('authorization')
+                
+                print(f"\n🔍 Auth Debug:")
+                print(f"   Endpoint: {request.endpoint}")
+                print(f"   Auth header: {auth_header}")
+                print(f"   All headers: {dict(request.headers)}")
+                
+                if not auth_header:
+                    return jsonify({'message': 'No authorization header'}), 401
+                
                 try:
-                    # Extract and verify token
-                    token = AuthMiddleware.extract_token()
-                    payload = token_service.verify_token(token)
+                    # Extract token
+                    if auth_header.startswith('Bearer '):
+                        token = auth_header[7:]
+                    elif auth_header.startswith('bearer '):
+                        token = auth_header[7:]
+                    else:
+                        token = auth_header
                     
-                    user_id = payload.get('sub') or payload.get('user_id')
+                    # Verify token
+                    payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
+                    user_id = payload.get('sub')
                     user_role = payload.get('role')
                     
-                    # Check role permissions
-                    if allowed_roles and user_role not in allowed_roles:
-                        from app.api.middleware.response_middleware import response_middleware
-                        return response_middleware.create_cors_response({
-                            'message': f'Access denied: requires one of {allowed_roles}'
-                        }, 403)
+                    print(f"   ✅ Token valid - User: {user_id}, Role: {user_role}")
                     
-                    # Store in Flask g for route access
-                    g.current_user_id = user_id
-                    g.current_user_role = user_role
+                    if user_role not in allowed_roles:
+                        return jsonify({'message': 'Insufficient permissions'}), 403
                     
-                    # Pass to route function
                     return f(user_id, user_role, *args, **kwargs)
                     
-                except AuthError as e:
-                    from app.api.middleware.response_middleware import response_middleware
-                    return response_middleware.create_cors_response({
-                        'message': str(e)
-                    }, 401)
+                except jwt.ExpiredSignatureError:
+                    return jsonify({'message': 'Token expired'}), 401
+                except jwt.InvalidTokenError as e:
+                    return jsonify({'message': 'Invalid token', 'error': str(e)}), 401
                 except Exception as e:
-                    logger.error(f"Auth middleware error: {e}")
-                    from app.api.middleware.response_middleware import response_middleware
-                    return response_middleware.create_cors_response({
-                        'message': 'Authentication failed'
-                    }, 401)
+                    print(f"   ❌ Auth error: {str(e)}")
+                    return jsonify({'message': 'Authentication failed', 'error': str(e)}), 401
             
-            return wrapper
+            return decorated_function
         return decorator
+    # def token_required_with_roles(allowed_roles=None):
+    #     """
+    #     Decorator for routes requiring authentication with specific roles
+        
+    #     Args:
+    #         allowed_roles: List of allowed roles, or None for any authenticated user
+    #     """
+    #     def decorator(f):
+    #         @wraps(f)
+    #         def wrapper(*args, **kwargs):
+    #             try:
+    #                 # Extract and verify token
+    #                 token = AuthMiddleware.extract_token()
+    #                 payload = token_service.verify_token(token)
+                    
+    #                 user_id = payload.get('sub') or payload.get('user_id')
+    #                 user_role = payload.get('role')
+                    
+    #                 # Check role permissions
+    #                 if allowed_roles and user_role not in allowed_roles:
+    #                     from app.api.middleware.response_middleware import response_middleware
+    #                     return response_middleware.create_cors_response({
+    #                         'message': f'Access denied: requires one of {allowed_roles}'
+    #                     }, 403)
+                    
+    #                 # Store in Flask g for route access
+    #                 g.current_user_id = user_id
+    #                 g.current_user_role = user_role
+                    
+    #                 # Pass to route function
+    #                 return f(user_id, user_role, *args, **kwargs)
+                    
+    #             except AuthError as e:
+    #                 from app.api.middleware.response_middleware import response_middleware
+    #                 return response_middleware.create_cors_response({
+    #                     'message': str(e)
+    #                 }, 401)
+    #             except Exception as e:
+    #                 logger.error(f"Auth middleware error: {e}")
+    #                 from app.api.middleware.response_middleware import response_middleware
+    #                 return response_middleware.create_cors_response({
+    #                     'message': 'Authentication failed'
+    #                 }, 401)
+            
+    #         return wrapper
+    #     return decorator
     
     @staticmethod
     def optional_auth(f):

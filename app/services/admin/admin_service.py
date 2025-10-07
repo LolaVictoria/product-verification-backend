@@ -11,11 +11,64 @@ logger = logging.getLogger(__name__)
 class AdminService:
     db = get_db_connection()
 
-    def list_all_manufacturers(self) -> Dict[str, Any]:
-        """List all manufacturers with their basic info and stats"""
+    def get_all_manufacturers(
+    self,
+    page: int = 1,
+    limit: int = 20,
+    status: str = 'all',
+    search: str = '',
+    sort_by: str = 'created_at'
+) -> Dict[str, Any]:
+        """
+        Get all manufacturers with pagination and filters (frontend-compatible format)
+        
+        Args:
+            page: Page number (1-indexed)
+            limit: Items per page
+            status: Filter by verification_status ('all', 'verified', 'pending', 'rejected')
+            search: Search term for company name or email
+            sort_by: Field to sort by ('created_at', 'company_name', 'product_count')
+            
+        Returns:
+            Dict with manufacturers list, pagination info, and summary stats
+        """
         try:
-            manufacturers = list(self.db.users.find(
-                {'role': 'manufacturer'},
+            # Build query filter
+            query = {'role': 'manufacturer'}
+            
+            # Status filter
+            if status != 'all':
+                query['verification_status'] = status
+            
+            # Search filter
+            if search:
+                search_regex = {'$regex': search, '$options': 'i'}
+                query['$or'] = [
+                    {'current_company_name': search_regex},
+                    {'primary_email': search_regex}
+                ]
+            
+            # Get total count
+            total = self.db.users.count_documents(query)
+            
+            # Calculate pagination
+            skip = (page - 1) * limit
+            total_pages = (total + limit - 1) // limit
+            
+            # Sort mapping
+            sort_field = 'registration_date'
+            sort_direction = -1
+            
+            if sort_by == 'company_name':
+                sort_field = 'current_company_name'
+                sort_direction = 1
+            elif sort_by == 'created_at':
+                sort_field = 'registration_date'
+                sort_direction = -1
+            
+            # Fetch manufacturers
+            manufacturers_cursor = self.db.users.find(
+                query,
                 {
                     '_id': 1,
                     'current_company_name': 1,
@@ -23,26 +76,76 @@ class AdminService:
                     'verification_status': 1,
                     'account_status': 1,
                     'registration_date': 1,
-                    'last_login': 1
+                    'last_login': 1,
+                    'wallet_addresses': 1,
+                    'crypto_enabled': 1,
+                    'public_key_id': 1
                 }
-            ).sort('registration_date', -1))
+            ).sort(sort_field, sort_direction).skip(skip).limit(limit)
             
-            # Get product counts for each manufacturer
-            for manufacturer in manufacturers:
+            manufacturers = []
+            
+            for manufacturer in manufacturers_cursor:
+                # Get product count
                 product_count = self.db.products.count_documents({
                     'manufacturer_id': manufacturer['_id']
                 })
-                manufacturer['product_count'] = product_count
-                manufacturer['_id'] = str(manufacturer['_id'])
+                
+                # Get verification breakdown
+                crypto_count = self.db.products.count_documents({
+                    'manufacturer_id': manufacturer['_id'],
+                    'registration_type': 'cryptographic'
+                })
+                blockchain_count = product_count - crypto_count
+                
+                manufacturers.append({
+                    'id': str(manufacturer['_id']),
+                    'company_name': manufacturer.get('current_company_name', 'N/A'),
+                    'contact_email': manufacturer.get('primary_email', 'N/A'),
+                    'verification_status': manufacturer.get('verification_status', 'pending'),
+                    'crypto_enabled': manufacturer.get('crypto_enabled', False),
+                    'public_key_id': manufacturer.get('public_key_id'),
+                    'wallet_addresses': manufacturer.get('wallet_addresses', []),
+                    'total_products': product_count,
+                    'verification_breakdown': {
+                        'cryptographic': crypto_count,
+                        'legacy_blockchain': blockchain_count
+                    },
+                    'created_at': manufacturer.get('registration_date', datetime.now(timezone.utc)).isoformat(),
+                    'last_activity': manufacturer.get('last_login', manufacturer.get('registration_date')).isoformat() if manufacturer.get('last_login') else manufacturer.get('registration_date', datetime.now(timezone.utc)).isoformat()
+                })
+            
+            # Summary statistics
+            summary = {
+                'total_manufacturers': total,
+                'verified': self.db.users.count_documents({**query, 'verification_status': 'verified'}),
+                'pending': self.db.users.count_documents({**query, 'verification_status': 'pending'}),
+                'rejected': self.db.users.count_documents({**query, 'verification_status': 'rejected'}),
+                'crypto_enabled': self.db.users.count_documents({**query, 'crypto_enabled': True})
+            }
             
             return {
+                'success': True,
                 'manufacturers': manufacturers,
-                'total': len(manufacturers)
+                'pagination': {
+                    'page': page,
+                    'limit': limit,
+                    'total': total,
+                    'total_pages': total_pages,
+                    'has_next': page < total_pages,
+                    'has_prev': page > 1
+                },
+                'summary': summary,
+                'filters': {
+                    'status': status,
+                    'search': search,
+                    'sort_by': sort_by
+                }
             }
             
         except Exception as e:
-            logger.error(f"Error listing manufacturers: {e}")
-            raise
+            logger.error(f"Error getting manufacturers: {e}", exc_info=True)
+            raise Exception(f"Failed to get manufacturers: {str(e)}")
     
     def get_manufacturer_admin_stats(self, manufacturer_id: str) -> Dict[str, Any]:
         """Get detailed manufacturer statistics for admin"""
