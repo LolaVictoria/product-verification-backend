@@ -5,7 +5,8 @@ Handles login, registration, profile management, and email verification
 
 from flask import Blueprint, request
 import logging
-
+from datetime import datetime, timezone
+from bson import ObjectId
 from app.services.auth.auth_service import auth_service, AuthError
 from app.services.auth.token_service import token_service
 from app.services.user.profile_service import profile_service
@@ -14,10 +15,11 @@ from app.validators.auth_validator import AuthValidator
 from app.api.middleware.auth_middleware import auth_middleware
 from app.api.middleware.response_middleware import response_middleware
 from app.api.middleware.rate_limiting import rate_limit
-
+from app.config.database import get_db_connection
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
 
+db = get_db_connection()
 
 # ===============================
 # LOGIN ENDPOINTS
@@ -271,33 +273,34 @@ def resend_verification():
 # ===============================
 
 @auth_bp.route('/logout', methods=['POST'])
-@auth_middleware.require_auth
+@auth_middleware.token_required_with_roles(['admin', 'manufacturer', 'consumer'])
 def logout(current_user_id, current_user_role):
-    """User logout endpoint"""
+    """Logout user and invalidate tokens"""
     try:
-        auth_header = request.headers.get('Authorization')
+        data = request.get_json()
+        refresh_token = data.get('refresh_token')
         
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return response_middleware.create_cors_response({
-                'success': False,
-                'error': 'No token provided'
-            }, 400)
+        if refresh_token:
+            # Invalidate refresh token in database
+            db.refresh_tokens.delete_one({'token': refresh_token})
+            
+            # Optional: Add token to blacklist
+            db.token_blacklist.insert_one({
+                'token': refresh_token,
+                'user_id': current_user_id,
+                'blacklisted_at': datetime.now(timezone.utc)
+            })
         
-        token = auth_header.split(' ')[1]
+        # Update last logout time
+        db.users.update_one(
+            {'_id': ObjectId(current_user_id)},
+            {'$set': {'last_logout': datetime.now(timezone.utc)}}
+        )
         
-        # Invalidate token
-        result = token_service.invalidate_token(token)
-        
-        if result.get('success'):
-            return response_middleware.create_cors_response({
-                'success': True,
-                'message': 'Logged out successfully'
-            }, 200)
-        else:
-            return response_middleware.create_cors_response({
-                'success': False,
-                'error': result.get('error', 'Logout failed')
-            }, 500)
+        return response_middleware.create_cors_response({
+            'success': True,
+            'message': 'Logged out successfully'
+        }, 200)
         
     except Exception as e:
         logger.error(f"Logout error: {e}")
@@ -305,8 +308,6 @@ def logout(current_user_id, current_user_role):
             'success': False,
             'error': 'Logout failed'
         }, 500)
-
-
 @auth_bp.route('/refresh', methods=['POST'])
 @auth_middleware.require_auth
 def refresh_token(current_user_id, current_user_role):

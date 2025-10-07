@@ -2,13 +2,14 @@
 import os
 import json
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.fernet import Fernet
 import base64
 import logging
-
+from typing import Dict, Any
+from bson import ObjectId
 logger = logging.getLogger(__name__)
 
 class CryptoService:
@@ -17,7 +18,6 @@ class CryptoService:
         self.master_key = self._get_or_create_master_key()
         self.cipher_suite = Fernet(self.master_key)
     
-    @staticmethod
     def _get_or_create_master_key(self):
         """Get or create master encryption key for private key storage"""
         key_file = 'crypto_master.key'
@@ -179,4 +179,101 @@ class CryptoService:
             logger.error(f"Error creating transfer hash: {e}")
             raise
 
+    @staticmethod
+    def get_manufacturer_details(self, manufacturer_id: str) -> Dict[str, Any]:
+        """
+        Get detailed information about a specific manufacturer
+        
+        Args:
+            manufacturer_id: The manufacturer's user ID
+            
+        Returns:
+            Dict with detailed manufacturer information
+        """
+        try:
+            # Get manufacturer from users collection
+            manufacturer = self.db.users.find_one(
+                {'_id': ObjectId(manufacturer_id), 'role': 'manufacturer'}
+            )
+            
+            if not manufacturer:
+                raise Exception("Manufacturer not found")
+            
+            # Get product statistics
+            total_products = self.db.products.count_documents({
+                'manufacturer_id': manufacturer_id
+            })
+            
+            crypto_products = self.db.products.count_documents({
+                'manufacturer_id': manufacturer_id,
+                'registration_type': 'cryptographic'
+            })
+            
+            blockchain_products = total_products - crypto_products
+            
+            # Get recent products
+            recent_products = list(self.db.products.find(
+                {'manufacturer_id': manufacturer_id}
+            ).sort('created_at', -1).limit(5))
+            
+            # Get verification statistics
+            total_verifications = self.db.verifications.count_documents({
+                'manufacturer_id': manufacturer_id
+            })
+            
+            # Get recent verifications
+            recent_verifications = list(self.db.verifications.find(
+                {'manufacturer_id': manufacturer_id}
+            ).sort('verified_at', -1).limit(10))
+            
+            # Format response
+            return {
+                'success': True,
+                'manufacturer': {
+                    'id': str(manufacturer['_id']),
+                    'company_name': manufacturer.get('current_company_name', 'N/A'),
+                    'contact_email': manufacturer.get('primary_email', 'N/A'),
+                    'phone': manufacturer.get('phone_number'),
+                    'address': manufacturer.get('company_address'),
+                    'verification_status': manufacturer.get('verification_status', 'pending'),
+                    'account_status': manufacturer.get('account_status', 'active'),
+                    'crypto_enabled': manufacturer.get('crypto_enabled', False),
+                    'public_key_id': manufacturer.get('public_key_id'),
+                    'wallet_addresses': manufacturer.get('wallet_addresses', []),
+                    'registration_date': manufacturer.get('registration_date', datetime.now(timezone.utc)).isoformat(),
+                    'last_login': manufacturer.get('last_login').isoformat() if manufacturer.get('last_login') else None,
+                    'email_verified': manufacturer.get('email_verified', False),
+                },
+                'statistics': {
+                    'total_products': total_products,
+                    'cryptographic_products': crypto_products,
+                    'blockchain_products': blockchain_products,
+                    'total_verifications': total_verifications
+                },
+                'recent_products': [
+                    {
+                        'id': str(p['_id']),
+                        'serial_number': p.get('serial_number'),
+                        'brand': p.get('brand'),
+                        'model': p.get('model'),
+                        'registration_type': p.get('registration_type'),
+                        'created_at': p.get('created_at', datetime.now(timezone.utc)).isoformat()
+                    }
+                    for p in recent_products
+                ],
+                'recent_verifications': [
+                    {
+                        'id': str(v['_id']),
+                        'serial_number': v.get('serial_number'),
+                        'verified_at': v.get('verified_at', datetime.now(timezone.utc)).isoformat(),
+                        'location': v.get('location', {}).get('country', 'Unknown')
+                    }
+                    for v in recent_verifications
+                ]
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting manufacturer details: {e}", exc_info=True)
+            raise Exception(f"Failed to get manufacturer details: {str(e)}")
+        
 crypto_service = CryptoService()
