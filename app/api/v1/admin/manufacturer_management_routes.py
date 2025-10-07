@@ -14,7 +14,7 @@ admin_manufacturer_bp = Blueprint('admin_manufacturers', __name__)
 logger = logging.getLogger(__name__)
 
 
-@admin_manufacturer_bp.route('/manufacturers/', methods=['GET'])
+@admin_manufacturer_bp.route('/manufacturers', methods=['GET'])
 @auth_middleware.token_required_with_roles(['admin'])
 def get_all_manufacturers(current_user_id, current_user_role):
     """Get all manufacturers with pagination and filters"""
